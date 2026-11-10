@@ -1,0 +1,43 @@
+name: Capture simulator preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/preview.yml']
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare and build simulator app
+        run: |
+          node scripts/generate-project.mjs
+          node scripts/generate-icon.mjs
+          DEVICE_ID="$(python3 scripts/select-simulator.py)"
+          echo "DEVICE_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$DEVICE_ID"
+          xcodebuild build -project OneStep.xcodeproj -scheme OneStep -configuration Debug \
+            -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -derivedDataPath build/Preview CODE_SIGNING_ALLOWED=NO
+      - name: Launch and capture preview
+        run: |
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" build/Preview/Build/Products/Debug-iphonesimulator/OneStep.app
+          xcrun simctl status_bar "$DEVICE_ID" override --time '9:41'
+          xcrun simctl launch "$DEVICE_ID" tech.sillycat.onestep --preview
+          sleep 5
+          mkdir -p preview
+          xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.2-Now.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-0.2-preview
+          path: preview/
+          if-no-files-found: error

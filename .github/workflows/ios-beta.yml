@@ -57,14 +57,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Build unsigned IPA
         run: bash scripts/build-ipa.sh
-      - name: Capture simulator preview
-        continue-on-error: true
-        run: |
-          DEVICE_ID="$(python3 scripts/select-simulator.py)"
-          xcrun simctl terminate "$DEVICE_ID" tech.sillycat.onestep || true
-          xcrun simctl launch "$DEVICE_ID" tech.sillycat.onestep --preview
-          sleep 3
-          xcrun simctl io "$DEVICE_ID" screenshot release/Preview.png
       - name: Upload installable beta package
         uses: actions/upload-artifact@v4
         with:

@@ -1,0 +1,34 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const project=read('OneStep.xcodeproj/project.pbxproj');
+const objects=[...project.matchAll(/^([A-F0-9]{24}) = \{/gm)].map(m=>m[1]);
+assert.equal(new Set(objects).size,objects.length,'Project contains duplicate object IDs');
+for(const match of project.matchAll(/\b[A-F0-9]{24}\b/g)) assert(objects.includes(match[0]),`Unresolved project ID ${match[0]}`);
+assert.equal((project.match(/productType = "com.apple.product-type.application"/g)||[]).length,1);
+assert(!project.includes('com.apple.product-type.app-extension'),'Beta must not contain extensions');
+assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep;/g)||[]).length,2);
+for(const file of ['Core/Planner.swift','Persistence.swift','Notifications.swift','Views.swift','OneStepApp.swift']) {
+  assert(fs.existsSync(path.join(root,'OneStep',file)),`Missing source ${file}`);
+  assert(project.includes(JSON.stringify(file)),`Source not included in project ${file}`);
+}
+const scheme=read('OneStep.xcodeproj/xcshareddata/xcschemes/OneStep.xcscheme');
+assert(scheme.includes('OneStepTests.xctest'));
+const plist=read('OneStep/Info.plist');
+assert(plist.includes('$(PRODUCT_BUNDLE_IDENTIFIER)'));
+assert(!plist.includes('UIBackgroundModes'),'Offline beta does not need background modes');
+const icon=fs.readFileSync(path.join(root,'OneStep/Assets.xcassets/AppIcon.appiconset/AppIcon.png'));
+assert.equal(icon.readUInt32BE(16),1024);assert.equal(icon.readUInt32BE(20),1024);assert.equal(icon[25],2,'Icon must be opaque RGB');
+JSON.parse(read('OneStep/Assets.xcassets/AppIcon.appiconset/Contents.json'));
+JSON.parse(read('OneStep/Assets.xcassets/AccentColor.colorset/Contents.json'));
+const workflow=read('.github/workflows/ios-beta.yml');
+assert(workflow.includes('workflow_dispatch:'));
+assert(workflow.includes('swift test'));
+assert(workflow.includes('xcodebuild test'));
+assert(workflow.includes('CODE_SIGNING_ALLOWED=NO'));
+assert(!workflow.includes('secrets.'),'Unsigned build must not require signing secrets');
+for(const required of ['INSTALL.md','KNOWN-LIMITATIONS.md','Tests/PlannerRulesTests.swift','AppTests/PlannerStoreTests.swift','scripts/build-ipa.sh']) assert(fs.existsSync(path.join(root,required)),`Missing deliverable ${required}`);
+console.log(`PASS: ${objects.length} unique project objects, all source references, shared test scheme, app identity, icon, and unsigned CI contract.`);

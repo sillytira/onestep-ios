@@ -1,0 +1,72 @@
+name: Build iPhone beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Build number (increment for each update)'
+        required: true
+        default: '1'
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - 'OneStep/**'
+      - 'AppTests/**'
+      - 'Tests/**'
+      - 'scripts/**'
+      - 'Package.swift'
+      - '.github/workflows/ios-beta.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-beta-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  beta:
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm toolchain
+        run: xcodebuild -version
+      - name: Generate and validate project
+        run: |
+          node scripts/generate-project.mjs
+          node scripts/generate-icon.mjs
+          node scripts/validate-source.mjs
+          plutil -lint OneStep/Info.plist OneStep.xcodeproj/project.pbxproj
+      - name: Test scheduling and daily routines
+        run: swift test
+      - name: Test native persistence in iPhone simulator
+        run: |
+          DEVICE_ID="$(python3 scripts/select-simulator.py)"
+          xcodebuild test -project OneStep.xcodeproj -scheme OneStep -configuration Debug \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -derivedDataPath build/Simulator -resultBundlePath build/OneStepTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Build unsigned IPA
+        run: bash scripts/build-ipa.sh
+      - name: Upload installable beta package
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-0.1.0-beta-${{ env.BUILD_NUMBER }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload simulator diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-test-diagnostics
+          path: build/OneStepTests.xcresult
+          if-no-files-found: ignore

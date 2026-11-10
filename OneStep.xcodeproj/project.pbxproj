@@ -1,0 +1,95 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+3FF134F77AFE2ADA7A92CE9E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/Planner.swift"; sourceTree = "<group>"; };
+4AF57D3A118111DCFDD5A0C2 = { isa = PBXBuildFile; fileRef = 3FF134F77AFE2ADA7A92CE9E; };
+F19DD131BDFCD5B734DCEA37 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Persistence.swift"; sourceTree = "<group>"; };
+910E0C6BB532B5507D4149A7 = { isa = PBXBuildFile; fileRef = F19DD131BDFCD5B734DCEA37; };
+2625D85C65E8634E0421107D = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Notifications.swift"; sourceTree = "<group>"; };
+0314E112774C388D5739669A = { isa = PBXBuildFile; fileRef = 2625D85C65E8634E0421107D; };
+9591CA9AF3E3254645C3A23E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views.swift"; sourceTree = "<group>"; };
+F45983BB8A37EEBC7837EBBF = { isa = PBXBuildFile; fileRef = 9591CA9AF3E3254645C3A23E; };
+ABF987E47EF43CE936FC1ADE = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OneStepApp.swift"; sourceTree = "<group>"; };
+9E1A891EFB031F77664BC427 = { isa = PBXBuildFile; fileRef = ABF987E47EF43CE936FC1ADE; };
+E6AC0201F5F37829DEDD5503 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlannerStoreTests.swift"; sourceTree = "<group>"; };
+F14285FAF3B8CF40380AFBCB = { isa = PBXBuildFile; fileRef = E6AC0201F5F37829DEDD5503; };
+DB21FE44227788852C684A15 = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+5522B3B3B2EACC1C8F9BEAAC = { isa = PBXBuildFile; fileRef = DB21FE44227788852C684A15; };
+5BA2240E9B75C7BC66864D2B = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+49D3181DB2417F4176ACA642 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OneStep.app; sourceTree = BUILT_PRODUCTS_DIR; };
+133C675DE8399DF5C9E6D669 = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OneStepTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+FC233BDA2344D97687F5A251 = { isa = PBXGroup; children = (3FF134F77AFE2ADA7A92CE9E,F19DD131BDFCD5B734DCEA37,2625D85C65E8634E0421107D,9591CA9AF3E3254645C3A23E,ABF987E47EF43CE936FC1ADE,DB21FE44227788852C684A15,5BA2240E9B75C7BC66864D2B); path = OneStep; sourceTree = "<group>"; };
+C4DF94A42CA730B26E01C133 = { isa = PBXGroup; children = (E6AC0201F5F37829DEDD5503); path = AppTests; sourceTree = "<group>"; };
+B9E7F2871A3402983868AFC8 = { isa = PBXGroup; children = (49D3181DB2417F4176ACA642,133C675DE8399DF5C9E6D669); name = Products; sourceTree = "<group>"; };
+19F479106CE8C3BA8C106518 = { isa = PBXGroup; children = (FC233BDA2344D97687F5A251,C4DF94A42CA730B26E01C133,B9E7F2871A3402983868AFC8); sourceTree = "<group>"; };
+D626F04DF571B9BB2451CBFE = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (4AF57D3A118111DCFDD5A0C2,910E0C6BB532B5507D4149A7,0314E112774C388D5739669A,F45983BB8A37EEBC7837EBBF,9E1A891EFB031F77664BC427); runOnlyForDeploymentPostprocessing = 0; };
+5C2473E515024614E403B8B9 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (5522B3B3B2EACC1C8F9BEAAC); runOnlyForDeploymentPostprocessing = 0; };
+951DDECB505D289B8BC956E6 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+B12075C7D4132FB039AC673A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (F14285FAF3B8CF40380AFBCB); runOnlyForDeploymentPostprocessing = 0; };
+BB3285C177341AA288C06C10 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+1241936D4DD3AAD68FE7BFBD = { isa = PBXContainerItemProxy; containerPortal = 244210E48437B6556980A702; proxyType = 1; remoteGlobalIDString = 34A04005BCAF206EEC990BD9; remoteInfo = OneStep; };
+F26350DAFE3F19AABFD69AC4 = { isa = PBXTargetDependency; target = 34A04005BCAF206EEC990BD9; targetProxy = 1241936D4DD3AAD68FE7BFBD; };
+488864B3D19480A82F7F1786 = { isa = XCBuildConfiguration; buildSettings = {
+    CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES;
+    IPHONEOS_DEPLOYMENT_TARGET = 26.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0;
+    SWIFT_STRICT_CONCURRENCY = targeted;
+    DEBUG_INFORMATION_FORMAT = dwarf;
+    SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+    ENABLE_TESTABILITY = YES;
+  }; name = Debug; };
+952548237D7F645F11D1E7B6 = { isa = XCBuildConfiguration; buildSettings = {
+    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep;
+    PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
+    INFOPLIST_FILE = OneStep/Info.plist; GENERATE_INFOPLIST_FILE = NO;
+    ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+    CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
+    MARKETING_VERSION = 0.1.0; CURRENT_PROJECT_VERSION = 1;
+    SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+    SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+    LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+  }; name = Debug; };
+88B88E0179E3F72210D21B33 = { isa = XCBuildConfiguration; buildSettings = {
+    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep.tests;
+    PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
+    GENERATE_INFOPLIST_FILE = YES; CODE_SIGN_STYLE = Automatic;
+    TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OneStep.app/OneStep";
+    BUNDLE_LOADER = "$(TEST_HOST)";
+    LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+  }; name = Debug; };
+35B1014F135DE9B45529B733 = { isa = XCBuildConfiguration; buildSettings = {
+    CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES;
+    IPHONEOS_DEPLOYMENT_TARGET = 26.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0;
+    SWIFT_STRICT_CONCURRENCY = targeted;
+    DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+    SWIFT_OPTIMIZATION_LEVEL = "-O";
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+    ENABLE_TESTABILITY = NO;
+  }; name = Release; };
+E2D3A31BEAA1368FC62DA77A = { isa = XCBuildConfiguration; buildSettings = {
+    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep;
+    PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
+    INFOPLIST_FILE = OneStep/Info.plist; GENERATE_INFOPLIST_FILE = NO;
+    ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+    CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
+    MARKETING_VERSION = 0.1.0; CURRENT_PROJECT_VERSION = 1;
+    SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+    SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+    LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+  }; name = Release; };
+A8A9BF34DBF8F1867F207864 = { isa = XCBuildConfiguration; buildSettings = {
+    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep.tests;
+    PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
+    GENERATE_INFOPLIST_FILE = YES; CODE_SIGN_STYLE = Automatic;
+    TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OneStep.app/OneStep";
+    BUNDLE_LOADER = "$(TEST_HOST)";
+    LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+  }; name = Release; };
+B4E10CAA9C5E22150B71559C = { isa = XCConfigurationList; buildConfigurations = (488864B3D19480A82F7F1786,35B1014F135DE9B45529B733); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+4A807E8A027297B0B93701FB = { isa = XCConfigurationList; buildConfigurations = (952548237D7F645F11D1E7B6,E2D3A31BEAA1368FC62DA77A); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+AD7020964E1E033F765FE484 = { isa = XCConfigurationList; buildConfigurations = (88B88E0179E3F72210D21B33,A8A9BF34DBF8F1867F207864); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+34A04005BCAF206EEC990BD9 = { isa = PBXNativeTarget; buildConfigurationList = 4A807E8A027297B0B93701FB; buildPhases = (D626F04DF571B9BB2451CBFE,951DDECB505D289B8BC956E6,5C2473E515024614E403B8B9); buildRules = (); dependencies = (); name = OneStep; productName = OneStep; productReference = 49D3181DB2417F4176ACA642; productType = "com.apple.product-type.application"; };
+9805CBD60EB4F66728D5D195 = { isa = PBXNativeTarget; buildConfigurationList = AD7020964E1E033F765FE484; buildPhases = (B12075C7D4132FB039AC673A,BB3285C177341AA288C06C10); buildRules = (); dependencies = (F26350DAFE3F19AABFD69AC4); name = OneStepTests; productName = OneStepTests; productReference = 133C675DE8399DF5C9E6D669; productType = "com.apple.product-type.bundle.unit-test"; };
+244210E48437B6556980A702 = { isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 2600; TargetAttributes = { 34A04005BCAF206EEC990BD9 = { CreatedOnToolsVersion = 26.0; }; 9805CBD60EB4F66728D5D195 = { CreatedOnToolsVersion = 26.0; TestTargetID = 34A04005BCAF206EEC990BD9; }; }; }; buildConfigurationList = B4E10CAA9C5E22150B71559C; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en,Base); mainGroup = 19F479106CE8C3BA8C106518; productRefGroup = B9E7F2871A3402983868AFC8; projectDirPath = ""; projectRoot = ""; targets = (34A04005BCAF206EEC990BD9,9805CBD60EB4F66728D5D195); };
+}; rootObject = 244210E48437B6556980A702; }

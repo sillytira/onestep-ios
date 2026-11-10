@@ -54,8 +54,9 @@ final class PlannerStore {
             guard decoded.schemaVersion == 1 else { throw StoreError.newerSchema }
             state = decoded
         } else {
-            state = PlannerState()
-            document = PlannerDocument(payload: try JSONEncoder().encode(state))
+            let initialState = PlannerState()
+            state = initialState
+            document = PlannerDocument(payload: try JSONEncoder().encode(initialState))
             context.insert(document)
             try context.save()
         }

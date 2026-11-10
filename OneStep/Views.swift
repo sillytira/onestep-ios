@@ -117,11 +117,11 @@ private struct NowView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label { Text(now, format: .dateTime.weekday(.wide).month().day()) } icon: { Image(systemName: "sun.max.fill") }
                         .font(.subheadline.weight(.medium)).foregroundStyle(ItemPalette.amber.color)
-                    Text("One thing at a time.").font(.largeTitle.bold())
-                    Text("You can start from here.").foregroundStyle(.secondary)
+                    Text("One thing at a time.").font(store.state.focusSession == nil ? .largeTitle.bold() : .title2.bold())
+                    if store.state.focusSession == nil { Text("You can start from here.").foregroundStyle(.secondary) }
                 }
                 if let item = next {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             ColorBadge(palette: palette, symbol: item.kind == .routine ? "sunrise.fill" : "checklist")
                             Spacer()
@@ -130,11 +130,11 @@ private struct NowView: View {
                                 .padding(.horizontal, 12).padding(.vertical, 7)
                                 .background(palette.color.opacity(0.13), in: Capsule())
                         }
-                        Label(item.kind == .routine ? "ROUTINE · NEXT STEP" : "YOUR NEXT STEP",
-                              systemImage: item.kind == .routine ? "sunrise" : "circle")
-                            .font(.caption.weight(.semibold)).foregroundStyle(palette.color)
                         Text(item.title).font(.title.bold()).fixedSize(horizontal: false, vertical: true)
-                        if !item.notes.isEmpty { Text(item.notes).foregroundStyle(.secondary) }
+                        if !item.notes.isEmpty, item.kind == .task {
+                            Text(item.notes).font(.subheadline).foregroundStyle(.secondary)
+                                .lineLimit(store.state.focusSession == nil ? nil : 2)
+                        }
                         if let due = item.scheduledAt {
                             HStack {
                                 Image(systemName: "clock")
@@ -148,8 +148,10 @@ private struct NowView: View {
                                     .font(.subheadline.weight(.semibold))
                                 Text(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: true)
                                     .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
-                                ProgressView(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: false)
-                                    .tint(palette.color)
+                                ProgressView(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: false) {
+                                    EmptyView()
+                                } currentValueLabel: { EmptyView() }
+                                .tint(palette.color)
                                 Button("Stop timer") { store.stopFocus() }.font(.subheadline)
                             }.padding().frame(maxWidth: .infinity, alignment: .leading)
                                 .background(palette.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 18))
@@ -168,7 +170,7 @@ private struct NowView: View {
                                 .frame(maxWidth: .infinity).padding(.vertical, 8)
                         }
                     }
-                    .padding(24)
+                    .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 28))
                     .overlay { RoundedRectangle(cornerRadius: 28).stroke(palette.color.opacity(0.35), lineWidth: 1.5) }

@@ -49,7 +49,7 @@ private struct DayActivityView: View {
     private var palette: ItemPalette { .resolve(context.state.colorName, routine: context.state.isRoutine) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("OneStep · \(context.attributes.dayLabel)", systemImage: "sparkle")
                     .font(.caption.weight(.semibold)).foregroundStyle(palette.color)
@@ -59,7 +59,7 @@ private struct DayActivityView: View {
             HStack(alignment: .top, spacing: 12) {
                 ColorBadge(palette: palette, symbol: context.state.isRoutine ? "sunrise.fill" : "checklist")
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(context.state.title).font(.headline).lineLimit(2)
+                    Text(context.state.title).font(.subheadline.weight(.semibold)).lineLimit(2)
                     Text(context.state.subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -74,7 +74,7 @@ private struct DayActivityView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(12)
         .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 3).fill(palette.color).frame(width: 4).padding(.vertical, 16) }
     }
 }

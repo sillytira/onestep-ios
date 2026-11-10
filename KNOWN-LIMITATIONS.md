@@ -9,7 +9,11 @@
 - Snooze is fixed at ten minutes. It changes reminder timing without changing task deadlines; routine snoozes stop at the end of today. Future tasks can be marked complete early.
 - Due routines and tasks may alert at the same time. Alert coalescing and more sophisticated prioritization are deferred.
 - Notification taps open the relevant current item. Completion/snooze actions are inside the app, not notification buttons.
-- No timers, Live Activities, widgets, advanced repeating tasks, syncing, backup/import, or server deployment yet.
+- One focus timer is supported, lasting up to eight hours, based on a saved end timestamp. Duration and specific finish times are supported; pause/resume is deferred. Starting a new timer asks to replace an existing one.
+- Live Activities require keeping the included WidgetKit extension when signing, adding one App ID. No App Group or APNs entitlement is used.
+- The Live Activity countdown renders through iOS while locked. Title and routine progress update when using the app; next-step transitions while suspended are not guaranteed. Stale content invites a tap to refresh. Daily sessions end on the next foreground update after midnight, with iOS lifetime limits enforced independently.
+- On iPhone 12 the activity uses the Lock Screen. Dynamic Island layouts are included for compatible phones.
+- No standalone widgets, advanced repeating tasks, syncing, backup/import, or server deployment yet.
 - Daily routine history remains after deleting a routine template. Completed tasks can be restored by swiping in History. Today's done/skip routine records cannot be undone in this beta.
 - Deleting the app deletes all local data. Update in place using the same app identity and signing account.
 - Free Apple ID installs expire unless refreshed through AltStore/AltServer. Signing and refreshing require connectivity even though daily app use does not.

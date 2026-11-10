@@ -31,7 +31,7 @@ final class NotificationScheduler {
     func apply(_ plan: ReminderPlan) async throws {
         let pending = await center.pendingNotificationRequests()
         let wanted = Set(plan.reminders.map(\.id))
-        let obsolete = pending.filter { $0.identifier.hasPrefix("task.") || $0.identifier.hasPrefix("routine.") }
+        let obsolete = pending.filter { $0.identifier.hasPrefix("task.") || $0.identifier.hasPrefix("routine.") || $0.identifier.hasPrefix("focus.") }
             .filter { !wanted.contains($0.identifier) }.map(\.identifier)
         center.removePendingNotificationRequests(withIdentifiers: obsolete)
         let delivered = await center.deliveredNotifications()

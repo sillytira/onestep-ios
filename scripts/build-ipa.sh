@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-BUILD_NUMBER="${BUILD_NUMBER:-1}"
+BUILD_NUMBER="${BUILD_NUMBER:-3}"
 if ! [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
   echo 'BUILD_NUMBER must be a positive integer.' >&2
   exit 1
@@ -17,13 +17,17 @@ APP="build/DerivedData/Build/Products/Release-iphoneos/OneStep.app"
 test -f "$APP/OneStep"
 file "$APP/OneStep" | grep -q arm64
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -qx 'tech.sillycat.onestep'
-if [ -d "$APP/PlugIns" ]; then echo 'Unexpected extension in beta app.' >&2; exit 1; fi
+EXTENSION="$APP/PlugIns/OneStepLive.appex"
+test -f "$EXTENSION/OneStepLive"
+file "$EXTENSION/OneStepLive" | grep -q arm64
+/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$EXTENSION/Info.plist" | grep -qx 'tech.sillycat.onestep.liveactivity'
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
 # A fresh staging directory avoids accidentally bundling a previous build.
 STAGING="$(mktemp -d "${TMPDIR:-/tmp}/onestep-package.XXXXXX")"
 trap 'rm -rf "$STAGING"' EXIT
 mkdir "$STAGING/Payload"
 ditto "$APP" "$STAGING/Payload/OneStep.app"
-IPA="$PWD/release/OneStep-0.1.0-beta-${BUILD_NUMBER}-unsigned.ipa"
+IPA="$PWD/release/OneStep-${VERSION}-beta-${BUILD_NUMBER}-unsigned.ipa"
 (cd "$STAGING" && /usr/bin/zip -qry "$IPA" Payload)
 unzip -t "$IPA"
 (cd release && shasum -a 256 "$(basename "$IPA")" > "$(basename "$IPA").sha256")

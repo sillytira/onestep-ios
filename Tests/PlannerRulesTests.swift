@@ -118,4 +118,58 @@ final class PlannerRulesTests: XCTestCase {
         let restored = try JSONDecoder().decode(PlannerState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(restored, state)
     }
+
+    func testVersionOneDocumentWithoutNewFieldsStillLoads() throws {
+        var oldState = PlannerState()
+        oldState.tasks = [TaskEntry(title: "Keep my task", colorName: "coral")]
+        oldState.routines = [RoutineStep(title: "Keep my routine", hour: 9, minute: 0, position: 0, colorName: "rose")]
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(oldState)) as? [String: Any])
+        json.removeValue(forKey: "focusSession")
+        var tasks = try XCTUnwrap(json["tasks"] as? [[String: Any]])
+        tasks[0].removeValue(forKey: "colorName")
+        json["tasks"] = tasks
+        var routines = try XCTUnwrap(json["routines"] as? [[String: Any]])
+        routines[0].removeValue(forKey: "colorName")
+        json["routines"] = routines
+        let restored = try JSONDecoder().decode(PlannerState.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(restored.tasks[0].id, oldState.tasks[0].id)
+        XCTAssertEqual(restored.routines[0].id, oldState.routines[0].id)
+        XCTAssertNil(restored.tasks[0].colorName)
+        XCTAssertNil(restored.routines[0].colorName)
+        XCTAssertNil(restored.focusSession)
+    }
+
+    func testTimerGetsReservedNotificationCapacity() {
+        let task = TaskEntry(title: "Focus here", dueAt: morning.addingTimeInterval(3600), reminderEnabled: true)
+        var state = PlannerState()
+        state.tasks = [task]
+        state.focusSession = FocusSession(action: PlannerRules.taskAction(task), startedAt: morning, endsAt: morning.addingTimeInterval(900))
+        let plan = PlannerRules.reminderPlan(state, now: morning, calendar: utc, limit: 1)
+        XCTAssertEqual(plan.reminders.count, 1)
+        XCTAssertTrue(plan.reminders[0].id.hasPrefix("focus."))
+        XCTAssertEqual(plan.omittedCount, 2)
+    }
+
+    func testTimerExpiryDoesNotReplayAndCompletedItemInvalidatesTimer() {
+        var task = TaskEntry(title: "Focus here")
+        var state = PlannerState()
+        state.tasks = [task]
+        state.focusSession = FocusSession(action: PlannerRules.taskAction(task), startedAt: morning.addingTimeInterval(-900), endsAt: morning.addingTimeInterval(-1))
+        XCTAssertTrue(PlannerRules.reminderPlan(state, now: morning, calendar: utc).reminders.isEmpty)
+        XCTAssertEqual(PlannerRules.nextAction(state, now: morning, calendar: utc)?.sourceID, task.id)
+        task.completedAt = morning
+        state.tasks = [task]
+        XCTAssertNil(PlannerRules.nextAction(state, now: morning, calendar: utc))
+    }
+
+    func testTimerAndDueAtSameInstantProduceSingleExpiryAlert() {
+        let deadline = morning.addingTimeInterval(900)
+        let task = TaskEntry(title: "Focus here", dueAt: deadline, reminderEnabled: true)
+        var state = PlannerState()
+        state.tasks = [task]
+        state.focusSession = FocusSession(action: PlannerRules.taskAction(task), startedAt: morning, endsAt: deadline)
+        let plan = PlannerRules.reminderPlan(state, now: morning, calendar: utc)
+        XCTAssertEqual(plan.reminders.filter { $0.fireAt == deadline }.count, 1)
+        XCTAssertTrue(plan.reminders.contains { $0.id.hasPrefix("focus.") })
+    }
 }

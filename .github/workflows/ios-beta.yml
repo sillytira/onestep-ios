@@ -6,12 +6,13 @@ on:
       build_number:
         description: 'Build number (increment for each update)'
         required: true
-        default: '1'
+        default: '3'
         type: string
   push:
     branches: [main]
     paths:
       - 'OneStep/**'
+      - 'OneStepLive/**'
       - 'AppTests/**'
       - 'Tests/**'
       - 'scripts/**'
@@ -44,7 +45,7 @@ jobs:
           node scripts/generate-project.mjs
           node scripts/generate-icon.mjs
           node scripts/validate-source.mjs
-          plutil -lint OneStep/Info.plist OneStep.xcodeproj/project.pbxproj
+          plutil -lint OneStep/Info.plist OneStepLive/Info.plist OneStep.xcodeproj/project.pbxproj
       - name: Test scheduling and daily routines
         run: swift test
       - name: Test native persistence in iPhone simulator
@@ -56,10 +57,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Build unsigned IPA
         run: bash scripts/build-ipa.sh
+      - name: Capture simulator preview
+        continue-on-error: true
+        run: |
+          DEVICE_ID="$(python3 scripts/select-simulator.py)"
+          xcrun simctl terminate "$DEVICE_ID" tech.sillycat.onestep || true
+          xcrun simctl launch "$DEVICE_ID" tech.sillycat.onestep --preview
+          sleep 3
+          xcrun simctl io "$DEVICE_ID" screenshot release/Preview.png
       - name: Upload installable beta package
         uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.1.0-beta-${{ env.BUILD_NUMBER }}
+          name: OneStep-0.2.0-beta-${{ env.BUILD_NUMBER }}
           path: release/
           if-no-files-found: error
           retention-days: 30

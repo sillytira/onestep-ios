@@ -28,12 +28,15 @@ final class PlannerStore {
     var focusedItem: ActionItem?
     var selectedTab = 0
     var feedback: String?
+    var liveRunning = false
+    var liveMessage: String?
 
     @ObservationIgnored private let container: ModelContainer
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let document: PlannerDocument
     @ObservationIgnored private let notifications = NotificationScheduler()
     @ObservationIgnored private let delegate = NotificationDelegate()
+    @ObservationIgnored private let dayActivity = DayActivityController()
     @ObservationIgnored private var refreshRunning = false
     @ObservationIgnored private var refreshRequested = false
 
@@ -86,7 +89,7 @@ final class PlannerStore {
     }
 
     @discardableResult
-    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool) -> Bool {
+    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue") -> Bool {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return false }
         var next = state
@@ -96,15 +99,16 @@ final class PlannerStore {
             next.tasks[index].dueAt = dueAt
             next.tasks[index].reminderEnabled = dueAt != nil && reminder
             next.tasks[index].snoozedUntil = nil
+            next.tasks[index].colorName = colorName
         } else {
             next.tasks.append(TaskEntry(title: cleanTitle, notes: notes, dueAt: dueAt,
-                                        reminderEnabled: dueAt != nil && reminder))
+                                        reminderEnabled: dueAt != nil && reminder, colorName: colorName))
         }
         return commit(next)
     }
 
     @discardableResult
-    func saveRoutine(id: UUID?, title: String, time: Date) -> Bool {
+    func saveRoutine(id: UUID?, title: String, time: Date, colorName: String = "violet") -> Bool {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return false }
         let parts = Calendar.current.dateComponents([.hour, .minute], from: time)
@@ -113,6 +117,7 @@ final class PlannerStore {
             next.routines[index].title = cleanTitle
             next.routines[index].hour = parts.hour!
             next.routines[index].minute = parts.minute!
+            next.routines[index].colorName = colorName
             // Editing a schedule also clears today's old snooze, but keeps completed history.
             let key = PlannerRules.dayKey(Date())
             if let recordIndex = next.days.firstIndex(where: { $0.stepID == id && $0.day == key }) {
@@ -120,7 +125,7 @@ final class PlannerStore {
             }
         } else {
             let position = (next.routines.map(\.position).max() ?? -1) + 1
-            next.routines.append(RoutineStep(title: cleanTitle, hour: parts.hour!, minute: parts.minute!, position: position))
+            next.routines.append(RoutineStep(title: cleanTitle, hour: parts.hour!, minute: parts.minute!, position: position, colorName: colorName))
         }
         return commit(next)
     }
@@ -128,12 +133,14 @@ final class PlannerStore {
     func deleteTask(_ task: TaskEntry) {
         var next = state
         next.tasks.removeAll { $0.id == task.id }
+        if next.focusSession?.action.sourceID == task.id { next.focusSession = nil }
         _ = commit(next)
     }
 
     func deleteRoutine(_ step: RoutineStep) {
         var next = state
         next.routines.removeAll { $0.id == step.id }
+        if next.focusSession?.action.sourceID == step.id { next.focusSession = nil }
         // Dated records include the old title and survive template deletion.
         _ = commit(next)
     }
@@ -152,6 +159,7 @@ final class PlannerStore {
 
     func complete(_ item: ActionItem, skip: Bool = false) {
         var next = state
+        if next.focusSession?.action.id == item.id { next.focusSession = nil }
         if item.kind == .task {
             guard let index = next.tasks.firstIndex(where: { $0.id == item.sourceID }) else { return }
             next.tasks[index].completedAt = Date()
@@ -164,6 +172,7 @@ final class PlannerStore {
 
     func snooze(_ item: ActionItem, minutes: Int = 10) {
         var next = state
+        if next.focusSession?.action.id == item.id { next.focusSession = nil }
         var until = Date().addingTimeInterval(Double(minutes) * 60)
         if item.kind == .task {
             guard let index = next.tasks.firstIndex(where: { $0.id == item.sourceID }) else { return }
@@ -201,6 +210,40 @@ final class PlannerStore {
         } catch { errorMessage = "Couldn't enable reminders: \(error.localizedDescription)" }
     }
 
+    @discardableResult
+    func startFocus(_ item: ActionItem, until: Date) -> Bool {
+        let now = Date()
+        guard until > now, until.timeIntervalSince(now) <= 8 * 3600,
+              let current = PlannerRules.currentAction(for: item, in: state, now: now) else {
+            errorMessage = "Choose a future finish time within the next eight hours."
+            return false
+        }
+        var next = state
+        next.focusSession = FocusSession(action: current, startedAt: now, endsAt: until)
+        return commit(next)
+    }
+
+    func stopFocus() {
+        var next = state
+        next.focusSession = nil
+        _ = commit(next)
+    }
+
+    func startLiveActivity() async {
+        do {
+            try dayActivity.start(state)
+            await dayActivity.update(state)
+            liveRunning = dayActivity.isRunning
+            liveMessage = liveRunning ? "Your current step is on the Lock Screen." : nil
+        } catch { liveMessage = error.localizedDescription }
+    }
+
+    func stopLiveActivity() async {
+        await dayActivity.stop()
+        liveRunning = false
+        liveMessage = nil
+    }
+
     /// Serialize reconciliations so an older plan can never finish after a newer edit.
     func refresh() async {
         refreshRequested = true
@@ -209,6 +252,8 @@ final class PlannerStore {
         defer { refreshRunning = false }
         while refreshRequested {
             refreshRequested = false
+            await dayActivity.update(state)
+            liveRunning = dayActivity.isRunning
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             notificationStatus = settings.authorizationStatus
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {

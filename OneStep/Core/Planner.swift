@@ -9,6 +9,7 @@ struct TaskEntry: Identifiable, Codable, Equatable {
     var reminderEnabled = false
     var completedAt: Date?
     var snoozedUntil: Date?
+    var colorName: String?
 }
 
 struct RoutineStep: Identifiable, Codable, Equatable {
@@ -17,6 +18,7 @@ struct RoutineStep: Identifiable, Codable, Equatable {
     var hour: Int
     var minute: Int
     var position: Int
+    var colorName: String?
 }
 
 enum DailyStatus: String, Codable { case done, skipped }
@@ -36,9 +38,10 @@ struct PlannerState: Codable, Equatable {
     var tasks: [TaskEntry] = []
     var routines: [RoutineStep] = []
     var days: [DailyRecord] = []
+    var focusSession: FocusSession?
 }
 
-struct ActionItem: Identifiable, Equatable {
+struct ActionItem: Identifiable, Codable, Equatable {
     enum Kind: String, Codable { case task, routine }
     var kind: Kind
     var sourceID: UUID
@@ -46,7 +49,15 @@ struct ActionItem: Identifiable, Equatable {
     var notes: String
     var scheduledAt: Date?
     var day: String?
+    var colorName: String?
     var id: String { "\(kind.rawValue).\(sourceID.uuidString).\(day ?? "")" }
+}
+
+struct FocusSession: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var action: ActionItem
+    var startedAt: Date
+    var endsAt: Date
 }
 
 struct PlannedReminder: Identifiable, Equatable {
@@ -83,7 +94,7 @@ enum PlannerRules {
 
     static func taskAction(_ task: TaskEntry) -> ActionItem {
         ActionItem(kind: .task, sourceID: task.id, title: task.title, notes: task.notes,
-                   scheduledAt: task.snoozedUntil ?? task.dueAt)
+                   scheduledAt: task.snoozedUntil ?? task.dueAt, colorName: task.colorName)
     }
 
     static func routineAction(_ step: RoutineStep, on date: Date, state: PlannerState,
@@ -91,7 +102,7 @@ enum PlannerRules {
         let entry = record(step, on: date, in: state, calendar: calendar)
         return ActionItem(kind: .routine, sourceID: step.id, title: step.title, notes: "Daily routine",
                           scheduledAt: entry?.snoozedUntil ?? scheduledTime(step, on: date, calendar: calendar),
-                          day: dayKey(date, calendar: calendar))
+                          day: dayKey(date, calendar: calendar), colorName: step.colorName)
     }
 
     static func availableActions(_ state: PlannerState, now: Date,
@@ -108,11 +119,28 @@ enum PlannerRules {
 
     static func nextAction(_ state: PlannerState, now: Date,
                            calendar: Calendar = .current) -> ActionItem? {
+        if let session = state.focusSession,
+           let action = currentAction(for: session.action, in: state, now: now, calendar: calendar) {
+            return action
+        }
         let items = availableActions(state, now: now, calendar: calendar)
         // A due action comes before an unscheduled task; future routines wait their turn.
         return items.first { $0.scheduledAt != nil && $0.scheduledAt! <= now }
             ?? items.first { $0.kind == .task && $0.scheduledAt == nil }
             ?? items.sorted { ($0.scheduledAt ?? .distantFuture) < ($1.scheduledAt ?? .distantFuture) }.first
+    }
+
+    /// Resolve the latest title/color and reject deleted, completed, or previous-day items.
+    static func currentAction(for item: ActionItem, in state: PlannerState, now: Date,
+                               calendar: Calendar = .current) -> ActionItem? {
+        if item.kind == .task {
+            guard let task = state.tasks.first(where: { $0.id == item.sourceID && $0.completedAt == nil }) else { return nil }
+            return taskAction(task)
+        }
+        guard item.day == dayKey(now, calendar: calendar),
+              let step = state.routines.first(where: { $0.id == item.sourceID }),
+              record(step, on: now, in: state, calendar: calendar)?.status == nil else { return nil }
+        return routineAction(step, on: now, state: state, calendar: calendar)
     }
 
     static func reminderPlan(_ state: PlannerState, now: Date, calendar: Calendar = .current,
@@ -154,9 +182,21 @@ enum PlannerRules {
             }
         }
         candidates.sort { $0.fireAt == $1.fireAt ? $0.id < $1.id : $0.fireAt < $1.fireAt }
-        let selected = Array(candidates.prefix(max(0, limit)))
-        let firstOmitted = candidates.dropFirst(max(0, limit)).first?.fireAt
-        return ReminderPlan(reminders: selected, omittedCount: max(0, candidates.count - selected.count),
+        // Reserve a slot for the active timer so it can't be displaced by routine alerts.
+        var timerReminder: PlannedReminder?
+        if let session = state.focusSession, session.endsAt > now,
+           let item = currentAction(for: session.action, in: state, now: now, calendar: calendar) {
+            timerReminder = PlannedReminder(id: "focus.\(session.id.uuidString)", title: item.title,
+                body: "Your focus time is up. Open OneStep to finish or choose your next step.",
+                fireAt: session.endsAt, item: item)
+            candidates.removeAll { $0.item.id == item.id && abs($0.fireAt.timeIntervalSince(session.endsAt)) < 1 }
+        }
+        let taskLimit = max(0, limit - (timerReminder == nil ? 0 : 1))
+        var selected = Array(candidates.prefix(taskLimit))
+        if let timerReminder, limit > 0 { selected.append(timerReminder) }
+        selected.sort { $0.fireAt < $1.fireAt }
+        let firstOmitted = candidates.dropFirst(taskLimit).first?.fireAt
+        return ReminderPlan(reminders: selected, omittedCount: max(0, candidates.count - taskLimit),
                             coverageUntil: min(horizon, firstOmitted?.addingTimeInterval(-1) ?? horizon))
     }
 }

@@ -2,11 +2,12 @@ import SwiftUI
 import UIKit
 
 private enum EditorRoute: Identifiable {
-    case task(TaskEntry?), routine(RoutineStep?), settings
+    case task(TaskEntry?), routine(RoutineStep?), focus(ActionItem), settings
     var id: String {
         switch self {
         case .task(let task): return "task-\(task?.id.uuidString ?? "new")"
         case .routine(let step): return "routine-\(step?.id.uuidString ?? "new")"
+        case .focus(let item): return "focus-\(item.id)"
         case .settings: return "settings"
         }
     }
@@ -22,7 +23,7 @@ struct RootView: View {
             TabView(selection: $bindings.selectedTab) {
                 Tab("Now", systemImage: "sparkle", value: 0) {
                     NavigationStack {
-                        NowView(now: timeline.date, addTask: { editor = .task(nil) })
+                        NowView(now: timeline.date, addTask: { editor = .task(nil) }, startFocus: { editor = .focus($0) })
                             .toolbar { settingsButton }
                     }
                 }
@@ -53,11 +54,12 @@ struct RootView: View {
             }
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
         }
-        .tint(.teal)
+        .tint(tabPalette.color)
         .sheet(item: $editor) { route in
             switch route {
             case .task(let task): TaskEditor(task: task)
             case .routine(let step): RoutineEditor(step: step)
+            case .focus(let item): FocusTimerSheet(item: item)
             case .settings: ReminderSettingsView()
             }
         }
@@ -68,7 +70,7 @@ struct RootView: View {
                     Spacer()
                     Button("Dismiss", systemImage: "xmark") { store.feedback = nil }.labelStyle(.iconOnly)
                 }
-                .padding().background(.regularMaterial)
+                .padding().background(ItemPalette.mint.color.opacity(0.12))
             }
         }
         .alert("Something needs attention", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
@@ -78,6 +80,13 @@ struct RootView: View {
             store.focusedItem = nil
             Task { await store.refresh() }
         }
+        .onOpenURL { url in
+            if url.scheme == "onestep" { store.selectedTab = 0; store.focusedItem = nil }
+        }
+    }
+
+    private var tabPalette: ItemPalette {
+        switch store.selectedTab { case 1: return .blue; case 2: return .violet; case 3: return .amber; default: return .mint }
     }
 
     @ToolbarContentBuilder
@@ -92,25 +101,38 @@ private struct NowView: View {
     @Environment(PlannerStore.self) private var store
     let now: Date
     let addTask: () -> Void
+    let startFocus: (ActionItem) -> Void
 
     private var next: ActionItem? {
+        if store.state.focusSession != nil { return PlannerRules.nextAction(store.state, now: now) }
         if let focused = store.focusedItem, focused.day == nil || focused.day == PlannerRules.dayKey(now) { return focused }
         return PlannerRules.nextAction(store.state, now: now)
     }
+
+    private var palette: ItemPalette { .resolve(next?.colorName, routine: next?.kind == .routine) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(now, format: .dateTime.weekday(.wide).month().day()).foregroundStyle(.secondary)
+                    Label { Text(now, format: .dateTime.weekday(.wide).month().day()) } icon: { Image(systemName: "sun.max.fill") }
+                        .font(.subheadline.weight(.medium)).foregroundStyle(ItemPalette.amber.color)
                     Text("One thing at a time.").font(.largeTitle.bold())
                     Text("You can start from here.").foregroundStyle(.secondary)
                 }
                 if let item = next {
                     VStack(alignment: .leading, spacing: 20) {
+                        HStack {
+                            ColorBadge(palette: palette, symbol: item.kind == .routine ? "sunrise.fill" : "checklist")
+                            Spacer()
+                            Text(item.kind == .routine ? "DAILY ROUTINE" : "TASK")
+                                .font(.caption.weight(.bold)).foregroundStyle(palette.color)
+                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                .background(palette.color.opacity(0.13), in: Capsule())
+                        }
                         Label(item.kind == .routine ? "ROUTINE · NEXT STEP" : "YOUR NEXT STEP",
                               systemImage: item.kind == .routine ? "sunrise" : "circle")
-                            .font(.caption.weight(.semibold)).foregroundStyle(.teal)
+                            .font(.caption.weight(.semibold)).foregroundStyle(palette.color)
                         Text(item.title).font(.title.bold()).fixedSize(horizontal: false, vertical: true)
                         if !item.notes.isEmpty { Text(item.notes).foregroundStyle(.secondary) }
                         if let due = item.scheduledAt {
@@ -120,11 +142,27 @@ private struct NowView: View {
                                 Text(due, style: .time)
                             }.font(.subheadline).foregroundStyle(.secondary)
                         }
+                        if let session = store.state.focusSession, session.action.id == item.id {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label(session.endsAt <= now ? "Time is up — ready to finish?" : "Your focus time", systemImage: "timer")
+                                    .font(.subheadline.weight(.semibold))
+                                Text(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: true)
+                                    .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
+                                ProgressView(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: false)
+                                    .tint(palette.color)
+                                Button("Stop timer") { store.stopFocus() }.font(.subheadline)
+                            }.padding().frame(maxWidth: .infinity, alignment: .leading)
+                                .background(palette.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 18))
+                        } else {
+                            Button { startFocus(item) } label: {
+                                Label("Start a timer", systemImage: "timer").frame(maxWidth: .infinity)
+                            }.buttonStyle(.bordered).controlSize(.large)
+                        }
                         Button { store.complete(item) } label: {
                             Label("Done", systemImage: "checkmark").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 10)
-                        }.modifier(PrimaryGlassButton())
+                        }.modifier(PrimaryGlassButton()).tint(ItemPalette.mint.color)
                         Button("Snooze 10 minutes") { store.snooze(item) }
-                            .buttonStyle(.bordered).frame(maxWidth: .infinity).controlSize(.large)
+                            .buttonStyle(.bordered).frame(maxWidth: .infinity).controlSize(.large).tint(ItemPalette.amber.color)
                         if item.kind == .routine {
                             Button("Skip today") { store.complete(item, skip: true) }
                                 .frame(maxWidth: .infinity).padding(.vertical, 8)
@@ -133,18 +171,41 @@ private struct NowView: View {
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 28))
+                    .overlay { RoundedRectangle(cornerRadius: 28).stroke(palette.color.opacity(0.35), lineWidth: 1.5) }
+                    .tint(palette.color)
                 } else {
                     ContentUnavailableView("A little breathing room", systemImage: "leaf",
                         description: Text("Nothing needs your attention right now. Snoozed steps will return when they're ready."))
                 }
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Your day, at a glance", systemImage: "lock.rectangle.on.rectangle").font(.headline)
+                        .foregroundStyle(ItemPalette.violet.color)
+                    Text("Keep your next action and focus countdown on the Lock Screen.").font(.subheadline).foregroundStyle(.secondary)
+                    if store.liveRunning {
+                        Button("Remove from Lock Screen") { Task { await store.stopLiveActivity() } }
+                    } else {
+                        Button("Show my day on Lock Screen") { Task { await store.startLiveActivity() } }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    if let message = store.liveMessage { Text(message).font(.footnote).foregroundStyle(.secondary) }
+                    Text("Updates when you use OneStep. Countdown keeps ticking while locked. Sessions last up to 8 hours.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                .background(ItemPalette.violet.color.opacity(0.09), in: RoundedRectangle(cornerRadius: 24))
+                .tint(ItemPalette.violet.color)
                 Button(action: addTask) {
                     Label("Capture a thought", systemImage: "plus").frame(maxWidth: .infinity).padding(.vertical, 8)
-                }.buttonStyle(.bordered).controlSize(.large)
+                }.buttonStyle(.bordered).controlSize(.large).tint(ItemPalette.coral.color)
                 Button("See all tasks") { store.selectedTab = 1 }.frame(maxWidth: .infinity).padding(.vertical, 8)
-                Text("OneStep · 0.1.0 beta").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+                Text("OneStep · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0") beta")
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
             }.padding(20)
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .background {
+            LinearGradient(colors: [palette.color.opacity(0.10), Color(uiColor: .systemGroupedBackground), ItemPalette.rose.color.opacity(0.07)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing).ignoresSafeArea()
+        }
         .navigationTitle("Now")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -170,21 +231,26 @@ private struct TaskListView: View {
         List {
             ForEach(tasks) { task in
                 Button { edit(task) } label: {
-                    VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ColorBadge(palette: .resolve(task.colorName), symbol: "checklist")
+                        VStack(alignment: .leading, spacing: 6) {
                         Text(task.title).font(.headline).foregroundStyle(.primary)
                         if let date = task.snoozedUntil ?? task.dueAt {
                             Text(date, format: .dateTime.month().day().hour().minute()).font(.subheadline).foregroundStyle(.secondary)
                         } else { Text("Whenever you're ready").font(.subheadline).foregroundStyle(.secondary) }
+                        }
                     }.padding(.vertical, 8)
                 }
+                .listRowBackground(ItemPalette.resolve(task.colorName).color.opacity(0.07))
                 .swipeActions(edge: .leading) {
-                    Button("Done", systemImage: "checkmark") { store.complete(PlannerRules.taskAction(task)) }.tint(.teal)
+                    Button("Done", systemImage: "checkmark") { store.complete(PlannerRules.taskAction(task)) }.tint(ItemPalette.mint.color)
                 }
                 .swipeActions(edge: .trailing) {
                     Button("Delete", systemImage: "trash", role: .destructive) { store.deleteTask(task) }
                 }
             }
         }
+        .listRowSpacing(10)
         .overlay { if tasks.isEmpty { ContentUnavailableView("Room for a fresh start", systemImage: "checklist", description: Text("Tap + to capture your first task.")) } }
         .navigationTitle("Tasks")
     }
@@ -206,6 +272,7 @@ private struct RoutineListView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Button { edit(step) } label: {
                         HStack(alignment: .top) {
+                            ColorBadge(palette: .resolve(step.colorName, routine: true), symbol: "sunrise.fill")
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(step.title).font(.headline).foregroundStyle(.primary)
                                 Text(PlannerRules.scheduledTime(step, on: now), style: .time).foregroundStyle(.secondary)
@@ -223,19 +290,20 @@ private struct RoutineListView: View {
                     if record?.status == nil {
                         ViewThatFits(in: .horizontal) {
                             HStack {
-                                Button("Done") { store.complete(item) }.buttonStyle(.borderedProminent)
-                                Button("Snooze") { store.snooze(item) }.buttonStyle(.bordered)
-                                Button("Skip today") { store.complete(item, skip: true) }.buttonStyle(.bordered)
+                                Button("Done") { store.complete(item) }.buttonStyle(.borderedProminent).tint(ItemPalette.mint.color)
+                                Button("Snooze") { store.snooze(item) }.buttonStyle(.bordered).tint(ItemPalette.amber.color)
+                                Button("Skip today") { store.complete(item, skip: true) }.buttonStyle(.bordered).tint(ItemPalette.resolve(step.colorName, routine: true).color)
                             }
                             VStack(alignment: .leading) {
-                                Button("Done") { store.complete(item) }.buttonStyle(.borderedProminent)
-                                Button("Snooze 10 minutes") { store.snooze(item) }.buttonStyle(.bordered)
+                                Button("Done") { store.complete(item) }.buttonStyle(.borderedProminent).tint(ItemPalette.mint.color)
+                                Button("Snooze 10 minutes") { store.snooze(item) }.buttonStyle(.bordered).tint(ItemPalette.amber.color)
                                 Button("Skip today") { store.complete(item, skip: true) }.buttonStyle(.bordered)
                             }
                         }.controlSize(.large)
                     }
                 }
                 .padding(.vertical, 6)
+                .listRowBackground(ItemPalette.resolve(step.colorName, routine: true).color.opacity(record?.status == nil ? 0.08 : 0.03))
                 .swipeActions {
                     Button("Delete step", systemImage: "trash", role: .destructive) { store.deleteRoutine(step) }
                 }
@@ -244,7 +312,7 @@ private struct RoutineListView: View {
             if store.state.routines.isEmpty {
                 Text("Start small. Add one daily step with +, then build your routine at your own pace.").foregroundStyle(.secondary)
             }
-        }.navigationTitle("Routines")
+        }.listRowSpacing(10).navigationTitle("Routines")
     }
 }
 
@@ -257,6 +325,7 @@ private struct TaskEditor: View {
     @State private var hasDate: Bool
     @State private var dueAt: Date
     @State private var reminder: Bool
+    @State private var colorName: String
 
     init(task: TaskEntry?) {
         self.task = task
@@ -265,12 +334,14 @@ private struct TaskEditor: View {
         _hasDate = State(initialValue: task?.dueAt != nil)
         _dueAt = State(initialValue: task?.dueAt ?? Date().addingTimeInterval(3600))
         _reminder = State(initialValue: task?.reminderEnabled ?? true)
+        _colorName = State(initialValue: task?.colorName ?? "blue")
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("One thing to do") { TextField("What would you like to do?", text: $title, axis: .vertical).textInputAutocapitalization(.sentences) }
+                Section("Make it recognizable") { PalettePicker(selection: $colorName) }
                 Section("Optional") {
                     TextField("A little context", text: $notes, axis: .vertical).lineLimit(3...6)
                     Toggle("Set a due time", isOn: $hasDate)
@@ -295,14 +366,14 @@ private struct TaskEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder) { dismiss() }
+                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName) { dismiss() }
                     }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 if let error = store.errorMessage { Text(error).font(.footnote).padding().background(.regularMaterial) }
             }
-        }
+        }.tint(ItemPalette.resolve(colorName).color)
     }
 }
 
@@ -312,11 +383,13 @@ private struct RoutineEditor: View {
     let step: RoutineStep?
     @State private var title: String
     @State private var time: Date
+    @State private var colorName: String
 
     init(step: RoutineStep?) {
         self.step = step
         _title = State(initialValue: step?.title ?? "")
         _time = State(initialValue: step.map { PlannerRules.scheduledTime($0, on: Date()) } ?? Date())
+        _colorName = State(initialValue: step?.colorName ?? "violet")
     }
 
     var body: some View {
@@ -326,6 +399,7 @@ private struct RoutineEditor: View {
                     TextField("For example, fill my water bottle", text: $title, axis: .vertical)
                     DatePicker("Every day at", selection: $time, displayedComponents: .hourAndMinute)
                 }
+                Section("Make it recognizable") { PalettePicker(selection: $colorName) }
                 Section {
                     Text("You'll get a reminder at this time and one follow-up 10 minutes later. Done or Skip cancels today's follow-up.")
                     Text("Changing this template updates future days. Today's completed steps and your history stay saved.")
@@ -336,14 +410,14 @@ private struct RoutineEditor: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { if store.saveRoutine(id: step?.id, title: title, time: time) { dismiss() } }
+                    Button("Save") { if store.saveRoutine(id: step?.id, title: title, time: time, colorName: colorName) { dismiss() } }
                         .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 if let error = store.errorMessage { Text(error).font(.footnote).padding().background(.regularMaterial) }
             }
-        }
+        }.tint(ItemPalette.resolve(colorName, routine: true).color)
     }
 }
 
@@ -414,7 +488,7 @@ private struct ReminderSettingsView: View {
                 Section("Offline beta") {
                     Text("All tasks and routines stay on this iPhone. Updating over the app preserves its data; deleting the app removes it.")
                     Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0") · Build \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")")
-                    Text("Timers, Live Activities, backup/import, and syncing are coming later.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Focus timers and Lock Screen Live Activities work offline. Backup/import and syncing are coming later.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Reminder settings")

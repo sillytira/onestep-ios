@@ -9,9 +9,10 @@ const objects=[...project.matchAll(/^([A-F0-9]{24}) = \{/gm)].map(m=>m[1]);
 assert.equal(new Set(objects).size,objects.length,'Project contains duplicate object IDs');
 for(const match of project.matchAll(/\b[A-F0-9]{24}\b/g)) assert(objects.includes(match[0]),`Unresolved project ID ${match[0]}`);
 assert.equal((project.match(/productType = "com.apple.product-type.application"/g)||[]).length,1);
-assert(!project.includes('com.apple.product-type.app-extension'),'Beta must not contain extensions');
+assert.equal((project.match(/productType = "com.apple.product-type.app-extension"/g)||[]).length,1,'Exactly one Live Activity extension');
+assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep.liveactivity;/g)||[]).length,2);
 assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep;/g)||[]).length,2);
-for(const file of ['Core/Planner.swift','Persistence.swift','Notifications.swift','Views.swift','OneStepApp.swift']) {
+for(const file of ['Core/Planner.swift','Persistence.swift','Notifications.swift','Views.swift','OneStepApp.swift','FocusTimerSheet.swift','LiveActivities.swift','Shared/Palette.swift','Shared/DayActivityAttributes.swift']) {
   assert(fs.existsSync(path.join(root,'OneStep',file)),`Missing source ${file}`);
   assert(project.includes(JSON.stringify(file)),`Source not included in project ${file}`);
 }
@@ -20,6 +21,9 @@ assert(scheme.includes('OneStepTests.xctest'));
 const plist=read('OneStep/Info.plist');
 assert(plist.includes('$(PRODUCT_BUNDLE_IDENTIFIER)'));
 assert(!plist.includes('UIBackgroundModes'),'Offline beta does not need background modes');
+assert(plist.includes('NSSupportsLiveActivities'));
+assert(read('OneStepLive/Info.plist').includes('com.apple.widgetkit-extension'));
+assert(project.includes('Embed Live Activity'));
 const icon=fs.readFileSync(path.join(root,'OneStep/Assets.xcassets/AppIcon.appiconset/AppIcon.png'));
 assert.equal(icon.readUInt32BE(16),1024);assert.equal(icon.readUInt32BE(20),1024);assert.equal(icon[25],2,'Icon must be opaque RGB');
 JSON.parse(read('OneStep/Assets.xcassets/AppIcon.appiconset/Contents.json'));

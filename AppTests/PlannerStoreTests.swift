@@ -43,4 +43,33 @@ final class PlannerStoreTests: XCTestCase {
         XCTAssertNotNil(store.state.tasks[0].snoozedUntil)
         XCTAssertNil(PlannerRules.nextAction(store.state, now: Date()))
     }
+
+    func testFocusClearsOnCompletionAndSnooze() async throws {
+        let store = try PlannerStore(inMemory: true)
+        XCTAssertTrue(store.saveTask(id: nil, title: "Focus", notes: "", dueAt: nil, reminder: false, colorName: "coral"))
+        let item = PlannerRules.taskAction(store.state.tasks[0])
+        XCTAssertTrue(store.startFocus(item, until: Date().addingTimeInterval(300)))
+        XCTAssertEqual(store.state.focusSession?.action.colorName, "coral")
+        store.snooze(item)
+        XCTAssertNil(store.state.focusSession)
+        XCTAssertTrue(store.startFocus(item, until: Date().addingTimeInterval(300)))
+        store.complete(item)
+        XCTAssertNil(store.state.focusSession)
+    }
+
+    func testLiveActivitySnapshotUsesCurrentTitleColorAndRoutineProgress() async throws {
+        let store = try PlannerStore(inMemory: true)
+        XCTAssertTrue(store.saveTask(id: nil, title: "Focus", notes: "", dueAt: nil, reminder: false, colorName: "rose"))
+        XCTAssertTrue(store.saveRoutine(id: nil, title: "Water", time: Date(), colorName: "mint"))
+        let item = PlannerRules.taskAction(store.state.tasks[0])
+        XCTAssertTrue(store.startFocus(item, until: Date().addingTimeInterval(300)))
+        let step = PlannerRules.routineAction(store.state.routines[0], on: Date(), state: store.state)
+        store.complete(step)
+        let snapshot = DayActivityController.content(store.state, now: Date())
+        XCTAssertEqual(snapshot.title, "Focus")
+        XCTAssertEqual(snapshot.colorName, "rose")
+        XCTAssertEqual(snapshot.completedSteps, 1)
+        XCTAssertEqual(snapshot.totalSteps, 1)
+        XCTAssertNotNil(snapshot.timerEndsAt)
+    }
 }

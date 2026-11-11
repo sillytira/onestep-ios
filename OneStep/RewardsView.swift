@@ -31,6 +31,9 @@ enum RewardsVault {
     var password = ""
     var betaKey = ""
     var username = ""
+    var publicName = ""
+    var optIn = false
+    var rankings: [[String: Any]] = []
     var message = ""
     var busy = false
     var kind: String?
@@ -57,6 +60,8 @@ enum RewardsVault {
         do { try await work() } catch { message = error.localizedDescription }
     }
     func configure() throws {
+        project = project.trimmingCharacters(in: .whitespacesAndNewlines)
+        key = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: project), url.scheme == "https", let host = url.host, host.hasSuffix(".supabase.co"),
               url.path.isEmpty || url.path == "/", OnlineAccount.isPublicKey(key) else { throw failure("Use a Supabase HTTPS URL and publishable/anon key. Secret keys are forbidden.") }
         project = "https://\(host)"
@@ -95,7 +100,7 @@ enum RewardsVault {
     func authenticate(create: Bool) async throws {
         try configure()
         var body: [String: Any] = ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password]
-        if create { body["data"] = ["beta_key": betaKey, "username": username] }
+        if create { body["data"] = ["beta_key": betaKey.trimmingCharacters(in: .whitespacesAndNewlines), "username": username.trimmingCharacters(in: .whitespacesAndNewlines)] }
         try accept(try await request(create ? "/auth/v1/signup" : "/auth/v1/token?grant_type=password", body: body, auth: false))
         password = ""; betaKey = ""; try await reload()
     }
@@ -107,6 +112,11 @@ enum RewardsVault {
         balance = (try await rpc("onestep_my_balance") as? NSNumber)?.intValue ?? 0
         ledger = try await request("/rest/v1/onestep_points_ledger?select=delta,reason,created_at&order=created_at.desc&limit=100") as? [[String: Any]] ?? []
         admin = try await rpc("onestep_is_admin") as? Bool ?? false
+        let profile = try await request("/rest/v1/onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1") as? [[String: Any]]
+        username = profile?.first?["handle"] as? String ?? ""
+        publicName = profile?.first?["display_name"] as? String ?? ""
+        optIn = profile?.first?["leaderboard_opt_in"] as? Bool ?? false
+        if role != "kids" { rankings = try await request("/rest/v1/onestep_leaderboard?select=display_name,handle,points&limit=100") as? [[String: Any]] ?? [] }
         if admin { users = try await rpc("onestep_admin_users") as? [[String: Any]] ?? [] }
         if role == "kids", let userID {
             let rows = try await request("/rest/v1/onestep_children?select=offline_pin_verifier,active&child_id=eq.\(userID)&limit=1") as? [[String: Any]]
@@ -171,6 +181,10 @@ struct RewardsView: View {
                     Text("An admin-issued enrollment key is required. Only family-assigned tasks go online; your private planner is never uploaded automatically.").font(.footnote)
                 }
             } else {
+                Section("Account") {
+                    if model.kind == "kids" { Text(model.publicName) }
+                    else { Text("@\(model.username)") }
+                }
                 Section("Your points") {
                     Label("\(model.balance)", systemImage: "creditcard.fill").font(.largeTitle.bold()).foregroundStyle(ItemPalette.violet.color)
                     Text("Virtual points from approved tasks. No real-money purchases.")
@@ -187,6 +201,23 @@ struct RewardsView: View {
                     Toggle("Use the separate Bank app", isOn: $separateBank)
                     if separateBank { Text("Open OneStep Bank and sign in with this same service and account. Both views use the same ledger. The built-in view remains available.").font(.footnote) }
                     Text("Family setup and parent codes are available in OneStep Parent and OneStep Kids.").font(.footnote)
+                }
+                if model.kind != "kids" {
+                    Section("Public profile") {
+                        TextField("Display name", text: $fields.publicName)
+                        TextField("Handle", text: $fields.username).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        Toggle("Opt in to leaderboard", isOn: $fields.optIn)
+                        Button("Save public profile") { Task { await model.action {
+                            _ = try await model.rpc("onestep_update_profile", ["profile_name": model.publicName, "profile_handle": model.username, "opt_in": model.optIn])
+                            try await model.reload()
+                        } } }.disabled(model.busy)
+                    }
+                    Section("Opt-in rankings") {
+                        ForEach(Array(model.rankings.enumerated()), id: \.offset) { index, entry in
+                            HStack { Text("#\(index + 1) · \(entry["display_name"] as? String ?? "Member")"); Spacer(); Text("\((entry["points"] as? NSNumber)?.intValue ?? 0)") }
+                        }
+                        Text("Kids accounts are excluded by the service.").font(.footnote)
+                    }
                 }
                 if model.admin { adminSection }
                 Section("This device") {

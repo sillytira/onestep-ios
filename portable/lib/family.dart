@@ -129,7 +129,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   bool optIn=false;
   List<Json> ledger=[],tasks=[],children=[],families=[],rankings=[];int balance=0;String message='',generatedInvite='';String? selectedChild;
   bool busy=true;bool externalBank=false;bool ready=false;bool admin=false;Timer? poll;
-  String get appName=>widget.role=='parent'?'OneStep Parent':widget.role=='kids'?'OneStep Kids':'OneStep Bank';
+  String get effectiveRole=>client.accountKind=='kids'?'kids':widget.role;
+  String get appName=>effectiveRole=='parent'?'OneStep Parent':effectiveRole=='kids'?'OneStep Kids':'OneStep Bank';
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);initialize();}
   Future<void> initialize()async{try{await client.load();url.text=client.project;key.text=client.publicKey;externalBank=await FamilyClient.vault.read(key:'family.externalBank')=='true';final cached=await FamilyClient.vault.read(key:'family.childCache.${client.userID}');if(cached!=null)children=(jsonDecode(cached) as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList();if(children.isNotEmpty)selectedChild=children.first['child_id'] as String;if(client.signedIn)await refresh();}catch(e){message='$e';}finally{if(mounted)setState((){busy=false;ready=true;});}poll=Timer.periodic(const Duration(seconds:20),(_){if(mounted&&client.signedIn&&!busy)run(refresh,quiet:true);});}
   @override void dispose(){poll?.cancel();WidgetsBinding.instance.removeObserver(this);for(final c in[url,key,email,password,familyName,nickname,invite,taskTitle,reward,betaKey,username,publicName,handle]){c.dispose();}super.dispose();}
@@ -171,7 +172,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         TextField(controller:email,decoration:const InputDecoration(labelText:'Email'),keyboardType:TextInputType.emailAddress,autocorrect:false),
         TextField(controller:password,decoration:const InputDecoration(labelText:'Password'),obscureText:true,autocorrect:false),
         TextField(controller:betaKey,decoration:const InputDecoration(labelText:'Single-use beta key (new accounts)'),obscureText:true,autocorrect:false),
-        if(widget.role!='kids')TextField(controller:username,decoration:const InputDecoration(labelText:'Handle for a new account'),autocorrect:false),
+        if(effectiveRole!='kids')TextField(controller:username,decoration:const InputDecoration(labelText:'Handle for a new account'),autocorrect:false),
         FilledButton(onPressed:busy?null:(){run(()async{await client.configure(url.text,key.text);await client.signIn(email.text,password.text);password.clear();await refresh();});},child:const Text('Sign in')),
         TextButton(onPressed:busy?null:(){run(()async{await client.configure(url.text,key.text);await client.signUp(email.text,password.text,betaKey.text,username.text);password.clear();betaKey.clear();await refresh();});},child:const Text('Create beta account')),
         const Text('An admin-issued beta key is required. Email confirmation is not required once the service is configured for this beta. Signing in sends credentials to the selected service; only family-assigned tasks are shared. Your private planner is never uploaded automatically.'),
@@ -179,12 +180,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     ]else...[
       Text(client.accountKind=='kids'?(client.session?['user']?['email'] as String? ??'Kids account'):'@${handle.text}',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold)),const SizedBox(height:12),
       if(admin)OutlinedButton.icon(onPressed:(){Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>AdminPage(client:client)));},icon:const Icon(Icons.admin_panel_settings),label:const Text('Application admin console')),
-      if(widget.role=='bank'||widget.role=='kids')panel('Your points',[
+      if(effectiveRole=='bank'||effectiveRole=='kids')panel('Your points',[
         const Icon(Icons.credit_card_rounded,size:46),Text('$balance',style:const TextStyle(fontSize:54,fontWeight:FontWeight.bold)),
         const Text('Virtual points · earned through parent-approved tasks'),
         const Text('Points cannot be bought with real money. App-time spending and Screen Time enforcement are not enabled yet.'),
       ],color:const Color(0xff7760c9)),
-      if(widget.role=='parent')...[
+      if(effectiveRole=='parent')...[
         if(families.isEmpty)panel('Start your family',[
           TextField(controller:familyName,decoration:const InputDecoration(labelText:'Family name')),
           FilledButton(onPressed:busy?null:(){run(()async{await client.rpc('onestep_create_family',{'family_name':familyName.text.trim()});await refresh();});},child:const Text('Create parent family')),
@@ -207,20 +208,20 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
           const Text('Offline codes authorize actions inside OneStep, not OS Screen Time. Signing out does not unlink the family on the server. App deletion, device reset, or a compromised device cannot be prevented by this beta. Rotated codes reach Kids on its next successful refresh.'),
         ]),
       ],
-      if(widget.role=='kids'&&children.isEmpty)panel('Join your family',[
+      if(effectiveRole=='kids'&&children.isEmpty)panel('Join your family',[
         TextField(controller:invite,decoration:const InputDecoration(labelText:'Parent’s invitation code'),autocorrect:false),
         FilledButton(onPressed:busy?null:(){run(()async{await client.rpc('onestep_accept_family_invite',{'invite_code':invite.text.trim(),'child_name':nickname.text.trim()});invite.clear();await refresh();});},child:const Text('Join family')),
       ]),
-      if(widget.role!='bank')panel(widget.role=='parent'?'Tasks and approvals':'Your family tasks',[
+      if(effectiveRole!='bank')panel(effectiveRole=='parent'?'Tasks and approvals':'Your family tasks',[
         if(tasks.isEmpty)const Text('No assigned tasks yet.'),
-        for(final task in tasks)ListTile(contentPadding:EdgeInsets.zero,title:Text(task['title'] as String),subtitle:Text('${task['points']} points · ${task['status']}'),trailing:widget.role=='parent'&&task['status']=='submitted'?Wrap(children:[IconButton(tooltip:'Return for another try',onPressed:busy?null:(){run(()async{await client.rpc('onestep_review_family_task',{'task':task['id'],'approve':false});await refresh();});},icon:const Icon(Icons.undo)),IconButton(tooltip:'Approve points',onPressed:busy?null:(){run(()async{await client.rpc('onestep_review_family_task',{'task':task['id'],'approve':true});await refresh();});},icon:const Icon(Icons.check_circle_outline))]):widget.role=='kids'&&task['status']=='assigned'?TextButton(onPressed:busy?null:(){run(()async{await client.rpc('onestep_submit_family_task',{'task':task['id']});await refresh();});},child:const Text('Ask for approval')):null),
+        for(final task in tasks)ListTile(contentPadding:EdgeInsets.zero,title:Text(task['title'] as String),subtitle:Text('${task['points']} points · ${task['status']}'),trailing:effectiveRole=='parent'&&task['status']=='submitted'?Wrap(children:[IconButton(tooltip:'Return for another try',onPressed:busy?null:(){run(()async{await client.rpc('onestep_review_family_task',{'task':task['id'],'approve':false});await refresh();});},icon:const Icon(Icons.undo)),IconButton(tooltip:'Approve points',onPressed:busy?null:(){run(()async{await client.rpc('onestep_review_family_task',{'task':task['id'],'approve':true});await refresh();});},icon:const Icon(Icons.check_circle_outline))]):effectiveRole=='kids'&&task['status']=='assigned'?TextButton(onPressed:busy?null:(){run(()async{await client.rpc('onestep_submit_family_task',{'task':task['id']});await refresh();});},child:const Text('Ask for approval')):null),
       ]),
-      if(widget.role!='parent')panel('Transactions',[
+      if(effectiveRole!='parent')panel('Transactions',[
         if(ledger.isEmpty)const Text('No points awarded yet. Finish an assigned task and ask your parent to approve it.'),
         for(final entry in ledger)ListTile(contentPadding:EdgeInsets.zero,leading:Icon((entry['delta'] as num)>0?Icons.add_circle_outline:Icons.remove_circle_outline),title:Text(entry['reason'] as String),subtitle:Text((entry['created_at'] as String).split('T').first),trailing:Text('${(entry['delta'] as num)>0?'+':''}${entry['delta']}')),
         const Text('Balances are calculated by the service. Updates refresh automatically while this screen is open, or when you tap Refresh.'),
       ]),
-      if(widget.role=='bank')panel('Where to use your account',[
+      if(effectiveRole=='bank')panel('Where to use your account',[
         SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Use the separate Bank app'),subtitle:const Text('Preference for this device. Both views use the same account and ledger; this does not move or duplicate points.'),value:externalBank,onChanged:busy?null:(value){run(()async{await FamilyClient.vault.write(key:'family.externalBank',value:'$value');setState((){externalBank=value;});});}),
         if(externalBank)const Text('Open OneStep Bank and sign in to this same account. The built-in section remains available so you are never locked out.'),
       ]),

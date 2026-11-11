@@ -2,22 +2,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 const root = path.resolve('portable');
+const role = process.env.ONESTEP_ROLE || 'planner';
+if (!['planner','bank','kids','parent'].includes(role)) throw new Error('Invalid app role');
+const bundleID = 'meow.tira.onestep' + (role === 'planner' ? '' : '.' + role);
+const displayName = role === 'planner' ? 'OneStep' : 'OneStep ' + role[0].toUpperCase() + role.slice(1);
 const temp = path.resolve('build/portable-generated');
 fs.mkdirSync(path.dirname(temp),{recursive:true});
-execFileSync(process.platform==='win32'?'flutter.bat':'flutter', ['create','--platforms=android,windows,linux','--org','meow.tira','--project-name','onestep','--no-pub',temp], {stdio:'inherit',shell:process.platform==='win32'});
-for (const platform of ['android','windows','linux']) fs.cpSync(path.join(temp,platform),path.join(root,platform),{recursive:true});
+execFileSync(process.platform==='win32'?'flutter.bat':'flutter', ['create','--platforms=android,ios,windows,linux','--org','meow.tira','--project-name','onestep','--no-pub',temp], {stdio:'inherit',shell:process.platform==='win32'});
+for (const platform of ['android','ios','windows','linux']) fs.cpSync(path.join(temp,platform),path.join(root,platform),{recursive:true});
 let manifest=fs.readFileSync(`${root}/android/app/src/main/AndroidManifest.xml`,'utf8');
+manifest=manifest.replace('android:name=".MainActivity"','android:name="meow.tira.onestep.MainActivity"');
 manifest=manifest.replace('<application',`<uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <application android:usesCleartextTraffic="true" android:allowBackup="false"`)
-  .replace('android:label="onestep"','android:label="OneStep"')
+  .replace('android:label="onestep"',`android:label="${displayName}"`)
   .replace('</application>',`<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
     <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
     </application>`);
 fs.writeFileSync(`${root}/android/app/src/main/AndroidManifest.xml`,manifest);
-let gradle=fs.readFileSync(`${root}/android/app/build.gradle.kts`,'utf8');
+let gradle=fs.readFileSync(`${root}/android/app/build.gradle.kts`,'utf8').replace('applicationId = "meow.tira.onestep"',`applicationId = "${bundleID}"`);
 gradle=gradle.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true');
 gradle+='\ndependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") }\n';
 // A private release key can be configured by repository secrets. No key is committed.
@@ -83,3 +88,8 @@ for (const file of ['windows/CMakeLists.txt','windows/runner/Runner.rc','windows
   fs.writeFileSync(name,value);
 }
 console.log('Generated platform projects: Android meow.tira.onestep, Windows Tira-OneStep.exe, Linux meow.tira.onestep.');
+
+const iosProject = root + '/ios/Runner.xcodeproj/project.pbxproj';
+fs.writeFileSync(iosProject, fs.readFileSync(iosProject,'utf8').replaceAll('meow.tira.onestep',bundleID));
+const iosInfo = root + '/ios/Runner/Info.plist';
+fs.writeFileSync(iosInfo,fs.readFileSync(iosInfo,'utf8').replace(/(<key>CFBundleDisplayName<\/key>\s*<string>)[^<]+/, '$1'+displayName));

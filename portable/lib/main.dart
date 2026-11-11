@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'model.dart';
 import 'services.dart';
+import 'family.dart';
+
+const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +60,7 @@ class OneStepApp extends StatelessWidget {
         style: OutlinedButton.styleFrom(minimumSize: const Size(48, 50)),
       ),
     ),
-    home: const Home(),
+    home: appRole == 'planner' ? const Home() : const RewardsPage(role: appRole),
   );
 }
 
@@ -1366,6 +1369,14 @@ class _SettingsPageState extends State<SettingsPage>
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              section('Rewards and family', [
+                for (final role in ['bank','kids','parent']) OutlinedButton.icon(
+                  icon: Icon(role == 'bank' ? Icons.credit_card : role == 'kids' ? Icons.child_care : Icons.family_restroom),
+                  label: Text(role == 'bank' ? 'Bank and rewards' : role == 'kids' ? 'Kids account' : 'Parent controls'),
+                  onPressed: () { Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RewardsPage(role: role))); },
+                ),
+                const Text('Optional services. Your offline planner continues to work without signing in.'),
+              ]),
               section('Profile', [
                 TextField(
                   controller: name,

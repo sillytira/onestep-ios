@@ -1,0 +1,113 @@
+name: Build Bank Kids Parent companions
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['portable/**','.github/workflows/companions.yml']
+permissions:
+  contents: read
+concurrency:
+  group: companions-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: portable
+      - run: dart format lib test
+        working-directory: portable
+      - run: flutter analyze --no-fatal-infos
+        working-directory: portable
+      - run: flutter test
+        working-directory: portable
+  android:
+    needs: verify
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [bank,kids,parent]
+    env:
+      ONESTEP_ROLE: ${{ matrix.role }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: onestep-companions-beta-key-v1
+      - run: node portable/tool/bootstrap.mjs
+      - run: flutter pub get
+        working-directory: portable
+      - run: flutter build apk --release --dart-define=ONESTEP_ROLE=${{ matrix.role }}
+        working-directory: portable
+      - name: Package companion
+        run: |
+          mkdir -p release
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-${ONESTEP_ROLE}-0.4.0.apk
+          sha256sum release/*.apk > release/SHA256SUMS.txt
+          cp portable/pubspec.lock release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-${{ matrix.role }}-0.4.0-Android
+          path: release/
+  ios:
+    needs: verify
+    runs-on: macos-26
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [bank,kids,parent]
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      ONESTEP_ROLE: ${{ matrix.role }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: node portable/tool/bootstrap.mjs
+      - run: flutter pub get
+        working-directory: portable
+      - run: flutter build ios --release --no-codesign --dart-define=ONESTEP_ROLE=${{ matrix.role }}
+        working-directory: portable
+      - name: Package unsigned companion IPA
+        run: |
+          mkdir -p release build/companion-staging/Payload
+          APP=portable/build/ios/iphoneos/Runner.app
+          test -f "$APP/Runner"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -qx "meow.tira.onestep.$ONESTEP_ROLE"
+          file "$APP/Runner" | grep -q arm64
+          ditto "$APP" build/companion-staging/Payload/Runner.app
+          (cd build/companion-staging && zip -qry "$GITHUB_WORKSPACE/release/OneStep-$ONESTEP_ROLE-0.4.0-unsigned.ipa" Payload)
+          shasum -a 256 release/*.ipa > release/SHA256SUMS.txt
+          cp portable/pubspec.lock release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-${{ matrix.role }}-0.4.0-iPhone
+          path: release/

@@ -70,7 +70,7 @@ for (const configuration of ['Debug', 'Release']) {
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.3.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.4.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
@@ -81,7 +81,7 @@ for (const configuration of ['Debug', 'Release']) {
     INFOPLIST_FILE = OneStepLive/Info.plist; GENERATE_INFOPLIST_FILE = NO;
     APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.3.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.4.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";

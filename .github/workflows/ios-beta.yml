@@ -65,7 +65,7 @@ jobs:
       - name: Upload installable beta package
         uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.3.0-beta-${{ env.BUILD_NUMBER }}
+          name: OneStep-0.4.0-beta-${{ env.BUILD_NUMBER }}
           path: release/
           if-no-files-found: error
           retention-days: 30

@@ -1,7 +1,7 @@
 name: onestep
 description: An offline task and routine planner with private local transfers.
 publish_to: none
-version: 0.3.0+5
+version: 0.4.0+9
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
@@ -13,6 +13,7 @@ dependencies:
   uuid: 4.5.2
   flutter_local_notifications: 19.5.0
   timezone: 0.10.1
+  flutter_secure_storage: 9.2.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

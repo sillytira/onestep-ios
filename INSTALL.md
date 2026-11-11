@@ -1,46 +1,33 @@
-# Install OneStep beta on iPhone using Windows
+# Install OneStep 0.3 beta
 
-## Get the IPA
+## iPhone: migrate safely
 
-Open https://github.com/sillytira/onestep-ios/actions and choose a successful **Build iPhone beta** run. Download its `OneStep-0.2.0-beta-N` artifact ZIP on Windows, extract it, and find `OneStep-0.2.0-beta-N-unsigned.ipa`. An unsigned IPA needs signing before it can run.
+1. Download a successful Build iPhone beta artifact from https://github.com/sillytira/onestep-ios/actions . Check the IPA SHA-256 against the adjacent checksum file.
+2. If you already use the old tech.sillycat.onestep app, first sign/install the **migration-bridge** IPA over it, with the same Apple account and bundle-ID settings used for the existing installation. Keep its Live Activity extension. Do not uninstall first.
+3. Open Now → settings → Backups, Wi-Fi transfer, and accounts → Export backup. Save the JSON outside the app in Files. Verify it is accessible; an additional copy on your PC is recommended.
+4. Sign/install the normal IPA with the new **meow.tira.onestep** ID, then import that JSON. Review the preview and confirm. Check tasks, routines, notes, and history before removing the old app. Never delete your only copy to free a signing slot.
+5. Allow notifications in the new installation, because permissions belong to the new app identity. Test a task due two minutes ahead while locked and offline. Sign the Live Activity extension as well as the main app.
 
-Optional integrity check in PowerShell:
+Use your existing successful installer, AltStore or Sideloadly. Official guides: https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows and https://sideloadly.io/ . Do not strip the extension. Free-account app/App-ID limits and signing expiry still apply. Both bridge and normal app have an extension, which can affect available slots. Export before managing those slots. Signing/refreshing requires Apple connectivity; ordinary app use and queued reminders work offline. The app cannot refresh its own Apple provisioning profile.
 
-```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath '.\OneStep-0.2.0-beta-3-unsigned.ipa'
-```
+After migration, future updates use the same new bundle ID and signing settings and install over the app. Uninstalling deletes local data. Export backups regularly.
 
-Compare it to the matching `.sha256` file included with the download.
+## Android
 
-## Install
+Download OneStep-0.3.0-beta.apk from the successful Android artifact. Permit installation through your normal Android installer. Package ID is meow.tira.onestep. In Your space, enable notifications and precise alarms; without precise-alarm permission delivery falls back to inexact scheduling. Check an offline locked-device reminder.
 
-1. Follow AltStore's current official Windows setup guide: https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows . Install the Apple components it specifies and AltServer, then install AltStore Classic on the iPhone.
-2. Enable Developer Mode on the iPhone if prompted. Use the same Apple account for AltStore and later OneStep updates.
-3. Keep AltServer running and reachable from the iPhone as described by AltStore. Transfer the IPA to the iPhone's Files app using a method you already trust.
-4. Open AltStore → My Apps → **+**, then select the OneStep IPA. Let AltStore sign and install it.
-5. Open OneStep. Tap the bell in **Now**, choose **Enable reminders**, and grant permission.
-6. Add a task due two minutes ahead with **Remind me** enabled. Lock the phone and verify the notification. Tap it to return to the task.
+This initial beta uses a CI beta signing key cached between builds. It is not yet a permanent privately managed release key, so seamless future in-place updates are not guaranteed if the cache expires. Export before updating; do not uninstall to resolve a signing mismatch until your data is safely backed up. See PLATFORMS.md for release-key configuration.
 
-Enter Apple credentials only through AltStore/Apple's normal signing flow. This project never needs your password, certificates, or private keys.
+## Windows
 
-## Update without changing app identity
+Extract the complete Windows ZIP to a folder, then run **Tira-OneStep.exe**. Display name: **OneStep**. Keep its DLLs and data directory beside the executable. This is an unsigned portable distribution, not a Microsoft Store package. Local data is kept in the current Windows user's application-support directory. Notifications and timers require the app to stay running. Private Wi-Fi transfers may require allowing the app through the private-network firewall; no public-network or router port forwarding is needed.
 
-Build the next IPA with a higher build number, then install it through the **same AltStore installation and Apple account over the existing OneStep app**. Keep the app ID `tech.sillycat.onestep` unchanged. Do not delete OneStep first: deleting it also deletes its local data, and this beta has no backup/export feature.
+## Linux
 
-Updates still need signing. Version 0.2 includes one Live Activity extension, requiring one extra App ID in addition to the main app and installer. **Keep the extension enabled when signing.** Building source on CI does not sign the app or register new App IDs. Free-account expiry and device/app limits still apply.
+Use the x86-64 AppImage on a compatible GTK 3 desktop (built on Ubuntu 22.04). Make it executable, then launch. If FUSE is unavailable, use --appimage-extract-and-run. Timers and banners require the app to stay running and a desktop notification service. Keep backups outside the app's data directory.
 
-If you used Sideloadly successfully for the first beta, use it again with the same Apple ID and bundle identifier, installing over OneStep. Do not select Remove Extensions. Official setup: https://sideloadly.io/ .
+## Transfer without a server
 
-## Color, focus, and the Lock Screen
+Both devices: join the same private IPv4 Wi-Fi network and keep OneStep open. Sender: open Data/devices, confirm its LAN address, create the 10-minute code, and share it privately with your receiver. Receiver: paste it, receive, inspect the snapshot preview, then confirm replacement. A recovery copy is saved first. Leaving/backgrounding the sender stops sharing. Transfer is encrypted; the code is its temporary key. Copy only between trusted devices. It is a one-way snapshot, not automatic merging; export both devices if they contain separate edits. The same JSON format supports transfer through Files/USB.
 
-Edit a task or routine step to choose its color. On Now, tap **Start a timer** for a duration or specific finish time; this does not change the item's deadline. Only one focus timer runs at once. Done, Skip, Snooze, or deleting that item clears its timer.
-
-Tap **Show my day on Lock Screen**, or leave that option enabled when starting focus. On iPhone 12 this appears on the Lock Screen; this model has no Dynamic Island. Tapping the activity opens Now. If disabled, allow Live Activities for OneStep in iPhone Settings.
-
-The countdown works while the app is closed. Other activity content updates when you use/foreground OneStep, not continuously in the background. Sessions can remain active for up to eight hours; start a fresh session from the app when needed. Expiry notifications require reminder permission.
-
-With a free account, refresh the app through AltStore before its seven-day expiry. Keep AltServer running and reachable; offline app use does not make signing refreshes offline. See https://faq.altstore.io/altstore-classic/your-altstore and https://faq.altstore.io/altstore-classic/app-ids .
-
-## Use reminders offline
-
-After granting permission, already queued notifications work without a server. Open OneStep regularly to extend the queue. Check **Now → bell → Scheduling coverage** for its exact coverage. Focus, silent mode, and notification settings may silence or delay ordinary alerts.
+An internet login is optional and independent of LAN pairing. See PLATFORMS.md for Supabase setup. Signing in does not upload planner contents or synchronize devices.

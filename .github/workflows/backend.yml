@@ -1,0 +1,31 @@
+name: Test optional points backend
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/backend.yml']
+permissions:
+  contents: read
+jobs:
+  database:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: onestep_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test schema and authorization using synthetic users
+        env:
+          PGPASSWORD: synthetic-ci-only
+        run: psql -h localhost -U postgres -d onestep_test -f backend/test.sql

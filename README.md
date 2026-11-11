@@ -1,59 +1,32 @@
-# OneStep — 0.2.0 beta
+# OneStep — 0.3 beta
 
-## New in 0.2
+An offline task and routine planner with one next action, readable cards, and large controls. iOS uses SwiftUI and Liquid Glass. Android, Windows, and Linux use a shared Material 3 client. Core use needs no server or account.
 
-Six selectable task/routine colors, distinct section accents, and semantic Done/Snooze colors. One persistent focus countdown (duration or fixed finish time) with an expiry reminder. A Lock Screen Live Activity shows the current action, routine progress, and a system-rendered countdown. Start it with **Show my day on Lock Screen** or when starting focus.
+## This release
 
-Existing 0.1 data loads with default colors; the new color and focus fields are optional. The main app identity stays unchanged. Retain the included Live Activity extension when signing; it uses one additional App ID (`tech.sillycat.onestep.liveactivity`).
+- Tasks, notes, daily routine records, local reminders, focus timers, and item colors.
+- Versioned JSON backup/import with a preview and automatic recovery copies.
+- Encrypted manual snapshot transfer over private Wi-Fi, with expiring pairing codes.
+- User-written microsteps, daily/weekly tasks that advance after completion, search/list names/pin/archive, duration-timer pause/resume, and bounded reminder preferences.
+- Separate notes collection; native iOS Live Activity retained.
+- Optional configurable Supabase email-code identity. A hosted project and email-delivery configuration are required; planner data is not uploaded and cloud sync is not implemented.
 
-A small, offline SwiftUI planner for iPhone. One clear next action, a task list, and the same gentle routine every day.
+Read [PLATFORMS.md](PLATFORMS.md) for exact platform support, account setup, architecture, signing, and limitations. Native code updates still need a newly installed package.
 
-## What works in the source
+## Important identity migration
 
-- Now screen with Done and Snooze 10 minutes, plus Skip Today for routines.
-- Task creation/editing/deletion, notes, optional due dates and reminders.
-- Daily routine templates with configurable local times and drag-to-reorder.
-- Separate daily done/skip history; tomorrow starts fresh without deleting yesterday.
-- Ordinary local reminders and one follow-up after ten minutes. Snooze replaces outstanding alerts with one alert.
-- SwiftData persistence with an explicitly versioned Codable document; no account or backend.
-- Native Liquid Glass controls on iOS 26+, accessibility text scaling, and light/dark appearance.
+The requested new Apple/Android ID is **meow.tira.onestep**. The old iOS app used tech.sillycat.onestep and cannot automatically share its sandbox with the new ID. The iOS workflow also builds an **old-ID migration bridge** with backup export. Install that bridge over your old app first, export your backup, then import into the new-ID app. **Do not delete your old app before exporting and verifying its data.** See [INSTALL.md](INSTALL.md).
 
-**A successful CI build and real-device installation are required before this beta is considered verified.** See the repository Actions results for the actual build status. This source archive does not contain an IPA unless one is separately supplied by a successful macOS build.
+Windows displays **OneStep**, with **Tira-OneStep.exe** in the complete distribution folder. Linux ships an x86-64 AppImage. Source alone is not a compiled delivery; use successful workflow artifacts and the release verification report.
 
-## Build from Windows
+## Build and verification
 
-1. Put this folder's **contents**, including `.github`, in your GitHub repository root.
-2. Open **Actions → Build iPhone beta → Run workflow**. Set build number `1` initially, then `2`, `3`, and so on for updates. Source changes on `main` also start a build automatically, using the workflow run number.
-3. The macOS runner uses Xcode 26.6, tests the scheduling core and native SwiftData persistence, and builds an unsigned arm64 device app.
-4. Download the `OneStep-0.2.0-beta-N` workflow artifact and extract the ZIP. The `.ipa` inside is the file to give your signing tool. Use a build number higher than your installed version (3 or later for 0.2).
+GitHub Actions builds iOS on macOS/Xcode 26.6, Android on Linux, Windows on Windows, and Linux on Ubuntu 22.04. Builds run from source changes on main and support manual dispatch. Every iOS build runs Swift core and native simulator tests before device packaging. The portable workflow runs analysis and behavior tests before platform builds. No Apple credentials are used.
 
-There are no signing secrets or Apple credentials in the workflow. macOS CI usage is subject to your GitHub plan. If GitHub retires the pinned Xcode version, update `DEVELOPER_DIR` to an installed Xcode 26+ version, then run the checks again.
+For iOS: run node scripts/generate-project.mjs, node scripts/generate-icon.mjs, node scripts/validate-source.mjs, swift test, and xcodebuild test with the shared OneStep scheme on an iPhone simulator. Build the IPA with BUILD_NUMBER=5 bash scripts/build-ipa.sh. Override APP_BUNDLE_ID=tech.sillycat.onestep and IPA_SUFFIX=-migration-bridge for the old-ID bridge.
 
-## Build on a Mac
+For other platforms: install Flutter 3.38.5 and Node 22, run node portable/tool/bootstrap.mjs from the repository root, then flutter pub get, flutter analyze, flutter test, and flutter build apk/windows/linux from portable. Native platform files are generated; application source and the dependency lock are retained. See portable/tool/appimage.sh for AppImage packaging. Android permanent private release signing is not configured automatically.
 
-Requirements: Xcode 26.6 (or a compatible newer version), its iOS simulator runtime, and Node.js 22+.
+## Planned, not active
 
-```sh
-node scripts/generate-project.mjs
-node scripts/generate-icon.mjs
-node scripts/validate-source.mjs
-swift test
-DEVICE_ID="$(python3 scripts/select-simulator.py)"
-xcodebuild test -project OneStep.xcodeproj -scheme OneStep -destination "platform=iOS Simulator,id=$DEVICE_ID" CODE_SIGNING_ALLOWED=NO
-BUILD_NUMBER=3 bash scripts/build-ipa.sh
-```
-
-The committed Xcode project is generated by a dependency-free Node script. Regenerate it after changing its source list or build settings. The test target is simulator-only and is **not** embedded in the IPA. Distribution contains one app and one WidgetKit Live Activity extension.
-
-## Architecture
-
-- `OneStep/Core/Planner.swift`: value models, dated routine lookup, next-action selection, and pure reminder planning. Tested with a Swift package on macOS.
-- `Persistence.swift`: a SwiftData document with JSON schema version 1, immediate saves, non-destructive startup errors, and serialized reminder reconciliation.
-- `Notifications.swift`: bounded one-shot local scheduling and deep links from notifications. No APNs, network services, or special entitlements.
-- `Views.swift`: focused Now screen, task and routine editors, history, and reminder settings.
-
-The first beta uses the permanent app ID `tech.sillycat.onestep`. Keep it unchanged when updating. The simulator test identifier never needs registration with your Apple account.
-
-No medical information, analytics, telemetry, remote fonts, or network integrations are built into the app. It is a personal planning aid, not a medical treatment.
-
-Read [INSTALL.md](INSTALL.md), [KNOWN-LIMITATIONS.md](KNOWN-LIMITATIONS.md), and [ACCEPTANCE.md](ACCEPTANCE.md) before installing.
+Spendable points, public rankings, parent PIN controls, iOS app shielding, online planner sync, custom full-database encryption, and a separate points banking companion are not active features. The progress count is not a points balance. Family Controls requires Apple authorization/entitlements and suitable signing. No third-party screenshots, personal data, signing keys, or account secrets belong in this repository.

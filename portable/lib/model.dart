@@ -134,7 +134,7 @@ List<AlertPlan> reminders(Json state, DateTime now) {
   final timer = state['focusSession'] as Map?;
   final end = dateOf(timer?['endsAt']);
   final valid = timer != null && available(state, now).any((a) => a['sourceID'] == timer['action']['sourceID'] && a['kind'] == timer['action']['kind']);
-  final selected = result.take(valid && end != null && end.isAfter(now) && timer?['pausedRemaining'] == null ? 59 : 60).toList();
-  if (valid && end != null && end.isAfter(now) && timer?['pausedRemaining'] == null) selected.add(AlertPlan('focus.${timer!['id']}', timer['action']['title'] as String, end, timer: true));
+  final selected = result.take(valid && end != null && end.isAfter(now) && timer['pausedRemaining'] == null ? 59 : 60).toList();
+  if (valid && end != null && end.isAfter(now) && timer['pausedRemaining'] == null) selected.add(AlertPlan('focus.${timer['id']}', timer['action']['title'] as String, end, timer: true));
   return selected;
 }

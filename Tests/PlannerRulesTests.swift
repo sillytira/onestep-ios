@@ -2,6 +2,27 @@ import XCTest
 @testable import OneStepCore
 
 final class PlannerRulesTests: XCTestCase {
+    func testVersionedBackupRejectsNewerFormatAndDuplicateTasks() throws {
+        var state = PlannerState()
+        let task = TaskEntry(title: "Private task")
+        state.tasks = [task]
+        var document = TransferDocument(state: state)
+        let data = try JSONEncoder().encode(document)
+        XCTAssertEqual(try TransferDocument.decode(data).state, state)
+        document.formatVersion = 99
+        XCTAssertThrowsError(try TransferDocument.decode(JSONEncoder().encode(document)))
+        document.formatVersion = 1; document.state.tasks.append(task)
+        XCTAssertThrowsError(try TransferDocument.decode(JSONEncoder().encode(document)))
+    }
+
+    func testPausedTimerDoesNotScheduleExpiryAndQuietHoursDoNotReplay() {
+        var state = PlannerState()
+        let task = TaskEntry(title: "Write", dueAt: morning.addingTimeInterval(3600), reminderEnabled: true)
+        state.tasks = [task]
+        state.focusSession = FocusSession(action: PlannerRules.taskAction(task), startedAt: morning, endsAt: morning.addingTimeInterval(900), durationBased: true, pausedRemaining: 400)
+        state.preferences = ReminderPreferences(snoozeMinutes: 20, followup: false, quietStart: 8, quietEnd: 10)
+        XCTAssertTrue(PlannerRules.reminderPlan(state, now: morning, calendar: utc).reminders.isEmpty)
+    }
     private var utc: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

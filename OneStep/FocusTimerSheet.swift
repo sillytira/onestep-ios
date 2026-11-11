@@ -59,7 +59,7 @@ struct FocusTimerSheet: View {
 
     private func start() {
         let end = useFinishTime ? finishAt : Date().addingTimeInterval(Double(minutes) * 60)
-        guard store.startFocus(item, until: end) else { return }
+        guard store.startFocus(item, until: end, durationBased: !useFinishTime) else { return }
         Task {
             if store.notificationStatus == .notDetermined { await store.enableNotifications() }
             if showLive { await store.startLiveActivity() }

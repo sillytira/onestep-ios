@@ -10,6 +10,37 @@ struct TaskEntry: Identifiable, Codable, Equatable {
     var completedAt: Date?
     var snoozedUntil: Date?
     var colorName: String?
+    var repeatRule: String?
+    var repeatParentID: UUID?
+    var microsteps: [SmallStep]?
+    var listName: String?
+    var pinned: Bool?
+    var archived: Bool?
+}
+
+struct SmallStep: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var title: String
+    var done = false
+}
+
+struct LocalProfile: Codable, Equatable {
+    var id = UUID()
+    var name = "My space"
+}
+
+struct NoteEntry: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var title: String
+    var body: String
+    var updatedAt = Date()
+}
+
+struct ReminderPreferences: Codable, Equatable {
+    var snoozeMinutes = 10
+    var followup = true
+    var quietStart: Int?
+    var quietEnd: Int?
 }
 
 struct RoutineStep: Identifiable, Codable, Equatable {
@@ -39,6 +70,9 @@ struct PlannerState: Codable, Equatable {
     var routines: [RoutineStep] = []
     var days: [DailyRecord] = []
     var focusSession: FocusSession?
+    var profile: LocalProfile?
+    var notes: [NoteEntry]?
+    var preferences: ReminderPreferences?
 }
 
 struct ActionItem: Identifiable, Codable, Equatable {
@@ -58,6 +92,8 @@ struct FocusSession: Identifiable, Codable, Equatable {
     var action: ActionItem
     var startedAt: Date
     var endsAt: Date
+    var durationBased: Bool?
+    var pausedRemaining: Double?
 }
 
 struct PlannedReminder: Identifiable, Equatable {
@@ -107,7 +143,7 @@ enum PlannerRules {
 
     static func availableActions(_ state: PlannerState, now: Date,
                                  calendar: Calendar = .current) -> [ActionItem] {
-        let tasks = state.tasks.filter { $0.completedAt == nil && ($0.snoozedUntil == nil || $0.snoozedUntil! <= now) }
+        let tasks = state.tasks.filter { $0.completedAt == nil && $0.archived != true && ($0.snoozedUntil == nil || $0.snoozedUntil! <= now) }
             .sorted { $0.createdAt < $1.createdAt }.map(taskAction)
         let routines = state.routines.sorted { $0.position < $1.position }.compactMap { step -> ActionItem? in
             let entry = record(step, on: now, in: state, calendar: calendar)
@@ -149,12 +185,17 @@ enum PlannerRules {
         var candidates: [PlannedReminder] = []
         func append(_ item: ActionItem, at date: Date, suffix: String, followup: Bool = false) {
             guard date > now else { return } // Never replay a backlog of missed alerts.
+            if followup && state.preferences?.followup == false { return }
+            if let start = state.preferences?.quietStart, let end = state.preferences?.quietEnd {
+                let hour = calendar.component(.hour, from: date)
+                if start < end ? (hour >= start && hour < end) : (hour >= start || hour < end) { return }
+            }
             candidates.append(PlannedReminder(id: "\(item.id).\(suffix)", title: item.title,
                 body: followup ? "Ready for this step? Open OneStep to do it, snooze, or skip today."
                                : "One thing at a time. Open OneStep when you're ready.",
                 fireAt: date, item: item))
         }
-        for task in state.tasks where task.completedAt == nil {
+        for task in state.tasks where task.completedAt == nil && task.archived != true {
             let item = taskAction(task)
             if let snooze = task.snoozedUntil {
                 append(item, at: snooze, suffix: "snooze")
@@ -184,7 +225,7 @@ enum PlannerRules {
         candidates.sort { $0.fireAt == $1.fireAt ? $0.id < $1.id : $0.fireAt < $1.fireAt }
         // Reserve a slot for the active timer so it can't be displaced by routine alerts.
         var timerReminder: PlannedReminder?
-        if let session = state.focusSession, session.endsAt > now,
+        if let session = state.focusSession, session.pausedRemaining == nil, session.endsAt > now,
            let item = currentAction(for: session.action, in: state, now: now, calendar: calendar) {
             timerReminder = PlannedReminder(id: "focus.\(session.id.uuidString)", title: item.title,
                 body: "Your focus time is up. Open OneStep to finish or choose your next step.",

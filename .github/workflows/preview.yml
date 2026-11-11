@@ -33,7 +33,7 @@ jobs:
           xcrun simctl bootstatus "$DEVICE_ID" -b
           xcrun simctl install "$DEVICE_ID" build/Preview/Build/Products/Debug-iphonesimulator/OneStep.app
           xcrun simctl status_bar "$DEVICE_ID" override --time '9:41'
-          xcrun simctl launch "$DEVICE_ID" tech.sillycat.onestep --preview
+          xcrun simctl launch "$DEVICE_ID" meow.tira.onestep --preview
           sleep 5
           mkdir -p preview
           xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.2-Now.png

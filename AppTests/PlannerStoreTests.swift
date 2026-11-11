@@ -3,6 +3,32 @@ import XCTest
 
 @MainActor
 final class PlannerStoreTests: XCTestCase {
+    func testRepeatCreatesOneFutureTaskAndUndoRemovesIt() throws {
+        let store = try PlannerStore(inMemory: true)
+        XCTAssertTrue(store.saveTask(id: nil, title: "Water", notes: "", dueAt: Date().addingTimeInterval(-86400), reminder: true, repeatRule: "daily", steps: ["Fill can"]))
+        let task = store.state.tasks[0]
+        store.complete(PlannerRules.taskAction(task))
+        XCTAssertEqual(store.state.tasks.count, 2)
+        XCTAssertGreaterThan(store.state.tasks.last!.dueAt!, Date())
+        store.undoTask(task)
+        XCTAssertEqual(store.state.tasks.count, 1)
+        XCTAssertNil(store.state.tasks[0].completedAt)
+    }
+
+    func testSnapshotImportAndTimerPauseLeaveDeadlinesAlone() throws {
+        let store = try PlannerStore(inMemory: true)
+        let due = Date().addingTimeInterval(7200)
+        XCTAssertTrue(store.saveTask(id: nil, title: "Read", notes: "", dueAt: due, reminder: true))
+        let item = PlannerRules.taskAction(store.state.tasks[0])
+        XCTAssertTrue(store.startFocus(item, until: Date().addingTimeInterval(900)))
+        store.togglePause()
+        XCTAssertNotNil(store.state.focusSession?.pausedRemaining)
+        XCTAssertEqual(store.state.tasks[0].dueAt, due)
+        let backup = try TransferDocument.decode(store.exportData())
+        XCTAssertTrue(store.importDocument(backup))
+        XCTAssertEqual(store.state.tasks[0].dueAt, due)
+        XCTAssertNil(store.state.focusSession)
+    }
     func testSaveEditCompleteAndReopen() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

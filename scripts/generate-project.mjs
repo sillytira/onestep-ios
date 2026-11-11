@@ -4,11 +4,12 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const bundleID = process.env.APP_BUNDLE_ID || 'meow.tira.onestep';
 const projectDir = path.join(root, 'OneStep.xcodeproj');
 fs.mkdirSync(path.join(projectDir, 'xcshareddata', 'xcschemes'), { recursive: true });
 const id = name => crypto.createHash('sha256').update(name).digest('hex').slice(0, 24).toUpperCase();
 const q = value => JSON.stringify(value);
-const sources = ['Core/Planner.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
+const sources = ['Core/Planner.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
 const tests = ['PlannerStoreTests.swift'];
 const objects = [];
 const object = (name, body) => objects.push(`${id(name)} = { ${body} };`);
@@ -63,30 +64,30 @@ for (const configuration of ['Debug', 'Release']) {
     ONLY_ACTIVE_ARCH = ${debug ? 'YES' : 'NO'};
   }; name = ${configuration};`);
   object(`target-${configuration}`, `isa = XCBuildConfiguration; buildSettings = {
-    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep;
+    PRODUCT_BUNDLE_IDENTIFIER = ${bundleID};
     PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
     INFOPLIST_FILE = OneStep/Info.plist; GENERATE_INFOPLIST_FILE = NO;
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.2.0; CURRENT_PROJECT_VERSION = 3;
+    MARKETING_VERSION = 0.3.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
   }; name = ${configuration};`);
   object(`live-${configuration}`, `isa = XCBuildConfiguration; buildSettings = {
-    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep.liveactivity;
+    PRODUCT_BUNDLE_IDENTIFIER = ${bundleID}.liveactivity;
     PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
     INFOPLIST_FILE = OneStepLive/Info.plist; GENERATE_INFOPLIST_FILE = NO;
     APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.2.0; CURRENT_PROJECT_VERSION = 3;
+    MARKETING_VERSION = 0.3.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
   }; name = ${configuration};`);
   object(`test-${configuration}`, `isa = XCBuildConfiguration; buildSettings = {
-    PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep.tests;
+    PRODUCT_BUNDLE_IDENTIFIER = ${bundleID}.tests;
     PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
     GENERATE_INFOPLIST_FILE = YES; CODE_SIGN_STYLE = Automatic;
     TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OneStep.app/OneStep";

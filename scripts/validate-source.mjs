@@ -10,8 +10,8 @@ assert.equal(new Set(objects).size,objects.length,'Project contains duplicate ob
 for(const match of project.matchAll(/\b[A-F0-9]{24}\b/g)) assert(objects.includes(match[0]),`Unresolved project ID ${match[0]}`);
 assert.equal((project.match(/productType = "com.apple.product-type.application"/g)||[]).length,1);
 assert.equal((project.match(/productType = "com.apple.product-type.app-extension"/g)||[]).length,1,'Exactly one Live Activity extension');
-assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep.liveactivity;/g)||[]).length,2);
-assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = tech.sillycat.onestep;/g)||[]).length,2);
+assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = meow.tira.onestep.liveactivity;/g)||[]).length,2);
+assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = meow.tira.onestep;/g)||[]).length,2);
 for(const file of ['Core/Planner.swift','Persistence.swift','Notifications.swift','Views.swift','OneStepApp.swift','FocusTimerSheet.swift','LiveActivities.swift','Shared/Palette.swift','Shared/DayActivityAttributes.swift']) {
   assert(fs.existsSync(path.join(root,'OneStep',file)),`Missing source ${file}`);
   assert(project.includes(JSON.stringify(file)),`Source not included in project ${file}`);

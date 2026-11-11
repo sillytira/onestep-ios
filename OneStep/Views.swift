@@ -51,6 +51,9 @@ struct RootView: View {
                 Tab("History", systemImage: "clock", value: 3) {
                     NavigationStack { HistoryView() }
                 }
+                Tab("Notes", systemImage: "note.text", value: 4) {
+                    NavigationStack { NotesView() }
+                }
             }
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
         }
@@ -146,12 +149,15 @@ private struct NowView: View {
                             VStack(alignment: .leading, spacing: 10) {
                                 Label(session.endsAt <= now ? "Time is up — ready to finish?" : "Your focus time", systemImage: "timer")
                                     .font(.subheadline.weight(.semibold))
-                                Text(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: true)
-                                    .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
-                                ProgressView(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: false) {
-                                    EmptyView()
-                                } currentValueLabel: { EmptyView() }
-                                .tint(palette.color)
+                                if let remaining = session.pausedRemaining {
+                                    Text("Paused · \(Int(remaining) / 60)m \(Int(remaining) % 60)s").font(.title2.monospacedDigit())
+                                } else {
+                                    Text(timerInterval: session.startedAt...max(session.startedAt, session.endsAt), countsDown: true)
+                                        .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
+                                }
+                                if session.durationBased == true {
+                                    Button(session.pausedRemaining == nil ? "Pause timer" : "Resume timer") { store.togglePause() }
+                                }
                                 Button("Stop timer") { store.stopFocus() }.font(.subheadline)
                             }.padding().frame(maxWidth: .infinity, alignment: .leading)
                                 .background(palette.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 18))
@@ -160,10 +166,17 @@ private struct NowView: View {
                                 Label("Start a timer", systemImage: "timer").frame(maxWidth: .infinity)
                             }.buttonStyle(.bordered).controlSize(.large)
                         }
+                        if let task = store.state.tasks.first(where: { item.kind == .task && $0.id == item.sourceID }) {
+                            ForEach(task.microsteps ?? []) { step in
+                                Button { store.toggleSmallStep(taskID: task.id, stepID: step.id) } label: {
+                                    Label(step.title, systemImage: step.done ? "checkmark.circle.fill" : "circle").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                                }.tint(step.done ? ItemPalette.mint.color : palette.color)
+                            }
+                        }
                         Button { store.complete(item) } label: {
                             Label("Done", systemImage: "checkmark").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 10)
                         }.modifier(PrimaryGlassButton()).tint(ItemPalette.mint.color)
-                        Button("Snooze 10 minutes") { store.snooze(item) }
+                        Button("Snooze \(store.state.preferences?.snoozeMinutes ?? 10) minutes") { store.snooze(item, minutes: store.state.preferences?.snoozeMinutes ?? 10) }
                             .buttonStyle(.bordered).frame(maxWidth: .infinity).controlSize(.large).tint(ItemPalette.amber.color)
                         if item.kind == .routine {
                             Button("Skip today") { store.complete(item, skip: true) }
@@ -223,20 +236,25 @@ private struct PrimaryGlassButton: ViewModifier {
 private struct TaskListView: View {
     @Environment(PlannerStore.self) private var store
     let edit: (TaskEntry) -> Void
+    @State private var search = ""
+    @State private var showArchived = false
     private var tasks: [TaskEntry] {
-        store.state.tasks.filter { $0.completedAt == nil }.sorted {
+        store.state.tasks.filter { $0.completedAt == nil && ($0.archived == true) == showArchived && (search.isEmpty || ($0.title + " " + $0.notes + " " + ($0.listName ?? "")).localizedCaseInsensitiveContains(search)) }.sorted {
+            if ($0.pinned == true) != ($1.pinned == true) { return $0.pinned == true }
             ($0.snoozedUntil ?? $0.dueAt ?? .distantFuture) < ($1.snoozedUntil ?? $1.dueAt ?? .distantFuture)
         }
     }
 
     var body: some View {
         List {
+            Toggle("Show archived", isOn: $showArchived)
             ForEach(tasks) { task in
                 Button { edit(task) } label: {
                     HStack(alignment: .top, spacing: 14) {
                         ColorBadge(palette: .resolve(task.colorName), symbol: "checklist")
                         VStack(alignment: .leading, spacing: 6) {
                         Text(task.title).font(.headline).foregroundStyle(.primary)
+                        if let list = task.listName, !list.isEmpty { Text(list).font(.caption).foregroundStyle(ItemPalette.violet.color) }
                         if let date = task.snoozedUntil ?? task.dueAt {
                             Text(date, format: .dateTime.month().day().hour().minute()).font(.subheadline).foregroundStyle(.secondary)
                         } else { Text("Whenever you're ready").font(.subheadline).foregroundStyle(.secondary) }
@@ -249,12 +267,15 @@ private struct TaskListView: View {
                 }
                 .swipeActions(edge: .trailing) {
                     Button("Delete", systemImage: "trash", role: .destructive) { store.deleteTask(task) }
+                    Button(task.archived == true ? "Unarchive" : "Archive") { var next = store.state; if let i = next.tasks.firstIndex(where: { $0.id == task.id }) { next.tasks[i].archived = !(task.archived ?? false); if next.focusSession?.action.sourceID == task.id { next.focusSession = nil }; _ = store.commit(next) } }.tint(.gray)
                 }
+                .contextMenu { Button(task.pinned == true ? "Unpin" : "Pin") { var next = store.state; if let i = next.tasks.firstIndex(where: { $0.id == task.id }) { next.tasks[i].pinned = !(task.pinned ?? false); _ = store.commit(next) } } }
             }
         }
         .listRowSpacing(10)
         .overlay { if tasks.isEmpty { ContentUnavailableView("Room for a fresh start", systemImage: "checklist", description: Text("Tap + to capture your first task.")) } }
         .navigationTitle("Tasks")
+        .searchable(text: $search, prompt: "Tasks, notes, and lists")
     }
 }
 
@@ -267,6 +288,11 @@ private struct RoutineListView: View {
         List {
             Section {
                 Text("The same gentle structure, every day. Done and Skip only affect today.").foregroundStyle(.secondary)
+                Button("Start a guided routine") {
+                    if let step = store.state.routines.sorted(by: { $0.position < $1.position }).first(where: { PlannerRules.record($0, on: now, in: store.state)?.status == nil }) {
+                        store.focusedItem = PlannerRules.routineAction(step, on: now, state: store.state); store.selectedTab = 0
+                    }
+                }
             }
             ForEach(store.state.routines.sorted { $0.position < $1.position }) { step in
                 let record = PlannerRules.record(step, on: now, in: store.state)
@@ -328,6 +354,9 @@ private struct TaskEditor: View {
     @State private var dueAt: Date
     @State private var reminder: Bool
     @State private var colorName: String
+    @State private var repeatRule: String
+    @State private var steps: String
+    @State private var listName: String
 
     init(task: TaskEntry?) {
         self.task = task
@@ -337,6 +366,9 @@ private struct TaskEditor: View {
         _dueAt = State(initialValue: task?.dueAt ?? Date().addingTimeInterval(3600))
         _reminder = State(initialValue: task?.reminderEnabled ?? true)
         _colorName = State(initialValue: task?.colorName ?? "blue")
+        _repeatRule = State(initialValue: task?.repeatRule ?? "none")
+        _steps = State(initialValue: (task?.microsteps ?? []).map(\.title).joined(separator: "\n"))
+        _listName = State(initialValue: task?.listName ?? "")
     }
 
     var body: some View {
@@ -344,12 +376,21 @@ private struct TaskEditor: View {
             Form {
                 Section("One thing to do") { TextField("What would you like to do?", text: $title, axis: .vertical).textInputAutocapitalization(.sentences) }
                 Section("Make it recognizable") { PalettePicker(selection: $colorName) }
+                Section("Make it smaller") {
+                    TextField("One small step per line", text: $steps, axis: .vertical).lineLimit(3...8)
+                    Button("Help me find a first step") { if steps.isEmpty { steps = "Get what I need\nDo just the first two minutes\nChoose the next small step" } }
+                    Text("Edit these into steps that fit your task. No AI service or internet is used.").font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Organization") { TextField("List name (optional)", text: $listName) }
                 Section("Optional") {
                     TextField("A little context", text: $notes, axis: .vertical).lineLimit(3...6)
                     Toggle("Set a due time", isOn: $hasDate)
                     if hasDate {
                         DatePicker("When", selection: $dueAt)
                         Toggle("Remind me", isOn: $reminder)
+                        Picker("Repeat after completion", selection: $repeatRule) {
+                            Text("Never").tag("none"); Text("Daily").tag("daily"); Text("Weekly").tag("weekly")
+                        }
                         if reminder {
                             Text("One reminder when due, then one follow-up after 10 minutes. Snoozing replaces both with one reminder.").font(.footnote).foregroundStyle(.secondary)
                             if dueAt <= Date() { Text("This time has passed. Missed alerts aren't replayed; choose a future time for a new reminder.").font(.footnote).foregroundStyle(.secondary) }
@@ -368,7 +409,7 @@ private struct TaskEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName) { dismiss() }
+                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName) { dismiss() }
                     }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -463,6 +504,13 @@ private struct ReminderSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Data, devices, and accounts") { NavigationLink("Backups, Wi-Fi transfer, and accounts") { DataToolsView() } }
+                Section("Reminder preferences") {
+                    Toggle("One follow-up after 10 minutes", isOn: preference(\.followup, fallback: true))
+                    Picker("Snooze length", selection: preference(\.snoozeMinutes, fallback: 10)) { ForEach([5, 10, 20, 30, 60], id: \.self) { Text("\($0) minutes").tag($0) } }
+                    Toggle("Quiet hours: 22:00–08:00", isOn: Binding(get: { store.state.preferences?.quietStart != nil }, set: { value in var next = store.state; var prefs = next.preferences ?? ReminderPreferences(); prefs.quietStart = value ? 22 : nil; prefs.quietEnd = value ? 8 : nil; next.preferences = prefs; _ = store.commit(next) }))
+                    Text("Quiet hours omit routine and task alerts; a timer you start still alerts. Alerts are never saved up for the morning.").font(.footnote)
+                }
                 Section("Reminders") {
                     switch store.notificationStatus {
                     case .notDetermined:
@@ -490,12 +538,16 @@ private struct ReminderSettingsView: View {
                 Section("Offline beta") {
                     Text("All tasks and routines stay on this iPhone. Updating over the app preserves its data; deleting the app removes it.")
                     Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0") · Build \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")")
-                    Text("Focus timers and Lock Screen Live Activities work offline. Backup/import and syncing are coming later.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Focus timers, backups, and direct Wi-Fi snapshot transfers work offline. Online sign-in is optional; it does not sync your planner.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Reminder settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+
+    private func preference<T>(_ path: WritableKeyPath<ReminderPreferences, T>, fallback: T) -> Binding<T> {
+        Binding(get: { store.state.preferences?[keyPath: path] ?? fallback }, set: { value in var next = store.state; var prefs = next.preferences ?? ReminderPreferences(); prefs[keyPath: path] = value; next.preferences = prefs; _ = store.commit(next) })
     }
 }

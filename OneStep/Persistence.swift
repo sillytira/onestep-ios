@@ -73,7 +73,7 @@ final class PlannerStore {
     }
 
     @discardableResult
-    private func commit(_ next: PlannerState) -> Bool {
+    func commit(_ next: PlannerState) -> Bool {
         do {
             document.payload = try JSONEncoder().encode(next)
             try context.save()
@@ -89,7 +89,7 @@ final class PlannerStore {
     }
 
     @discardableResult
-    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue") -> Bool {
+    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue", repeatRule: String? = nil, steps: [String]? = nil, listName: String? = nil) -> Bool {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return false }
         var next = state
@@ -103,6 +103,16 @@ final class PlannerStore {
         } else {
             next.tasks.append(TaskEntry(title: cleanTitle, notes: notes, dueAt: dueAt,
                                         reminderEnabled: dueAt != nil && reminder, colorName: colorName))
+        }
+        if let index = next.tasks.firstIndex(where: { id == nil ? $0.id == next.tasks.last?.id : $0.id == id }) {
+            next.tasks[index].repeatRule = dueAt == nil ? nil : repeatRule
+            next.tasks[index].listName = listName
+            if let steps {
+                let old = next.tasks[index].microsteps ?? []
+                next.tasks[index].microsteps = steps.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.map { title in
+                    old.first(where: { $0.title == title }) ?? SmallStep(title: title)
+                }
+            }
         }
         return commit(next)
     }
@@ -164,6 +174,17 @@ final class PlannerStore {
             guard let index = next.tasks.firstIndex(where: { $0.id == item.sourceID }) else { return }
             next.tasks[index].completedAt = Date()
             next.tasks[index].snoozedUntil = nil
+            if let rule = next.tasks[index].repeatRule, let due = next.tasks[index].dueAt,
+               rule == "daily" || rule == "weekly" {
+                var copy = next.tasks[index]
+                copy.id = UUID(); copy.repeatParentID = item.sourceID
+                copy.completedAt = nil; copy.createdAt = Date()
+                copy.microsteps = copy.microsteps?.map { SmallStep(title: $0.title) }
+                var date = due
+                repeat { date = Calendar.current.date(byAdding: .day, value: rule == "daily" ? 1 : 7, to: date)! } while date <= Date()
+                copy.dueAt = date
+                next.tasks.append(copy)
+            }
         } else {
             setRecord(item, state: &next, status: skip ? .skipped : .done, snooze: nil)
         }
@@ -190,6 +211,7 @@ final class PlannerStore {
         var next = state
         guard let index = next.tasks.firstIndex(where: { $0.id == task.id }) else { return }
         next.tasks[index].completedAt = nil
+        next.tasks.removeAll { $0.repeatParentID == task.id && $0.completedAt == nil }
         _ = commit(next)
     }
 
@@ -211,7 +233,7 @@ final class PlannerStore {
     }
 
     @discardableResult
-    func startFocus(_ item: ActionItem, until: Date) -> Bool {
+    func startFocus(_ item: ActionItem, until: Date, durationBased: Bool = true) -> Bool {
         let now = Date()
         guard until > now, until.timeIntervalSince(now) <= 8 * 3600,
               let current = PlannerRules.currentAction(for: item, in: state, now: now) else {
@@ -219,7 +241,7 @@ final class PlannerStore {
             return false
         }
         var next = state
-        next.focusSession = FocusSession(action: current, startedAt: now, endsAt: until)
+        next.focusSession = FocusSession(action: current, startedAt: now, endsAt: until, durationBased: durationBased)
         return commit(next)
     }
 
@@ -227,6 +249,42 @@ final class PlannerStore {
         var next = state
         next.focusSession = nil
         _ = commit(next)
+    }
+
+    func togglePause() {
+        var next = state
+        guard var timer = next.focusSession, timer.durationBased == true else { return }
+        if let remaining = timer.pausedRemaining {
+            timer.startedAt = Date(); timer.endsAt = Date().addingTimeInterval(remaining); timer.pausedRemaining = nil
+        } else {
+            guard timer.endsAt > Date() else { return }
+            timer.pausedRemaining = max(1, timer.endsAt.timeIntervalSinceNow)
+        }
+        next.focusSession = timer; _ = commit(next)
+    }
+
+    func toggleSmallStep(taskID: UUID, stepID: UUID) {
+        var next = state
+        guard let i = next.tasks.firstIndex(where: { $0.id == taskID }),
+              let j = next.tasks[i].microsteps?.firstIndex(where: { $0.id == stepID }) else { return }
+        next.tasks[i].microsteps?[j].done.toggle(); _ = commit(next)
+    }
+
+    func exportData() throws -> Data {
+        try JSONEncoder().encode(TransferDocument(state: state))
+    }
+
+    /// Always save the outgoing document before a confirmed snapshot replacement.
+    func importDocument(_ transfer: TransferDocument) -> Bool {
+        do {
+            let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+                .appendingPathComponent("Recovery", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try exportData().write(to: directory.appendingPathComponent("before-import-\(UUID().uuidString).json"), options: [.atomic, .completeFileProtection])
+            var imported = transfer.state
+            imported.focusSession = nil // A timer belongs to the device that started it.
+            return commit(imported)
+        } catch { errorMessage = "Import stopped because a recovery backup couldn't be saved. \(error.localizedDescription)"; return false }
     }
 
     func startLiveActivity() async {

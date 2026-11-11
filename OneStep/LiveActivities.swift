@@ -13,7 +13,7 @@ final class DayActivityController {
         let today = PlannerRules.dayKey(now)
         let done = state.routines.filter { step in state.days.contains { $0.stepID == step.id && $0.day == today && $0.status == .done } }.count
         let timer = state.focusSession.flatMap { session in
-            PlannerRules.currentAction(for: session.action, in: state, now: now) == nil ? nil : session
+            session.pausedRemaining != nil || PlannerRules.currentAction(for: session.action, in: state, now: now) == nil ? nil : session
         }
         return DayActivityAttributes.ContentState(
             title: next?.title ?? "A little breathing room",

@@ -9,7 +9,7 @@ const projectDir = path.join(root, 'OneStep.xcodeproj');
 fs.mkdirSync(path.join(projectDir, 'xcshareddata', 'xcschemes'), { recursive: true });
 const id = name => crypto.createHash('sha256').update(name).digest('hex').slice(0, 24).toUpperCase();
 const q = value => JSON.stringify(value);
-const sources = ['Core/Planner.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
+const sources = ['Core/Planner.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
 const tests = ['PlannerStoreTests.swift'];
 const objects = [];
 const object = (name, body) => objects.push(`${id(name)} = { ${body} };`);

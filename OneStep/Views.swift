@@ -506,7 +506,10 @@ private struct ReminderSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Data, devices, and accounts") { NavigationLink("Backups, Wi-Fi transfer, and accounts") { DataToolsView() } }
+                Section("Data, devices, and accounts") {
+                    NavigationLink("Bank, rewards, and account") { RewardsView() }
+                    NavigationLink("Backups and Wi-Fi transfer") { DataToolsView() }
+                }
                 Section("Reminder preferences") {
                     Toggle("One follow-up after 10 minutes", isOn: preference(\.followup, fallback: true))
                     Picker("Snooze length", selection: preference(\.snoozeMinutes, fallback: 10)) { ForEach([5, 10, 20, 30, 60], id: \.self) { Text("\($0) minutes").tag($0) } }

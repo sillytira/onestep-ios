@@ -4,6 +4,12 @@ import CryptoKit
 
 @MainActor
 final class PlannerStoreTests: XCTestCase {
+    func testOfflineParentCodeMatchesPortablePBKDF2Vector() {
+        let verifier: [String: Any] = ["algorithm": "pbkdf2-sha256", "iterations": 120000, "salt": "AAECAwQFBgcICQoLDA0ODw==", "hash": "nVox1uAswwfkowNdrWPmBt5pBK77mZIbAAxTqHkqG9U="]
+        XCTAssertTrue(RewardsStore.checkPin("0123456789", verifier: verifier))
+        XCTAssertFalse(RewardsStore.checkPin("9876543210", verifier: verifier))
+    }
+
     func testTransferCipherMatchesPortableWireVector() throws {
         let raw = Data((0..<32).map { UInt8($0) })
         let wire = Data(base64Encoded: "AAECAwQFBgcICQoLCGyzSLGAsjv5M/blwo8dH+zM+Qx4xwiOhXAxOFLt8mY=")!

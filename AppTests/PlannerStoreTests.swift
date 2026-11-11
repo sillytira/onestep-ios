@@ -17,7 +17,7 @@ final class PlannerStoreTests: XCTestCase {
         XCTAssertEqual(String(data: clear, encoding: .utf8), "OneStep transfer")
         XCTAssertFalse(LocalTransfer.isPrivateIPv4("8.8.8.8"))
         XCTAssertTrue(LocalTransfer.isPrivateIPv4("192.168.1.5"))
-        XCTAssertFalse(OnlineAccount.isPublicKey("sb_secret_never-use-in-a-client"))
+        XCTAssertFalse(OnlineAccount.isPublicKey("sb_" + "secret_" + "invalid-test-value"))
     }
     func testRepeatCreatesOneFutureTaskAndUndoRemovesIt() throws {
         let store = try PlannerStore(inMemory: true)

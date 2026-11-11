@@ -25,10 +25,25 @@ enum RewardsVault {
 }
 
 @MainActor @Observable final class RewardsStore {
-    var project = "", key = "", email = "", password = "", betaKey = "", username = ""
-    var message = "", busy = false, kind: String?, balance = 0, admin = false
-    var ledger: [[String: Any]] = [], users: [[String: Any]] = []
-    var issueKind = "normal", issueEmail = "", issuedCode = "", target = "", delta = "", reason = ""
+    var project = ""
+    var key = ""
+    var email = ""
+    var password = ""
+    var betaKey = ""
+    var username = ""
+    var message = ""
+    var busy = false
+    var kind: String?
+    var balance = 0
+    var admin = false
+    var ledger: [[String: Any]] = []
+    var users: [[String: Any]] = []
+    var issueKind = "normal"
+    var issueEmail = ""
+    var issuedCode = ""
+    var target = ""
+    var delta = ""
+    var reason = ""
     private var session: [String: Any]?
     var signedIn: Bool { session?["access_token"] is String }
     var userID: String? { (session?["user"] as? [String: Any])?["id"] as? String }

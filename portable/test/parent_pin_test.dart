@@ -5,6 +5,7 @@ import 'package:onestep/family.dart';
 void main(){
   test('Offline parent verifier rejects a wrong code and malformed parameters',()async{
     final verifier=await ParentPin.verifier('0123456789',salt:List.generate(16,(i)=>i));
+    expect(verifier['hash'],'nVox1uAswwfkowNdrWPmBt5pBK77mZIbAAxTqHkqG9U=');
     expect(await ParentPin.matches('0123456789',verifier),true);
     expect(await ParentPin.matches('9876543210',verifier),false);
     expect(await ParentPin.matches('0123456789',{...verifier,'iterations':1}),false);

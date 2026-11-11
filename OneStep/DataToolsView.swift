@@ -14,7 +14,6 @@ struct DataToolsView: View {
     @Environment(PlannerStore.self) private var store
     @Environment(\.scenePhase) private var phase
     @State private var transfer = LocalTransfer()
-    @State private var account = OnlineAccount()
     @State private var file = BackupFile(data: Data())
     @State private var exporting = false
     @State private var importing = false
@@ -28,7 +27,6 @@ struct DataToolsView: View {
     @State private var releaseMessage = ""
 
     var body: some View {
-        @Bindable var auth = account
         Form {
             Section("Your space") {
                 TextField("Profile name", text: $name)
@@ -79,14 +77,8 @@ struct DataToolsView: View {
                 Text("This is a manual snapshot transfer, not automatic conflict merging. Export both devices first if they have different edits.").font(.footnote)
             }
             Section("Optional online account") {
-                Text("Requires your own hosted Supabase project. No server at home is needed. Only your email and authentication requests go online; tasks and notes are never uploaded. Sign-in can be repeated to verify an account, and the local profile remains usable offline.").font(.footnote)
-                TextField("https://your-project.supabase.co", text: $auth.projectURL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("Publishable or legacy anon key only", text: $auth.publicKey).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("Email", text: $auth.email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button("Send email code") { Task { await account.sendCode() } }.disabled(account.busy)
-                TextField("Email code", text: $auth.code).textContentType(.oneTimeCode)
-                Button("Verify account") { Task { await account.verify(store: store) } }.disabled(account.busy || account.code.isEmpty)
-                Text(account.message).font(.footnote)
+                NavigationLink("Bank, rewards, and account") { RewardsView() }
+                Text("Beta enrollment and secure account sessions are separate from your local planner profile.").font(.footnote)
             }
             Section("App updates") {
                 Button("Check GitHub releases") { Task { await checkReleases() } }

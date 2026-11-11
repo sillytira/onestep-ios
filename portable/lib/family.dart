@@ -127,7 +127,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   final betaKey=TextEditingController(),username=TextEditingController();
   final publicName=TextEditingController(),handle=TextEditingController();
   bool optIn=false;
-  List<Json> ledger=[],tasks=[],children=[],families=[];int balance=0;String message='',generatedInvite='';String? selectedChild;
+  List<Json> ledger=[],tasks=[],children=[],families=[],rankings=[];int balance=0;String message='',generatedInvite='';String? selectedChild;
   bool busy=true;bool externalBank=false;bool ready=false;bool admin=false;Timer? poll;
   String get appName=>widget.role=='parent'?'OneStep Parent':widget.role=='kids'?'OneStep Kids':'OneStep Bank';
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);initialize();}
@@ -143,6 +143,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     final own=await client.list('onestep_children?select=child_id,offline_pin_verifier,active&child_id=eq.${client.userID}&limit=1');
     if(own.isNotEmpty&&own.first['active']==true&&own.first['offline_pin_verifier'] is Map)await FamilyClient.vault.write(key:'family.childVerifier.${client.userID}',value:jsonEncode(own.first['offline_pin_verifier']));
     admin=await client.rpc('onestep_is_admin',{}) as bool;
+    if(client.accountKind!='kids')rankings=await client.list('onestep_leaderboard?select=display_name,points,handle&limit=100');
     if(publicName.text.isEmpty){final profile=await client.list('onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1');if(profile.isNotEmpty){publicName.text=profile.first['display_name'] as String;handle.text=profile.first['handle'] as String? ??'';optIn=profile.first['leaderboard_opt_in']==true;}}
     await FamilyClient.vault.write(key:'family.childCache.${client.userID}',value:jsonEncode(values[3]));
     if(!mounted)return;setState((){balance=(values[0] as num).toInt();ledger=values[1] as List<Json>;tasks=values[2] as List<Json>;children=values[3] as List<Json>;families=values[4] as List<Json>;if(selectedChild==null&&children.isNotEmpty)selectedChild=children.first['child_id'] as String;});
@@ -228,6 +229,11 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         TextField(controller:handle,decoration:const InputDecoration(labelText:'Handle'),autocorrect:false),
         SwitchListTile(title:const Text('Opt in to leaderboard'),value:optIn,onChanged:busy?null:(v)=>setState((){optIn=v;})),
         FilledButton(onPressed:busy?null:(){run(()async{await client.rpc('onestep_update_profile',{'profile_name':publicName.text,'profile_handle':handle.text,'opt_in':optIn});setState((){message='Public profile saved.';});});},child:const Text('Save public profile')),
+      ]),
+      if(client.accountKind!='kids')panel('Opt-in rankings',[
+        if(rankings.isEmpty)const Text('No public scores yet. Joining the leaderboard is optional.'),
+        for(var index=0;index<rankings.length;index++)ListTile(leading:Text('#${index+1}'),title:Text(rankings[index]['display_name'] as String),subtitle:Text('@${rankings[index]['handle']??''}'),trailing:Text('${rankings[index]['points']} points')),
+        const Text('Kids accounts are excluded by the service, regardless of client settings.'),
       ]),
       if(client.accountKind=='kids'||client.accountKind==null)OutlinedButton(onPressed:busy?null:(){run(childSignOut);},child:const Text('Parent-authorized device sign-out'))
       else OutlinedButton(onPressed:busy?null:(){run(()async{await client.signOut();setState((){tasks=[];children=[];families=[];ledger=[];balance=0;});});},child:const Text('Sign out of this device')),

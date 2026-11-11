@@ -4,4 +4,3 @@ build/
 android/
 windows/
 linux/
-pubspec.lock

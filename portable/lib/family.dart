@@ -128,11 +128,11 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   final publicName=TextEditingController(),handle=TextEditingController();
   bool optIn=false;
   List<Json> ledger=[],tasks=[],children=[],families=[],rankings=[];int balance=0;String message='',generatedInvite='';String? selectedChild;
-  bool busy=true;bool externalBank=false;bool ready=false;bool admin=false;Timer? poll;
+  bool busy=true;bool externalBank=false;bool ready=false;bool admin=false;bool hasSnapshot=false;String lastSync='';Timer? poll;
   String get effectiveRole=>client.accountKind=='kids'?'kids':widget.role;
   String get appName=>effectiveRole=='parent'?'OneStep Parent':effectiveRole=='kids'?'OneStep Kids':'OneStep Bank';
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);initialize();}
-  Future<void> initialize()async{try{await client.load();url.text=client.project;key.text=client.publicKey;externalBank=await FamilyClient.vault.read(key:'family.externalBank')=='true';final cached=await FamilyClient.vault.read(key:'family.childCache.${client.userID}');if(cached!=null)children=(jsonDecode(cached) as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList();if(children.isNotEmpty)selectedChild=children.first['child_id'] as String;if(client.signedIn)await refresh();}catch(e){message='$e';}finally{if(mounted)setState((){busy=false;ready=true;});}poll=Timer.periodic(const Duration(seconds:20),(_){if(mounted&&client.signedIn&&!busy)run(refresh,quiet:true);});}
+  Future<void> initialize()async{try{await client.load();url.text=client.project;key.text=client.publicKey;externalBank=await FamilyClient.vault.read(key:'family.externalBank')=='true';final cached=await FamilyClient.vault.read(key:'family.snapshot.${client.userID}');if(cached!=null){final saved=jsonDecode(cached) as Json;balance=(saved['balance'] as num).toInt();ledger=rows(saved,'ledger');tasks=rows(saved,'tasks');children=rows(saved,'children');families=rows(saved,'families');rankings=rows(saved,'rankings');publicName.text=saved['publicName'] as String? ??'';handle.text=saved['handle'] as String? ??'';optIn=saved['optIn']==true;lastSync=saved['lastSync'] as String? ??'';hasSnapshot=true;}if(children.isNotEmpty)selectedChild=children.first['child_id'] as String;if(client.signedIn)await refresh();}catch(e){message='$e';}finally{if(mounted)setState((){busy=false;ready=true;});}poll=Timer.periodic(const Duration(seconds:20),(_){if(mounted&&client.signedIn&&!busy)run(refresh,quiet:true);});}
   @override void dispose(){poll?.cancel();WidgetsBinding.instance.removeObserver(this);for(final c in[url,key,email,password,familyName,nickname,invite,taskTitle,reward,betaKey,username,publicName,handle]){c.dispose();}super.dispose();}
   @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed&&ready&&client.signedIn&&!busy)run(refresh,quiet:true);}
   Future<void> run(Future<void> Function() action,{bool quiet=false})async{if(busy)return;setState((){busy=true;if(!quiet)message='';});try{await action();}catch(e){if(mounted)setState((){message='$e';});}finally{if(mounted)setState((){busy=false;});}}
@@ -147,7 +147,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     if(client.accountKind!='kids')rankings=await client.list('onestep_leaderboard?select=display_name,points,handle&limit=100');
     if(publicName.text.isEmpty){final profile=await client.list('onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1');if(profile.isNotEmpty){publicName.text=profile.first['display_name'] as String;handle.text=profile.first['handle'] as String? ??'';optIn=profile.first['leaderboard_opt_in']==true;}}
     await FamilyClient.vault.write(key:'family.childCache.${client.userID}',value:jsonEncode(values[3]));
-    if(!mounted)return;setState((){balance=(values[0] as num).toInt();ledger=values[1] as List<Json>;tasks=values[2] as List<Json>;children=values[3] as List<Json>;families=values[4] as List<Json>;if(selectedChild==null&&children.isNotEmpty)selectedChild=children.first['child_id'] as String;});
+    if(!mounted)return;setState((){balance=(values[0] as num).toInt();ledger=values[1] as List<Json>;tasks=values[2] as List<Json>;children=values[3] as List<Json>;families=values[4] as List<Json>;lastSync=DateTime.now().toLocal().toString().split('.').first;hasSnapshot=true;if(selectedChild==null&&children.isNotEmpty)selectedChild=children.first['child_id'] as String;});
+    await FamilyClient.vault.write(key:'family.snapshot.${client.userID}',value:jsonEncode({'balance':balance,'ledger':ledger,'tasks':tasks,'children':children,'families':families,'rankings':rankings,'publicName':publicName.text,'handle':handle.text,'optIn':optIn,'lastSync':lastSync}));
   }
   Future<void> childSignOut()async{
     final input=TextEditingController();
@@ -155,7 +156,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     if(value==null)return;
     if(!await client.unlockOffline(value))throw const FormatException('Incorrect parent code.');
     await client.signOut(parentAuthorized:true);
-    setState((){tasks=[];children=[];families=[];ledger=[];balance=0;});
+    setState((){tasks=[];children=[];families=[];ledger=[];balance=0;hasSnapshot=false;lastSync='';rankings=[];publicName.clear();handle.clear();});
   }
   Widget panel(String title,List<Widget> content,{Color? color})=>Card(child:Container(width:double.infinity,padding:const EdgeInsets.all(22),decoration:color==null?null:BoxDecoration(borderRadius:BorderRadius.circular(28),gradient:LinearGradient(colors:[color.withValues(alpha:.35),const Color(0xff1c1d21)])),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.bold)),const SizedBox(height:16),for(final child in content)...[child,const SizedBox(height:12)]])));
   @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(appName),actions:[if(client.signedIn)IconButton(tooltip:'Refresh account',onPressed:busy?null:(){run(refresh);},icon:const Icon(Icons.refresh))]),body:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:760),child:ListView(padding:const EdgeInsets.all(20),children:[
@@ -179,9 +180,10 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       ]),
     ]else...[
       Text(client.accountKind=='kids'?(client.session?['user']?['email'] as String? ??'Kids account'):'@${handle.text}',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold)),const SizedBox(height:12),
+      Text(hasSnapshot?'Last synced: $lastSync · saved account snapshot':'Connect to load your account. No saved balance yet.'),const SizedBox(height:12),
       if(admin)OutlinedButton.icon(onPressed:(){Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>AdminPage(client:client)));},icon:const Icon(Icons.admin_panel_settings),label:const Text('Application admin console')),
       if(effectiveRole=='bank'||effectiveRole=='kids')panel('Your points',[
-        const Icon(Icons.credit_card_rounded,size:46),Text('$balance',style:const TextStyle(fontSize:54,fontWeight:FontWeight.bold)),
+        const Icon(Icons.credit_card_rounded,size:46),Text(hasSnapshot?'$balance':'—',style:const TextStyle(fontSize:54,fontWeight:FontWeight.bold)),
         const Text('Virtual points · earned through parent-approved tasks'),
         const Text('Points cannot be bought with real money. App-time spending and Screen Time enforcement are not enabled yet.'),
       ],color:const Color(0xff7760c9)),
@@ -237,7 +239,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         const Text('Kids accounts are excluded by the service, regardless of client settings.'),
       ]),
       if(client.accountKind=='kids'||client.accountKind==null)OutlinedButton(onPressed:busy?null:(){run(childSignOut);},child:const Text('Parent-authorized device sign-out'))
-      else OutlinedButton(onPressed:busy?null:(){run(()async{await client.signOut();setState((){tasks=[];children=[];families=[];ledger=[];balance=0;});});},child:const Text('Sign out of this device')),
+      else OutlinedButton(onPressed:busy?null:(){run(()async{await client.signOut();setState((){tasks=[];children=[];families=[];ledger=[];balance=0;hasSnapshot=false;lastSync='';rankings=[];publicName.clear();handle.clear();});});},child:const Text('Sign out of this device')),
     ],
   ]))));
 }

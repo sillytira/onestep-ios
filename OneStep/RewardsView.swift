@@ -34,6 +34,8 @@ enum RewardsVault {
     var publicName = ""
     var optIn = false
     var rankings: [[String: Any]] = []
+    var snapshotLoaded = false
+    var lastSync = ""
     var message = ""
     var busy = false
     var kind: String?
@@ -54,6 +56,11 @@ enum RewardsVault {
         if let data = RewardsVault.read("connection"), let value = try? JSONSerialization.jsonObject(with: data) as? [String: String] { project = value["url"] ?? ""; key = value["key"] ?? "" }
         if let data = RewardsVault.read("session") { session = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] }
         if let data = RewardsVault.read("kind") { kind = String(data: data, encoding: .utf8) }
+        if let id = userID, let data = RewardsVault.read("snapshot.\(id)"), let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            balance = saved["balance"] as? Int ?? 0; ledger = saved["ledger"] as? [[String: Any]] ?? []
+            username = saved["handle"] as? String ?? ""; publicName = saved["name"] as? String ?? ""
+            lastSync = saved["lastSync"] as? String ?? ""; snapshotLoaded = true
+        }
     }
     func action(_ work: @MainActor () async throws -> Void) async {
         guard !busy else { return }; busy = true; message = ""; defer { busy = false }
@@ -124,6 +131,10 @@ enum RewardsVault {
                 try RewardsVault.write("verifier.\(userID)", JSONSerialization.data(withJSONObject: verifier))
             }
         }
+        if let id = userID {
+            lastSync = Date().formatted(date: .abbreviated, time: .shortened); snapshotLoaded = true
+            try RewardsVault.write("snapshot.\(id)", JSONSerialization.data(withJSONObject: ["balance": balance, "ledger": ledger, "handle": username, "name": publicName, "lastSync": lastSync]))
+        }
     }
     func signOut(parentCode: String? = nil) async throws {
         if kind == "kids" || kind == nil {
@@ -140,7 +151,7 @@ enum RewardsVault {
         }
         _ = try? await request("/auth/v1/logout", body: [:])
         try RewardsVault.write("session", nil); try RewardsVault.write("kind", nil)
-        session = nil; kind = nil; admin = false; ledger = []; users = []; balance = 0
+        session = nil; kind = nil; admin = false; ledger = []; users = []; balance = 0; username = ""; publicName = ""; rankings = []; snapshotLoaded = false; lastSync = ""
     }
     static func checkPin(_ pin: String, verifier: [String: Any]) -> Bool {
         guard pin.count == 10, pin.allSatisfy(\.isNumber), verifier["algorithm"] as? String == "pbkdf2-sha256", verifier["iterations"] as? Int == 120000,
@@ -186,7 +197,8 @@ struct RewardsView: View {
                     else { Text("@\(model.username)") }
                 }
                 Section("Your points") {
-                    Label("\(model.balance)", systemImage: "creditcard.fill").font(.largeTitle.bold()).foregroundStyle(ItemPalette.violet.color)
+                    Label(model.snapshotLoaded ? "\(model.balance)" : "—", systemImage: "creditcard.fill").font(.largeTitle.bold()).foregroundStyle(ItemPalette.violet.color)
+                    Text(model.snapshotLoaded ? "Last synced: \(model.lastSync). Saved account snapshot." : "Connect to load your account. No saved balance yet.").font(.footnote)
                     Text("Virtual points from approved tasks. No real-money purchases.")
                     Text("App-time spending and Apple Screen Time shielding are not active yet.").font(.footnote)
                     Button("Refresh") { Task { await model.action { try await model.reload() } } }.disabled(model.busy)

@@ -58,6 +58,7 @@ struct RootView: View {
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
         }
         .tint(tabPalette.color)
+        .preferredColorScheme(.dark)
         .sheet(item: $editor) { route in
             switch route {
             case .task(let task): TaskEditor(task: task)
@@ -241,7 +242,7 @@ private struct TaskListView: View {
     private var tasks: [TaskEntry] {
         store.state.tasks.filter { $0.completedAt == nil && ($0.archived == true) == showArchived && (search.isEmpty || ($0.title + " " + $0.notes + " " + ($0.listName ?? "")).localizedCaseInsensitiveContains(search)) }.sorted {
             if ($0.pinned == true) != ($1.pinned == true) { return $0.pinned == true }
-            ($0.snoozedUntil ?? $0.dueAt ?? .distantFuture) < ($1.snoozedUntil ?? $1.dueAt ?? .distantFuture)
+            return ($0.snoozedUntil ?? $0.dueAt ?? .distantFuture) < ($1.snoozedUntil ?? $1.dueAt ?? .distantFuture)
         }
     }
 

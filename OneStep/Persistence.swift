@@ -30,6 +30,7 @@ final class PlannerStore {
     var feedback: String?
     var liveRunning = false
     var liveMessage: String?
+    var guidedRoutine = false
 
     @ObservationIgnored private let container: ModelContainer
     @ObservationIgnored private let context: ModelContext
@@ -188,7 +189,15 @@ final class PlannerStore {
         } else {
             setRecord(item, state: &next, status: skip ? .skipped : .done, snooze: nil)
         }
-        if commit(next) { feedback = skip ? "Skipped for today. Tomorrow stays the same." : "Done. One thing less to carry." }
+        if commit(next) {
+            feedback = skip ? "Skipped for today. Tomorrow stays the same." : "Done. One thing less to carry."
+            if guidedRoutine, item.kind == .routine {
+                focusedItem = state.routines.sorted { $0.position < $1.position }
+                    .first { PlannerRules.record($0, on: Date(), in: state)?.status == nil }
+                    .map { PlannerRules.routineAction($0, on: Date(), state: state) }
+                if focusedItem == nil { guidedRoutine = false }
+            }
+        }
     }
 
     func snooze(_ item: ActionItem, minutes: Int = 10) {

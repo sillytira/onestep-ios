@@ -182,6 +182,7 @@ private struct NowView: View {
                         if item.kind == .routine {
                             Button("Skip today") { store.complete(item, skip: true) }
                                 .frame(maxWidth: .infinity).padding(.vertical, 8)
+                            if store.guidedRoutine { Button("Leave guided routine") { store.guidedRoutine = false; store.focusedItem = nil } }
                         }
                     }
                     .padding(20)
@@ -291,7 +292,7 @@ private struct RoutineListView: View {
                 Text("The same gentle structure, every day. Done and Skip only affect today.").foregroundStyle(.secondary)
                 Button("Start a guided routine") {
                     if let step = store.state.routines.sorted(by: { $0.position < $1.position }).first(where: { PlannerRules.record($0, on: now, in: store.state)?.status == nil }) {
-                        store.focusedItem = PlannerRules.routineAction(step, on: now, state: store.state); store.selectedTab = 0
+                        store.guidedRoutine = true; store.focusedItem = PlannerRules.routineAction(step, on: now, state: store.state); store.selectedTab = 0
                     }
                 }
             }

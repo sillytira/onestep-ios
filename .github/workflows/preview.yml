@@ -1,5 +1,5 @@
 name: Capture simulator preview
-# Verify the compact focus layout on the same source revision as the device build.
+# Verify the dark 0.3 focus layout on the same source revision as the device build.
 on:
   workflow_dispatch:
   push:

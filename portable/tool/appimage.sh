@@ -22,9 +22,13 @@ curl -fL --retry 3 https://github.com/AppImage/appimagetool/releases/download/1.
 chmod +x build/appimagetool.AppImage
 ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 build/appimagetool.AppImage release/OneStep.AppDir release/OneStep-0.3.0-x86_64.AppImage
 release/OneStep-0.3.0-x86_64.AppImage --appimage-extract >/dev/null
-timeout 12s xvfb-run -a squashfs-root/AppRun > build/linux-smoke.log 2>&1 &
-PID=$!
-sleep 8
-if ! kill -0 "$PID" 2>/dev/null; then cat build/linux-smoke.log; exit 1; fi
-wait "$PID" || test "$?" = 124
+xvfb-run -a bash -c '
+  squashfs-root/AppRun > build/linux-smoke.log 2>&1 &
+  app_pid=$!
+  sleep 8
+  if ! kill -0 "$app_pid" 2>/dev/null; then cat build/linux-smoke.log; exit 1; fi
+  scrot release/OneStep-Linux-preview.png
+  kill "$app_pid"
+  wait "$app_pid" || true
+'
 sha256sum release/OneStep-0.3.0-x86_64.AppImage > release/OneStep-0.3.0-x86_64.AppImage.sha256

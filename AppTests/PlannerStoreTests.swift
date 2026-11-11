@@ -1,8 +1,18 @@
 import XCTest
+import CryptoKit
 @testable import OneStep
 
 @MainActor
 final class PlannerStoreTests: XCTestCase {
+    func testTransferCipherMatchesPortableWireVector() throws {
+        let raw = Data((0..<32).map { UInt8($0) })
+        let wire = Data(base64Encoded: "AAECAwQFBgcICQoLCGyzSLGAsjv5M/blwo8dH+zM+Qx4xwiOhXAxOFLt8mY=")!
+        let clear = try AES.GCM.open(AES.GCM.SealedBox(combined: wire), using: SymmetricKey(data: raw))
+        XCTAssertEqual(String(data: clear, encoding: .utf8), "OneStep transfer")
+        XCTAssertFalse(LocalTransfer.isPrivateIPv4("8.8.8.8"))
+        XCTAssertTrue(LocalTransfer.isPrivateIPv4("192.168.1.5"))
+        XCTAssertFalse(OnlineAccount.isPublicKey("sb_secret_never-use-in-a-client"))
+    }
     func testRepeatCreatesOneFutureTaskAndUndoRemovesIt() throws {
         let store = try PlannerStore(inMemory: true)
         XCTAssertTrue(store.saveTask(id: nil, title: "Water", notes: "", dueAt: Date().addingTimeInterval(-86400), reminder: true, repeatRule: "daily", steps: ["Fill can"]))

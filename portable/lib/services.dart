@@ -172,7 +172,9 @@ class LanTransfer {
 
 Future<Json> authRequest(String project, String publicKey, String path, Json body) async {
   final base = Uri.parse(project);
-  if (base.scheme != 'https' || !base.host.endsWith('.supabase.co') || publicKey.isEmpty || publicKey.startsWith('sb_secret_')) throw const FormatException('Use your Supabase HTTPS URL and publishable key, never a secret key.');
+  bool allowedKey = publicKey.startsWith('sb_publishable_');
+  try { final parts = publicKey.split('.'); if(parts.length == 3) allowedKey = (jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1])))) as Map)['role'] == 'anon'; } catch (_) { /* Not a legacy public JWT. */ }
+  if (base.scheme != 'https' || !base.host.endsWith('.supabase.co') || !allowedKey) throw const FormatException('Use your Supabase HTTPS URL and publishable key, never a secret or service-role key.');
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
   try {
     final request = await client.postUrl(base.resolve('/auth/v1/$path'));

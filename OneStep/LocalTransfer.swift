@@ -114,7 +114,7 @@ import Darwin
         request.timeoutInterval = 20
         request.setValue("Bearer " + SHA256.hash(data: raw).map { String(format: "%02x", $0) }.joined(), forHTTPHeaderField: "Authorization")
         let config = URLSessionConfiguration.ephemeral
-        let session = URLSession(configuration: config)
+        let session = URLSession(configuration: config, delegate: NoTransferRedirects(), delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         let (stream, response) = try await session.bytes(for: request)
         guard let response = response as? HTTPURLResponse, response.statusCode == 200,
@@ -126,5 +126,12 @@ import Darwin
         }
         let clear = try AES.GCM.open(AES.GCM.SealedBox(combined: data), using: SymmetricKey(data: raw))
         return try TransferDocument.decode(clear)
+    }
+}
+
+private final class NoTransferRedirects: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
     }
 }

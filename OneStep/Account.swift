@@ -10,10 +10,21 @@ import Observation
     var message = ""
     var busy = false
 
+    static func isPublicKey(_ key: String) -> Bool {
+        if key.hasPrefix("sb_publishable_") { return true }
+        let parts = key.split(separator: ".")
+        guard parts.count == 3 else { return false }
+        var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+        guard let data = Data(base64Encoded: payload), let claims = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return false }
+        return claims["role"] as? String == "anon"
+    }
+
     func request(_ path: String, body: [String: String]) async throws -> [String: Any] {
         guard let url = URL(string: projectURL), url.scheme == "https", let host = url.host,
-              host.hasSuffix(".supabase.co"), !publicKey.isEmpty,
-              !publicKey.hasPrefix("sb_secret_") else { throw TransferError.invalid }
+              host.hasSuffix(".supabase.co"), Self.isPublicKey(publicKey) else {
+            throw NSError(domain: "OneStep", code: 2, userInfo: [NSLocalizedDescriptionKey: "Enter a Supabase HTTPS project URL and a publishable or anon key. Secret and service-role keys are never allowed."])
+        }
         var request = URLRequest(url: url.appendingPathComponent("auth/v1/\(path)"))
         request.httpMethod = "POST"; request.timeoutInterval = 20
         request.setValue(publicKey, forHTTPHeaderField: "apikey")

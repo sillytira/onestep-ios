@@ -43,6 +43,6 @@ void main() {
     expect(base64Encode(wire),'AAECAwQFBgcICQoLCGyzSLGAsjv5M/blwo8dH+zM+Qx4xwiOhXAxOFLt8mY=');
     final opened=await AesGcm.with256bits().decrypt(SecretBox(wire.sublist(12,wire.length-16),nonce:wire.sublist(0,12),mac:Mac(wire.sublist(wire.length-16))),secretKey:key);
     expect(utf8.decode(opened),'OneStep transfer');
-    expect(()=>LanTransfer.receive('onestep-transfer://8.8.8.8:80/#${base64Encode(List.filled(32,0))}'),throwsA(isA<FormatException>()));
+    await expectLater(LanTransfer.receive('onestep-transfer://8.8.8.8:80/#${base64Encode(List.filled(32,0))}'),throwsA(isA<FormatException>()));
   });
 }

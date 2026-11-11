@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 struct BackupFile: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }

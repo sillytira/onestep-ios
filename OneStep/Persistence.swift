@@ -171,7 +171,7 @@ final class PlannerStore {
         var next = state
         if next.focusSession?.action.id == item.id { next.focusSession = nil }
         if item.kind == .task {
-            guard let index = next.tasks.firstIndex(where: { $0.id == item.sourceID }) else { return }
+            guard let index = next.tasks.firstIndex(where: { $0.id == item.sourceID && $0.completedAt == nil }) else { return }
             next.tasks[index].completedAt = Date()
             next.tasks[index].snoozedUntil = nil
             if let rule = next.tasks[index].repeatRule, let due = next.tasks[index].dueAt,

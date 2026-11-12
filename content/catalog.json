@@ -1,9 +1,9 @@
 {
   "format": "OneStepContent",
   "schema": 1,
-  "revision": 1,
+  "revision": 2,
   "minAppVersion": "0.5.0",
-  "message": "Small steps, at your own pace.",
+  "message": "A small reset is always a valid next step.",
   "packs": [
     {
       "id": "gentle-morning",
@@ -46,6 +46,25 @@
           "hour": 20,
           "minute": 35,
           "colorName": "coral"
+        }
+      ]
+    },
+    {
+      "id": "tiny-reset",
+      "title": "Tiny reset",
+      "description": "A short reset you can move to any time in Routines.",
+      "steps": [
+        {
+          "title": "Put both feet on the floor",
+          "hour": 12,
+          "minute": 0,
+          "colorName": "mint"
+        },
+        {
+          "title": "Choose a two-minute next action",
+          "hour": 12,
+          "minute": 2,
+          "colorName": "blue"
         }
       ]
     }

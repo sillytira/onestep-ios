@@ -127,10 +127,10 @@ class FamilyClient {
       throw const FormatException(
         'Check your email to confirm your account, then sign in.',
       );
-    final next = Map<String,dynamic>.from(response);
+    final next = Map<String, dynamic>.from(response);
     if (next['user']?['id'] != userID) {
       accountKind = null;
-      await vault.delete(key:'family.kind');
+      await vault.delete(key: 'family.kind');
     }
     session = next;
     session!['expires_at'] ??=
@@ -149,11 +149,12 @@ class FamilyClient {
     if (_refreshing != null) return _refreshing!;
     final pending = () async {
       final updated = await request(
-          '/auth/v1/token?grant_type=refresh_token',
-          body: {'refresh_token': refresh},
-          authenticated: false,
-        );
-      if (session?['refresh_token'] != refresh) throw const FormatException('Account changed. Please retry.');
+        '/auth/v1/token?grant_type=refresh_token',
+        body: {'refresh_token': refresh},
+        authenticated: false,
+      );
+      if (session?['refresh_token'] != refresh)
+        throw const FormatException('Account changed. Please retry.');
       await acceptSession(updated);
     }();
     _refreshing = pending;
@@ -512,6 +513,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   bool busy = true;
   bool externalBank = false;
   int bankTab = 0;
+  bool creatingAccount = false;
   bool policyDirty = false;
   bool ready = false;
   bool admin = false;
@@ -519,7 +521,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   String lastSync = '';
   Timer? poll;
   String get effectiveRole => client.signedIn
-      ? (client.accountKind == 'parent' || (client.accountKind == 'owner' && widget.role == 'parent') ? 'parent' : client.accountKind == 'kids' ? 'kids' : 'bank')
+      ? (client.accountKind == 'parent' ||
+                (client.accountKind == 'owner' && widget.role == 'parent')
+            ? 'parent'
+            : client.accountKind == 'kids'
+            ? 'kids'
+            : 'bank')
       : widget.role;
   String get appName => effectiveRole == 'parent'
       ? 'OneStep Parent'
@@ -666,14 +673,21 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         'onestep_screen_time_policies?select=user_id,enabled,cost_per_minute,daily_minutes&limit=100',
       );
       screenPoliciesLoaded = true;
-    } catch (_) { message = 'App-time policy could not refresh. Account data is still available.'; }
-    if (client.accountKind != 'kids') try {
-      rankings =
-          (await client.rpc('onestep_rankings', {'metric': rankingMetric})
-                  as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-    } catch (_) { message = 'Rankings could not refresh. Your account data is still available.'; }
+    } catch (_) {
+      message =
+          'App-time policy could not refresh. Account data is still available.';
+    }
+    if (client.accountKind != 'kids')
+      try {
+        rankings =
+            (await client.rpc('onestep_rankings', {'metric': rankingMetric})
+                    as List)
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+      } catch (_) {
+        message =
+            'Rankings could not refresh. Your account data is still available.';
+      }
     if (publicName.text.isEmpty) {
       final profile = await client.list(
         'onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1',
@@ -748,7 +762,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       throw const FormatException('Incorrect parent code.');
     await client.signOut(parentAuthorized: true);
     setState(() {
-      admin = false; screenPoliciesLoaded = false; bankTab = 0;
+      admin = false;
+      screenPoliciesLoaded = false;
+      bankTab = 0;
       tasks = [];
       children = [];
       families = [];
@@ -763,33 +779,38 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   }
 
   Widget panel(String title, List<Widget> content, {Color? color}) {
-    if (client.signedIn && !bankSectionVisible(title, bankTab)) return const SizedBox.shrink();
+    if (client.signedIn && !bankSectionVisible(title, bankTab))
+      return const SizedBox.shrink();
     return Card(
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: color == null
-          ? null
-          : BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(
-                colors: [color.withValues(alpha: .35), const Color(0xff1c1d21)],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: color == null
+            ? null
+            : BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  colors: [
+                    color.withValues(alpha: .35),
+                    const Color(0xff1c1d21),
+                  ],
+                ),
               ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          for (final child in content) ...[child, const SizedBox(height: 12)],
-        ],
+            const SizedBox(height: 16),
+            for (final child in content) ...[child, const SizedBox(height: 12)],
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -807,17 +828,51 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
           ),
       ],
     ),
-    bottomNavigationBar: !client.signedIn ? null : NavigationBar(
-      selectedIndex: [0,1,if(effectiveRole!='bank')2,if(client.accountKind!='kids')3,4].indexOf(bankTab).clamp(0,4),
-      onDestinationSelected:(i)=>setState(()=>bankTab=[0,1,if(effectiveRole!='bank')2,if(client.accountKind!='kids')3,4][i]),
-      destinations: [
-        const NavigationDestination(icon:Icon(Icons.account_balance_wallet_outlined),selectedIcon:Icon(Icons.account_balance_wallet),label:'Home'),
-        const NavigationDestination(icon:Icon(Icons.receipt_long_outlined),label:'Activity'),
-        if(effectiveRole!='bank') const NavigationDestination(icon:Icon(Icons.family_restroom),label:'Family'),
-        if(client.accountKind!='kids') const NavigationDestination(icon:Icon(Icons.leaderboard_outlined),label:'Rankings'),
-        const NavigationDestination(icon:Icon(Icons.person_outline),label:'Account'),
-      ],
-    ),
+    bottomNavigationBar: !client.signedIn
+        ? null
+        : NavigationBar(
+            selectedIndex: [
+              0,
+              1,
+              if (effectiveRole != 'bank') 2,
+              if (client.accountKind != 'kids') 3,
+              4,
+            ].indexOf(bankTab).clamp(0, 4),
+            onDestinationSelected: (i) => setState(
+              () => bankTab = [
+                0,
+                1,
+                if (effectiveRole != 'bank') 2,
+                if (client.accountKind != 'kids') 3,
+                4,
+              ][i],
+            ),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.account_balance_wallet_outlined),
+                selectedIcon: Icon(Icons.account_balance_wallet),
+                label: 'Home',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                label: 'Activity',
+              ),
+              if (effectiveRole != 'bank')
+                const NavigationDestination(
+                  icon: Icon(Icons.family_restroom),
+                  label: 'Family',
+                ),
+              if (client.accountKind != 'kids')
+                const NavigationDestination(
+                  icon: Icon(Icons.leaderboard_outlined),
+                  label: 'Rankings',
+                ),
+              const NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                label: 'Account',
+              ),
+            ],
+          ),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
@@ -831,14 +886,13 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 child: SelectableText(message),
               ),
             if (!client.signedIn) ...[
-              panel('OneStep accounts', [
-                const Text(
-                  'Connected to the main OneStep service. Sign in or enter your admin-issued beta key to create an account.',
-                ),
-              ]),
+              panel('Your effort, in one place.', [
+                const Icon(Icons.account_balance_wallet_outlined,size:42,color:Color(0xffc5baff)),
+                const Text('Earn points with OneStep. Keep your rewards and activity together across your devices.'),
+              ],color:const Color(0xff6548a6)),
               panel('Your account', [
-                const Text(
-                  'Use the same service and account in Bank, Kids, and OneStep. A parent and child need separate accounts. Family roles are enforced by the service; installing Parent does not grant access to another family.',
+                Text(
+                  creatingAccount ? 'Join with the invitation from your administrator.' : 'Welcome back. Sign in to your OneStep account.',
                 ),
                 TextField(
                   controller: email,
@@ -852,7 +906,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   obscureText: true,
                   autocorrect: false,
                 ),
-                TextField(
+                if (creatingAccount) TextField(
                   controller: betaKey,
                   decoration: const InputDecoration(
                     labelText: 'Single-use beta key (new accounts)',
@@ -860,7 +914,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   obscureText: true,
                   autocorrect: false,
                 ),
-                if (effectiveRole != 'kids')
+                if (creatingAccount && effectiveRole != 'kids')
                   TextField(
                     controller: username,
                     decoration: const InputDecoration(
@@ -874,34 +928,19 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       : () {
                           run(() async {
                             await client.configure(url.text, key.text);
-                            await client.signIn(email.text, password.text);
+                            if (creatingAccount) {
+                              await client.signUp(email.text,password.text,betaKey.text,username.text);
+                              betaKey.clear();
+                            } else { await client.signIn(email.text, password.text); }
                             password.clear();
                             await refresh();
                           });
                         },
-                  child: const Text('Sign in'),
+                  child: Text(creatingAccount ? 'Create account' : 'Sign in'),
                 ),
-                TextButton(
-                  onPressed: busy
-                      ? null
-                      : () {
-                          run(() async {
-                            await client.configure(url.text, key.text);
-                            await client.signUp(
-                              email.text,
-                              password.text,
-                              betaKey.text,
-                              username.text,
-                            );
-                            password.clear();
-                            betaKey.clear();
-                            await refresh();
-                          });
-                        },
-                  child: const Text('Create beta account'),
-                ),
+                TextButton(onPressed:busy?null:()=>setState(()=>creatingAccount=!creatingAccount),child:Text(creatingAccount?'I already have an account':'Join with a beta key')),
                 const Text(
-                  'An admin-issued beta key is required. Email confirmation is not required once the service is configured for this beta. Signing in sends credentials to the selected service; only family-assigned tasks are shared. Your private planner is never uploaded automatically.',
+                  'Your private planner works without an account. Points are virtual and cannot be bought with real money.',
                 ),
               ]),
             ] else ...[
@@ -934,15 +973,19 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   icon: const Icon(Icons.admin_panel_settings),
                   label: const Text('Application admin console'),
                 ),
-              if (bankTab == 0) BankOverview(
-                balance: hasSnapshot ? balance : null,
-                name: effectiveRole == 'kids' ? 'OneStep Kids' : '@${handle.text}',
-                ledger: ledger,
-                familyAccount: effectiveRole == 'parent' || effectiveRole == 'kids',
-                onActivity: ()=>setState(()=>bankTab=1),
-                onAccount: ()=>setState(()=>bankTab=4),
-                onFamily: ()=>setState(()=>bankTab=2),
-              ),
+              if (bankTab == 0)
+                BankOverview(
+                  balance: hasSnapshot ? balance : null,
+                  name: effectiveRole == 'kids'
+                      ? 'OneStep Kids'
+                      : '@${handle.text}',
+                  ledger: ledger,
+                  familyAccount:
+                      effectiveRole == 'parent' || effectiveRole == 'kids',
+                  onActivity: () => setState(() => bankTab = 1),
+                  onAccount: () => setState(() => bankTab = 4),
+                  onFamily: () => setState(() => bankTab = 2),
+                ),
               if (effectiveRole == 'parent') ...[
                 if (families.isEmpty)
                   panel('Start your family', [
@@ -1068,7 +1111,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     SwitchListTile(
                       title: const Text('Allow points-funded unlocks'),
                       value: screenUnlockAllowed,
-                      onChanged: busy ? null : (v) => setState(() { screenUnlockAllowed = v; policyDirty = true; }),
+                      onChanged: busy
+                          ? null
+                          : (v) => setState(() {
+                              screenUnlockAllowed = v;
+                              policyDirty = true;
+                            }),
                     ),
                     DropdownButtonFormField<int>(
                       key: ValueKey('price-$policyRevision'),
@@ -1080,7 +1128,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         for (var i = 1; i <= 10; i++)
                           DropdownMenuItem(value: i, child: Text('$i')),
                       ],
-                      onChanged: busy ? null : (v) => setState(() { screenMinuteCost = v ?? 1; policyDirty = true; }),
+                      onChanged: busy
+                          ? null
+                          : (v) => setState(() {
+                              screenMinuteCost = v ?? 1;
+                              policyDirty = true;
+                            }),
                     ),
                     DropdownButtonFormField<int>(
                       key: ValueKey('minutes-$policyRevision'),
@@ -1098,7 +1151,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         }.toList()..sort())
                           DropdownMenuItem(value: i, child: Text('$i')),
                       ],
-                      onChanged: busy ? null : (v) => setState(() { screenDailyMinutes = v ?? 120; policyDirty = true; }),
+                      onChanged: busy
+                          ? null
+                          : (v) => setState(() {
+                              screenDailyMinutes = v ?? 120;
+                              policyDirty = true;
+                            }),
                     ),
                     FilledButton(
                       onPressed:
@@ -1338,7 +1396,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     const Text(
                       'No activity yet. Earn points by completing eligible tasks.',
                     ),
-                  for (final entry in ledger) BankTransaction(entry:entry),
+                  for (final entry in ledger) BankTransaction(entry: entry),
                   const Text(
                     'Balances are calculated by the service. Updates refresh automatically while this screen is open, or when you tap Refresh.',
                   ),
@@ -1447,48 +1505,74 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     'Kids accounts are excluded by the service, regardless of client settings.',
                   ),
                 ]),
-              if (bankTab == 4) panel('Reconnect this account',[
-                const Text('If your session expired, enter this account’s password. Your family link and planner stay in place.'),
-                TextField(controller:password,obscureText:true,autocorrect:false,decoration:const InputDecoration(labelText:'Account password')),
-                FilledButton(onPressed:busy?null:(){run(()async{
-                  final address=client.session?['user']?['email'] as String?;
-                  if(address==null||password.text.isEmpty) throw const FormatException('Enter the password for this account.');
-                  await client.signIn(address,password.text);password.clear();await refresh();
-                });},child:const Text('Reconnect this account')),
-              ]),
-              if (bankTab == 4) if (client.accountKind == 'kids' || client.accountKind == null)
-                OutlinedButton(
-                  onPressed: busy
-                      ? null
-                      : () {
-                          run(childSignOut);
-                        },
-                  child: const Text('Parent-authorized device sign-out'),
-                )
-              else
-                OutlinedButton(
-                  onPressed: busy
-                      ? null
-                      : () {
-                          run(() async {
-                            await client.signOut();
-                            setState(() {
-                              admin = false; screenPoliciesLoaded = false; bankTab = 0;
-      tasks = [];
-                              children = [];
-                              families = [];
-                              ledger = [];
-                              balance = 0;
-                              hasSnapshot = false;
-                              lastSync = '';
-                              rankings = [];
-                              publicName.clear();
-                              handle.clear();
+              if (bankTab == 4)
+                panel('Reconnect this account', [
+                  const Text(
+                    'If your session expired, enter this account’s password. Your family link and planner stay in place.',
+                  ),
+                  TextField(
+                    controller: password,
+                    obscureText: true,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Account password',
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: busy
+                        ? null
+                        : () {
+                            run(() async {
+                              final address =
+                                  client.session?['user']?['email'] as String?;
+                              if (address == null || password.text.isEmpty)
+                                throw const FormatException(
+                                  'Enter the password for this account.',
+                                );
+                              await client.signIn(address, password.text);
+                              password.clear();
+                              await refresh();
                             });
-                          });
-                        },
-                  child: const Text('Sign out of this device'),
-                ),
+                          },
+                    child: const Text('Reconnect this account'),
+                  ),
+                ]),
+              if (bankTab == 4)
+                if (client.accountKind == 'kids' || client.accountKind == null)
+                  OutlinedButton(
+                    onPressed: busy
+                        ? null
+                        : () {
+                            run(childSignOut);
+                          },
+                    child: const Text('Parent-authorized device sign-out'),
+                  )
+                else
+                  OutlinedButton(
+                    onPressed: busy
+                        ? null
+                        : () {
+                            run(() async {
+                              await client.signOut();
+                              setState(() {
+                                admin = false;
+                                screenPoliciesLoaded = false;
+                                bankTab = 0;
+                                tasks = [];
+                                children = [];
+                                families = [];
+                                ledger = [];
+                                balance = 0;
+                                hasSnapshot = false;
+                                lastSync = '';
+                                rankings = [];
+                                publicName.clear();
+                                handle.clear();
+                              });
+                            });
+                          },
+                    child: const Text('Sign out of this device'),
+                  ),
             ],
           ],
         ),

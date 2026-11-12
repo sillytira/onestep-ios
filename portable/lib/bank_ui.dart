@@ -6,7 +6,7 @@ bool bankSectionVisible(String title, int tab) {
   if (title == 'Your points') return tab == 0;
   if (title == 'Transactions') return tab == 1;
   if (title == 'This week: opt-in rankings') return tab == 3;
-  if (title == 'Public profile' || title == 'Where to use your account') return tab == 4;
+  if (title == 'Public profile' || title == 'Where to use your account' || title == 'Reconnect this account') return tab == 4;
   return tab == 2;
 }
 

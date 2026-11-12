@@ -27,12 +27,9 @@ class FamilyClient {
   bool get signedIn => session?['access_token'] is String;
   String? get userID => session?['user']?['id'] as String?;
   Future<void> _load() async {
-    final config = await vault.read(key: 'family.connection');
-    if (config != null) {
-      final value = jsonDecode(config) as Json;
-      project = value['url'] as String;
-      publicKey = value['key'] as String;
-    }
+    // Legacy manual connection values must not override the shipped main instance.
+    project = serviceURL;
+    publicKey = servicePublishableKey;
     final saved = await vault.read(key: 'family.session');
     if (saved != null) session = jsonDecode(saved) as Json;
     accountKind = await vault.read(key: 'family.kind');
@@ -1450,6 +1447,15 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     'Kids accounts are excluded by the service, regardless of client settings.',
                   ),
                 ]),
+              if (bankTab == 4) panel('Reconnect this account',[
+                const Text('If your session expired, enter this account’s password. Your family link and planner stay in place.'),
+                TextField(controller:password,obscureText:true,autocorrect:false,decoration:const InputDecoration(labelText:'Account password')),
+                FilledButton(onPressed:busy?null:(){run(()async{
+                  final address=client.session?['user']?['email'] as String?;
+                  if(address==null||password.text.isEmpty) throw const FormatException('Enter the password for this account.');
+                  await client.signIn(address,password.text);password.clear();await refresh();
+                });},child:const Text('Reconnect this account')),
+              ]),
               if (bankTab == 4) if (client.accountKind == 'kids' || client.accountKind == null)
                 OutlinedButton(
                   onPressed: busy

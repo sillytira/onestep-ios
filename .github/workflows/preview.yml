@@ -1,5 +1,5 @@
 name: Capture simulator preview
-# Verify the dark 0.3 focus layout on the same source revision as the device build.
+# Inspect the 0.7 planner and Bank login with native Apple controls.
 on:
   workflow_dispatch:
   push:
@@ -36,9 +36,12 @@ jobs:
           xcrun simctl launch "$DEVICE_ID" meow.tira.onestep --preview
           sleep 5
           mkdir -p preview
-          xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.2-Now.png
+          xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.7-Now.png
+          xcrun simctl openurl "$DEVICE_ID" onestep://bank
+          sleep 2
+          xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.7-Bank.png
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.2-preview
+          name: OneStep-0.7-preview
           path: preview/
           if-no-files-found: error

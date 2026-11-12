@@ -3,9 +3,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:onestep/family.dart';
+import 'package:onestep/connection.dart';
 
 void main(){
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('An old manual connection cannot strand the built-in account service',()async{
+    FlutterSecureStorage.setMockInitialValues({'family.connection':jsonEncode({'url':'https://legacy.invalid','key':'obsolete-client-key'})});
+    final client=FamilyClient();await client.load();
+    expect(client.project,serviceURL);expect(client.publicKey,servicePublishableKey);
+  });
   test('Concurrent requests rotate a session once and all use the new token',()async{
     // This test talks only to its loopback fixture, not Flutter's default HTTP-400 stub.
     final previousOverrides=HttpOverrides.current;

@@ -90,6 +90,8 @@ struct RootView: View {
                 store.focusedItem = nil
                 switch url.host {
                 case "routines": store.selectedTab = 2
+                case "bank": store.selectedTab = 3
+                case "space": store.selectedTab = 4
                 case "add": store.selectedTab = 1; editor = .task(nil)
                 case "timer": store.selectedTab = 0; if let item = PlannerRules.nextAction(store.state, now: Date()) { editor = .focus(item) }
                 default: store.selectedTab = 0
@@ -235,7 +237,7 @@ private struct NowView: View {
                 .background(ItemPalette.violet.color.opacity(0.09), in: RoundedRectangle(cornerRadius: 24))
                 .tint(ItemPalette.violet.color)
                 Button(action: addTask) {
-                    Label("Capture a thought", systemImage: "plus").frame(maxWidth: .infinity).padding(.vertical, 8)
+                    Label("Add a task", systemImage: "plus").frame(maxWidth: .infinity).padding(.vertical, 8)
                 }.buttonStyle(.bordered).controlSize(.large).tint(ItemPalette.coral.color)
                 Button("See all tasks") { store.selectedTab = 1 }.frame(maxWidth: .infinity).padding(.vertical, 8)
                 Text("OneStep · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0") beta")
@@ -447,7 +449,7 @@ private struct TaskEditor: View {
                     }
                 }
             }
-            .navigationTitle(task == nil ? "Capture a thought" : "Edit task")
+            .navigationTitle(task == nil ? "Add a task" : "Edit task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

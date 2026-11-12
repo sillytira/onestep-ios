@@ -57,7 +57,6 @@ enum RewardsVault {
     var accountEmail: String { (session?["user"] as? [String: Any])?["email"] as? String ?? "" }
     var userID: String? { (session?["user"] as? [String: Any])?["id"] as? String }
     init() {
-        if let data = RewardsVault.read("connection"), let value = try? JSONSerialization.jsonObject(with: data) as? [String: String] { project = value["url"] ?? PublicService.url; key = value["key"] ?? PublicService.key }
         if let data = RewardsVault.read("session") { session = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] }
         if let data = RewardsVault.read("kind") { kind = String(data: data, encoding: .utf8) }
         if let id = userID, let data = RewardsVault.read("snapshot.\(id)"), let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -105,10 +104,11 @@ enum RewardsVault {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard data.count <= 1024 * 1024 else { throw failure("Service response too large.") }
         let value: Any
-        if data.isEmpty { value = NSNull() } else { value = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) }
+        if data.isEmpty { value = NSNull() } else { value = (try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])) ?? NSNull() }
         guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode) else {
             let error = value as? [String: Any]
-            throw failure(error?["msg"] as? String ?? error?["message"] as? String ?? error?["error_description"] as? String ?? "The service request failed.")
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw failure(error?["msg"] as? String ?? error?["message"] as? String ?? error?["error_description"] as? String ?? "The account service could not respond (\(status)). Try again; your offline planner is still available.")
         }
         return value
     }
@@ -132,6 +132,11 @@ enum RewardsVault {
         password = ""; betaKey = ""; try await reload()
     }
     func rpc(_ name: String, _ args: [String: Any] = [:]) async throws -> Any { try await request("/rest/v1/rpc/" + name, body: args) }
+    func reconnect() async throws {
+        guard !accountEmail.isEmpty, !password.isEmpty else { throw failure("Enter the password for this account.") }
+        email = accountEmail
+        try await authenticate(create:false)
+    }
     func reload() async throws {
         let roles = try await request("/rest/v1/onestep_account_kinds?select=kind&limit=1") as? [[String: Any]]
         guard let role = roles?.first?["kind"] as? String else { throw failure("Account enrollment is not ready.") }
@@ -333,6 +338,8 @@ struct RewardsView: View {
             }
             if model.admin { adminSection }
             Section("This device") {
+                SecureField("Account password to reconnect",text:$fields.password).textContentType(.password)
+                Button("Reconnect this account") { Task { await model.action { try await model.reconnect() } } }.disabled(model.busy || model.password.isEmpty)
                 if model.kind == "kids" || model.kind == nil {
                     SecureField("10-digit parent code",text:$parentCode).keyboardType(.numberPad)
                     Button("Parent-authorized sign-out") { Task { await model.action { try await model.signOut(parentCode:parentCode);parentCode="" } } }.disabled(model.busy)

@@ -25,7 +25,9 @@ void main(){
     expect(find.text('Transactions'),findsOneWidget);
     expect(find.text('A completed task'),findsOneWidget);
     await tester.tap(find.byType(NavigationDestination).last);await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Save public profile'),200,scrollable:find.byType(Scrollable).first);
     expect(find.text('Save public profile'),findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Sign out of this device'),200,scrollable:find.byType(Scrollable).first);
     expect(find.text('Sign out of this device'),findsOneWidget);
     expect(find.text('Transactions'),findsNothing);
     await tester.pumpWidget(const SizedBox());await tester.pump();

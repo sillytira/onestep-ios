@@ -489,6 +489,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     screenDailyMinutes = (policy?['daily_minutes'] as num?)?.toInt() ?? 120;
     policyRevision++;
   }
+
   List<Json> ledger = [],
       tasks = [],
       children = [],
@@ -646,10 +647,16 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       );
     admin = await client.rpc('onestep_is_admin', {}) as bool;
     screenPoliciesLoaded = false;
-    screenPolicies = await client.list('onestep_screen_time_policies?select=user_id,enabled,cost_per_minute,daily_minutes&limit=100');
+    screenPolicies = await client.list(
+      'onestep_screen_time_policies?select=user_id,enabled,cost_per_minute,daily_minutes&limit=100',
+    );
     screenPoliciesLoaded = true;
     if (client.accountKind != 'kids')
-      rankings = (await client.rpc('onestep_rankings', {'metric':rankingMetric}) as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList();
+      rankings =
+          (await client.rpc('onestep_rankings', {'metric': rankingMetric})
+                  as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
     if (publicName.text.isEmpty) {
       final profile = await client.list(
         'onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1',
@@ -974,6 +981,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 if (children.isNotEmpty)
                   panel('Assign a small task', [
                     DropdownButtonFormField<String>(
+                      key: ValueKey('assign-$selectedChild'),
                       initialValue: selectedChild,
                       decoration: const InputDecoration(labelText: 'Child'),
                       items: children
@@ -1030,14 +1038,71 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   ]),
                 if (children.isNotEmpty)
                   panel('Apple app-time policy', [
-                  Text('Policy for ${children.where((c)=>c["child_id"]==selectedChild).map((c)=>c["nickname"]).join()}. This permits purchases on the entitled native iPhone app; Apple authorization is separate.'),
-                  SwitchListTile(title:const Text('Allow points-funded unlocks'),value:screenUnlockAllowed,onChanged:(v)=>setState(()=>screenUnlockAllowed=v)),
-                  DropdownButtonFormField<int>(key:ValueKey('price-$policyRevision'),initialValue:screenMinuteCost,decoration:const InputDecoration(labelText:'Points per minute'),items:[for(var i=1;i<=10;i++)DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenMinuteCost=v??1)),
-                  DropdownButtonFormField<int>(key:ValueKey('minutes-$policyRevision'),initialValue:screenDailyMinutes,decoration:const InputDecoration(labelText:'Daily minutes limit'),items:[for(final i in {15,30,60,120,screenDailyMinutes}.toList()..sort())DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenDailyMinutes=v??120)),
-                  FilledButton(onPressed:busy||selectedChild==null||!screenPoliciesLoaded?null:(){run(()async{await client.rpc('onestep_set_screen_policy',{'child':selectedChild,'allow_unlock':screenUnlockAllowed,'minute_cost':screenMinuteCost,'day_minutes':screenDailyMinutes});await refresh();setState(()=>message='Parent policy saved.');});},child:const Text('Save child policy')),
-                ]),
-                if (children.isNotEmpty) panel('Offline parent authorization', [
+                    Text(
+                      'Policy for ${children.where((c) => c["child_id"] == selectedChild).map((c) => c["nickname"]).join()}. This permits purchases on the entitled native iPhone app; Apple authorization is separate.',
+                    ),
+                    SwitchListTile(
+                      title: const Text('Allow points-funded unlocks'),
+                      value: screenUnlockAllowed,
+                      onChanged: (v) => setState(() => screenUnlockAllowed = v),
+                    ),
+                    DropdownButtonFormField<int>(
+                      key: ValueKey('price-$policyRevision'),
+                      initialValue: screenMinuteCost,
+                      decoration: const InputDecoration(
+                        labelText: 'Points per minute',
+                      ),
+                      items: [
+                        for (var i = 1; i <= 10; i++)
+                          DropdownMenuItem(value: i, child: Text('$i')),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => screenMinuteCost = v ?? 1),
+                    ),
+                    DropdownButtonFormField<int>(
+                      key: ValueKey('minutes-$policyRevision'),
+                      initialValue: screenDailyMinutes,
+                      decoration: const InputDecoration(
+                        labelText: 'Daily minutes limit',
+                      ),
+                      items: [
+                        for (final i in {
+                          15,
+                          30,
+                          60,
+                          120,
+                          screenDailyMinutes,
+                        }.toList()..sort())
+                          DropdownMenuItem(value: i, child: Text('$i')),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => screenDailyMinutes = v ?? 120),
+                    ),
+                    FilledButton(
+                      onPressed:
+                          busy || selectedChild == null || !screenPoliciesLoaded
+                          ? null
+                          : () {
+                              run(() async {
+                                await client.rpc('onestep_set_screen_policy', {
+                                  'child': selectedChild,
+                                  'allow_unlock': screenUnlockAllowed,
+                                  'minute_cost': screenMinuteCost,
+                                  'day_minutes': screenDailyMinutes,
+                                });
+                                await refresh();
+                                setState(
+                                  () => message = 'Parent policy saved.',
+                                );
+                              });
+                            },
+                      child: const Text('Save child policy'),
+                    ),
+                  ]),
+                if (children.isNotEmpty)
+                  panel('Offline parent authorization', [
                     DropdownButtonFormField<String>(
+                      key: ValueKey('parent-$selectedChild'),
                       initialValue: selectedChild,
                       decoration: const InputDecoration(
                         labelText: 'Child account',
@@ -1340,8 +1405,23 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 ]),
               if (client.accountKind != 'kids')
                 panel('This week: opt-in rankings', [
-                  SegmentedButton<String>(segments:const [ButtonSegment(value:'tasks',label:Text('Tasks done')),ButtonSegment(value:'points',label:Text('Points earned'))],selected:{rankingMetric},onSelectionChanged:(v){setState(()=>rankingMetric=v.first);run(refresh);}),
-                  const Text('Eligible self-reported tasks. Max20 tasks /500 earned points per UTC day; 0–100 per task. Duplicate-title, age and rate filters apply. Admin credits do not count.'),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'tasks', label: Text('Tasks done')),
+                      ButtonSegment(
+                        value: 'points',
+                        label: Text('Points earned'),
+                      ),
+                    ],
+                    selected: {rankingMetric},
+                    onSelectionChanged: (v) {
+                      setState(() => rankingMetric = v.first);
+                      run(refresh);
+                    },
+                  ),
+                  const Text(
+                    'Eligible self-reported tasks. Max20 tasks /500 earned points per UTC day; 0–100 per task. Duplicate-title, age and rate filters apply. Admin credits do not count.',
+                  ),
                   if (rankings.isEmpty)
                     const Text(
                       'No public scores yet. Joining the leaderboard is optional.',
@@ -1351,7 +1431,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       leading: Text('#${index + 1}'),
                       title: Text(rankings[index]['display_name'] as String),
                       subtitle: Text('@${rankings[index]['handle'] ?? ''}'),
-                      trailing: Text('${rankings[index][rankingMetric == 'tasks' ? 'completed_tasks' : 'earned_points']} ${rankingMetric == 'tasks' ? 'tasks' : 'points'}'),
+                      trailing: Text(
+                        '${rankings[index][rankingMetric == 'tasks' ? 'completed_tasks' : 'earned_points']} ${rankingMetric == 'tasks' ? 'tasks' : 'points'}',
+                      ),
                     ),
                   const Text(
                     'Kids accounts are excluded by the service, regardless of client settings.',

@@ -207,6 +207,10 @@ final class PlannerStoreTests: XCTestCase {
             XCTAssertLessThanOrEqual(image.size.height,160);XCTAssertGreaterThan(image.size.width,0)
             let url=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("OneStep-LiveActivity-"+name+".png")
             try XCTUnwrap(image.pngData()).write(to:url)
+            let attachment=XCTAttachment(image:image)
+            attachment.name="OneStep-LiveActivity-"+name
+            attachment.lifetime = .keepAlways
+            add(attachment)
         }
     }
 

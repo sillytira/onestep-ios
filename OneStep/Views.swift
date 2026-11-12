@@ -578,7 +578,7 @@ private struct TodayRoutineTimeView: View {
     @Environment(PlannerStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let step: RoutineStep
-    @State private var time = Date().addingTimeInterval(600)
+    @State private var time = Date()
     var body: some View {
         NavigationStack {
             Form {

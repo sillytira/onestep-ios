@@ -4,6 +4,42 @@ import CryptoKit
 
 @MainActor
 final class PlannerStoreTests: XCTestCase {
+    func testLiveActivityActionsUseExactTaskAndDoNotRepeatCompletion() async throws {
+        let previous = PlannerStore.shared
+        defer { PlannerStore.shared = previous }
+        let store = try PlannerStore(inMemory: true)
+        PlannerStore.shared = store
+        XCTAssertTrue(store.saveTask(id: nil, title: "First", notes: "", dueAt: nil, reminder: false))
+        XCTAssertTrue(store.saveTask(id: nil, title: "Second", notes: "", dueAt: nil, reminder: false))
+        let first = PlannerRules.taskAction(store.state.tasks[0])
+        _ = try await DayActionIntent(first.id).perform()
+        XCTAssertNotNil(store.state.tasks[0].completedAt)
+        XCTAssertNil(store.state.tasks[1].completedAt)
+        _ = try await DayActionIntent(first.id).perform()
+        XCTAssertNil(store.state.tasks[1].completedAt)
+        let second = PlannerRules.taskAction(store.state.tasks[1])
+        _ = try await DayActionIntent(second.id, snooze: true).perform()
+        XCTAssertGreaterThan(store.state.tasks[1].snoozedUntil ?? .distantPast, Date())
+        XCTAssertNil(store.state.tasks[1].completedAt)
+    }
+
+    func testLiveActivityRejectsPreviousDayAndArchivedReferences() async throws {
+        let previous = PlannerStore.shared
+        defer { PlannerStore.shared = previous }
+        let store = try PlannerStore(inMemory: true)
+        PlannerStore.shared = store
+        XCTAssertTrue(store.saveRoutine(id: nil, title: "Water", time: Date()))
+        var item = PlannerRules.routineAction(store.state.routines[0], on: Date(), state: store.state)
+        item.day = "2001-01-01"
+        _ = try await DayActionIntent(item.id).perform()
+        XCTAssertTrue(store.state.days.isEmpty)
+        XCTAssertTrue(store.saveTask(id: nil, title: "Archived", notes: "", dueAt: nil, reminder: false))
+        var state = store.state
+        state.tasks[0].archived = true
+        XCTAssertTrue(store.commit(state))
+        _ = try await DayActionIntent(PlannerRules.taskAction(state.tasks[0]).id).perform()
+        XCTAssertNil(store.state.tasks[0].completedAt)
+    }
     func testOfflineParentCodeMatchesPortablePBKDF2Vector() {
         let verifier: [String: Any] = ["algorithm": "pbkdf2-sha256", "iterations": 120000, "salt": "AAECAwQFBgcICQoLDA0ODw==", "hash": "nVox1uAswwfkowNdrWPmBt5pBK77mZIbAAxTqHkqG9U="]
         XCTAssertTrue(RewardsStore.checkPin("0123456789", verifier: verifier))
@@ -113,5 +149,6 @@ final class PlannerStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.completedSteps, 1)
         XCTAssertEqual(snapshot.totalSteps, 1)
         XCTAssertNotNil(snapshot.timerEndsAt)
+        XCTAssertEqual(snapshot.actionID, item.id)
     }
 }

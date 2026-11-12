@@ -1,4 +1,5 @@
 name: Inspect Bank design preview
+# Render the packaged icon font as well as the preview text font.
 on:
   workflow_dispatch:
   push:

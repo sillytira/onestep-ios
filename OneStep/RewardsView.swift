@@ -194,6 +194,15 @@ enum RewardsVault {
     }
 }
 
+private struct BankRecord: Identifiable {
+    let id: String
+    let position: Int
+    let value: [String:Any]
+    static func rows(_ values: [[String:Any]], key: String) -> [BankRecord] {
+        values.enumerated().map { BankRecord(id:$0.element[key] as? String ?? "cached-\($0.offset)",position:$0.offset,value:$0.element) }
+    }
+}
+
 struct RewardsView: View {
     @State private var model = RewardsStore.shared
     @State private var section = 0
@@ -271,7 +280,7 @@ struct RewardsView: View {
                 .background(LinearGradient(colors:[Color(red:0.39,green:0.28,blue:0.65),Color(red:0.13,green:0.12,blue:0.23)],startPoint:.topLeading,endPoint:.bottomTrailing),in:.rect(cornerRadius:26))
                 HStack { Text("Recent activity").font(.title3.bold()); Spacer(); Button("See all") { section = 1 } }
                 if model.ledger.isEmpty { ContentUnavailableView("No activity yet",systemImage:"tray",description:Text("Your earned points and rewards will appear here.")) }
-                else { VStack(spacing:16) { ForEach(Array(model.ledger.prefix(4).enumerated()),id:\.offset) { _, row in transaction(row) } } }
+                else { VStack(spacing:16) { ForEach(BankRecord.rows(Array(model.ledger.prefix(4)),key:"event_id")) { row in transaction(row.value) } } }
                 if !PersonalRewards.shared.message.isEmpty { Text(PersonalRewards.shared.message).font(.footnote).foregroundStyle(.secondary) }
             }.padding(20).frame(maxWidth:640)
         }.refreshable { await model.action { try await model.reload() } }
@@ -279,7 +288,7 @@ struct RewardsView: View {
     private var activity: some View {
         List {
             if model.ledger.isEmpty { ContentUnavailableView("No activity yet",systemImage:"tray") }
-            ForEach(Array(model.ledger.enumerated()),id:\.offset) { _, row in transaction(row) }
+            ForEach(BankRecord.rows(model.ledger,key:"event_id")) { row in transaction(row.value) }
         }.refreshable { await model.action { try await model.reload() } }
     }
     private func transaction(_ row: [String:Any]) -> some View {
@@ -299,7 +308,8 @@ struct RewardsView: View {
                 Text("This week · up to 20 counted tasks and 500 earned points per day.").font(.footnote).foregroundStyle(.secondary)
             }
             if model.rankings.isEmpty { ContentUnavailableView("A fresh start",systemImage:"trophy",description:Text("Public rankings are optional. Join from Account.")) }
-            ForEach(Array(model.rankings.enumerated()),id:\.offset) { index,row in
+            ForEach(BankRecord.rows(model.rankings,key:"handle")) { entry in
+                let index = entry.position; let row = entry.value
                 HStack { Text("#\(index+1)").foregroundStyle(.secondary);Text(row["display_name"] as? String ?? "Member");Spacer();Text("\((row[model.rankingMetric == "tasks" ? "completed_tasks" : "earned_points"] as? NSNumber)?.intValue ?? 0)").fontWeight(.semibold) }
             }
         }
@@ -339,7 +349,7 @@ struct RewardsView: View {
             if !model.issuedCode.isEmpty { Text(model.issuedCode).textSelection(.enabled).font(.caption.monospaced()) }
             Picker("Account for adjustment", selection: $fields.target) {
                 Text("Choose an account").tag("")
-                ForEach(Array(model.users.enumerated()), id: \.offset) { _, user in Text(user["email"] as? String ?? "Account").tag(user["id"] as? String ?? "") }
+                ForEach(BankRecord.rows(model.users,key:"id")) { row in Text(row.value["email"] as? String ?? "Account").tag(row.id) }
             }
             TextField("Point adjustment", text: $fields.delta).keyboardType(.numbersAndPunctuation)
             TextField("Audit reason", text: $fields.reason)

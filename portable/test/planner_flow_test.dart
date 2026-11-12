@@ -19,7 +19,7 @@ void main(){
     await tester.pumpAndSettle();
     await tester.tap(find.text('Add a task'));await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField,'One thing to remember'),'Walk outside');
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.descendant(of:find.byType(AppBar).last,matching:find.text('Save')));
     await tester.runAsync(()=>Future<void>.delayed(const Duration(milliseconds:100)));
     await tester.pumpAndSettle();
     expect(rows(planner.state,'tasks').single['title'],'Walk outside');

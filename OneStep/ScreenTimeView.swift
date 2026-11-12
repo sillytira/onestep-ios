@@ -57,8 +57,8 @@ import Observation
     }
     func stopBlocking() throws {
         guard !child || parentAuthorized else { throw ScreenTimeFailure.unavailable }
-        center.stopMonitoring([Self.activity])
         try ScreenTimeShared.update { $0.enabled = false; $0.unlockUntil = nil; $0.leaseID = nil }
+        center.stopMonitoring([Self.activity])
         state = ScreenTimeShared.load()
     }
     private func monitor(until: Date) throws {

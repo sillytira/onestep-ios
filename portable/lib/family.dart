@@ -248,7 +248,8 @@ class FamilyClient {
 
 class RewardsPage extends StatefulWidget {
   final String role;
-  const RewardsPage({super.key, this.role = 'bank'});
+  final FamilyClient? client;
+  const RewardsPage({super.key, this.role = 'bank', this.client});
   @override
   State<RewardsPage> createState() => _RewardsPageState();
 }
@@ -473,7 +474,7 @@ class _AdminPageState extends State<AdminPage> {
 }
 
 class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
-  final client = FamilyClient.shared;
+  late final client = widget.client ?? FamilyClient.shared;
   final url = TextEditingController(),
       key = TextEditingController(),
       email = TextEditingController(),

@@ -81,6 +81,7 @@ struct DataToolsView: View {
                 Text("Beta enrollment and secure account sessions are separate from your local planner profile.").font(.footnote)
             }
             Section("App updates") {
+                NavigationLink("Content updates without reinstalling") { ContentUpdatesView() }
                 Button("Check GitHub releases") { Task { await checkReleases() } }
                 Link("Open build downloads", destination: URL(string: "https://github.com/sillytira/onestep-ios/actions")!)
                 Text(releaseMessage).font(.footnote)

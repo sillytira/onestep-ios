@@ -39,6 +39,7 @@ struct NoteEntry: Identifiable, Codable, Equatable {
 struct ReminderPreferences: Codable, Equatable {
     var snoozeMinutes = 10
     var followup = true
+    var timeSensitive: Bool?
     var quietStart: Int?
     var quietEnd: Int?
 }
@@ -73,6 +74,7 @@ struct PlannerState: Codable, Equatable {
     var profile: LocalProfile?
     var notes: [NoteEntry]?
     var preferences: ReminderPreferences?
+    var contentPacks: [String]?
 }
 
 struct ActionItem: Identifiable, Codable, Equatable {
@@ -170,7 +172,7 @@ enum PlannerRules {
     static func currentAction(for item: ActionItem, in state: PlannerState, now: Date,
                                calendar: Calendar = .current) -> ActionItem? {
         if item.kind == .task {
-            guard let task = state.tasks.first(where: { $0.id == item.sourceID && $0.completedAt == nil }) else { return nil }
+            guard let task = state.tasks.first(where: { $0.id == item.sourceID && $0.completedAt == nil && $0.archived != true }) else { return nil }
             return taskAction(task)
         }
         guard item.day == dayKey(now, calendar: calendar),
@@ -232,6 +234,18 @@ enum PlannerRules {
                 fireAt: session.endsAt, item: item)
             candidates.removeAll { $0.item.id == item.id && abs($0.fireAt.timeIntervalSince(session.endsAt)) < 1 }
         }
+        // Same-time task/routine alerts share one banner; timers retain their reserved slot.
+        let groups = Dictionary(grouping: candidates, by: \.fireAt)
+        candidates = groups.values.map { group in
+            let sorted = group.sorted { $0.id < $1.id }
+            var first = sorted[0]
+            if sorted.count > 1 {
+                first.id += ".group"
+                first.title = "\(sorted.count) steps are ready"
+                first.body = "\(first.item.title) and \(sorted.count - 1) more. Open OneStep and choose one small step."
+            }
+            return first
+        }.sorted { $0.fireAt == $1.fireAt ? $0.id < $1.id : $0.fireAt < $1.fireAt }
         let taskLimit = max(0, limit - (timerReminder == nil ? 0 : 1))
         var selected = Array(candidates.prefix(taskLimit))
         if let timerReminder, limit > 0 { selected.append(timerReminder) }
@@ -239,5 +253,22 @@ enum PlannerRules {
         let firstOmitted = candidates.dropFirst(taskLimit).first?.fireAt
         return ReminderPlan(reminders: selected, omittedCount: max(0, candidates.count - taskLimit),
                             coverageUntil: min(horizon, firstOmitted?.addingTimeInterval(-1) ?? horizon))
+    }
+}
+
+extension PlannerRules {
+    static func undoRoutine(_ id: UUID, in original: PlannerState, now: Date) -> PlannerState {
+        var state = original
+        guard state.routines.contains(where: { $0.id == id }) else { return state }
+        state.days.removeAll { $0.stepID == id && $0.day == dayKey(now) }
+        return state
+    }
+    static func rescheduleRoutine(_ id: UUID, to date: Date, in original: PlannerState, now: Date, calendar: Calendar = .current) -> PlannerState {
+        var state = original
+        guard date > now, calendar.isDate(date, inSameDayAs: now),
+              let step = state.routines.first(where: { $0.id == id }), record(step, on: now, in: state)?.status == nil else { return state }
+        state.days.removeAll { $0.stepID == id && $0.day == dayKey(now) }
+        state.days.append(DailyRecord(stepID: id, day: dayKey(now), title: step.title, status: nil, snoozedUntil: date, updatedAt: now))
+        return state
     }
 }

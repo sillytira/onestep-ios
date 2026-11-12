@@ -13,6 +13,7 @@ struct DayActivityAttributes: ActivityAttributes {
         var scheduledAt: Date?
         var timerStartedAt: Date?
         var timerEndsAt: Date?
+        var actionID: String?
     }
     var dayLabel: String
     var startedAt: Date

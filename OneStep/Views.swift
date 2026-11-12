@@ -85,7 +85,15 @@ struct RootView: View {
             Task { await store.refresh() }
         }
         .onOpenURL { url in
-            if url.scheme == "onestep" { store.selectedTab = 0; store.focusedItem = nil }
+            if url.scheme == "onestep" {
+                store.focusedItem = nil
+                switch url.host {
+                case "routines": store.selectedTab = 2
+                case "add": store.selectedTab = 1; editor = .task(nil)
+                case "timer": store.selectedTab = 0; if let item = PlannerRules.nextAction(store.state, now: Date()) { editor = .focus(item) }
+                default: store.selectedTab = 0
+                }
+            }
         }
     }
 
@@ -285,6 +293,7 @@ private struct RoutineListView: View {
     @Environment(PlannerStore.self) private var store
     let now: Date
     let edit: (RoutineStep) -> Void
+    @State private var todayStep: RoutineStep?
 
     var body: some View {
         List {
@@ -317,7 +326,10 @@ private struct RoutineListView: View {
                             } else { Image(systemName: "pencil").foregroundStyle(.secondary) }
                         }.padding(.vertical, 4)
                     }.buttonStyle(.plain)
-                    if record?.status == nil {
+                    if record?.status != nil {
+                        Button("Undo today") { store.undoRoutine(step.id) }.buttonStyle(.bordered)
+                    } else {
+                        Button("Change today’s time") { todayStep = step }.buttonStyle(.bordered)
                         ViewThatFits(in: .horizontal) {
                             HStack {
                                 Button("Done") { store.complete(item) }.buttonStyle(.borderedProminent).tint(ItemPalette.mint.color)
@@ -343,6 +355,7 @@ private struct RoutineListView: View {
                 Text("Start small. Add one daily step with +, then build your routine at your own pace.").foregroundStyle(.secondary)
             }
         }.listRowSpacing(10).navigationTitle("Routines")
+        .sheet(item: $todayStep) { TodayRoutineTimeView(step: $0) }
     }
 }
 
@@ -485,6 +498,7 @@ private struct HistoryView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Label(record.title, systemImage: record.status == .done ? "checkmark.circle" : "forward.end")
                         Text("\(record.day) · \(record.status == .done ? "Done" : "Skipped")").font(.caption).foregroundStyle(.secondary)
+                        if record.day == PlannerRules.dayKey(Date()) { Button("Undo today") { store.undoRoutine(record.stepID) } }
                     }
                 }
             }
@@ -509,6 +523,7 @@ private struct ReminderSettingsView: View {
                 Section("Data, devices, and accounts") {
                     NavigationLink("Bank, rewards, and account") { RewardsView() }
                     NavigationLink("Backups and Wi-Fi transfer") { DataToolsView() }
+                    NavigationLink("Content updates and routine packs") { ContentUpdatesView() }
                 }
                 Section("Reminder preferences") {
                     Toggle("One follow-up after 10 minutes", isOn: preference(\.followup, fallback: true))
@@ -528,7 +543,9 @@ private struct ReminderSettingsView: View {
                         Label("Reminders allowed", systemImage: "bell.badge")
                         Button("Open notification settings") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
                     }
-                    Text("This beta uses ordinary notifications. Silent mode, Focus, and your notification settings can silence or delay them.").font(.footnote).foregroundStyle(.secondary)
+                    Toggle("Time Sensitive routine alerts", isOn: Binding(get: { store.state.preferences?.timeSensitive == true }, set: { value in var next = store.state; var prefs = next.preferences ?? ReminderPreferences(); prefs.timeSensitive = value; next.preferences = prefs; _ = store.commit(next) })).disabled(!store.timeSensitiveAvailable)
+                    if !store.timeSensitiveAvailable { Text("Time Sensitive access is unavailable in this signed build or disabled in iPhone Settings. Ordinary alerts stay active.").font(.footnote) }
+                    Text("Ordinary notifications follow your system settings. Silent mode, Focus, and your notification settings can silence or delay them.").font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Scheduling coverage") {
                     if let until = store.coverageUntil {
@@ -554,5 +571,25 @@ private struct ReminderSettingsView: View {
 
     private func preference<T>(_ path: WritableKeyPath<ReminderPreferences, T>, fallback: T) -> Binding<T> {
         Binding(get: { store.state.preferences?[keyPath: path] ?? fallback }, set: { value in var next = store.state; var prefs = next.preferences ?? ReminderPreferences(); prefs[keyPath: path] = value; next.preferences = prefs; _ = store.commit(next) })
+    }
+}
+
+private struct TodayRoutineTimeView: View {
+    @Environment(PlannerStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let step: RoutineStep
+    @State private var time = Date().addingTimeInterval(600)
+    var body: some View {
+        NavigationStack {
+            Form {
+                Text(step.title).font(.headline)
+                DatePicker("Today only", selection: $time, displayedComponents: .hourAndMinute)
+                Text("Schedules one alert today. Tomorrow's routine and task deadlines stay unchanged.").font(.footnote)
+            }.navigationTitle("Today's time")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { if store.rescheduleRoutine(step.id, to: time) { dismiss() } } }
+            }
+        }
     }
 }

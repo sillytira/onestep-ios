@@ -6,13 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'model.dart';
 import 'parent_pin.dart';
+import 'connection.dart';
 
-/// Connection settings and tokens live in platform secure storage, never source.
+/// Public connection defaults ship with the app; user sessions remain in secure storage.
 class FamilyClient {
   static const vault = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  String project = '', publicKey = '';
+  String project = serviceURL, publicKey = servicePublishableKey;
   Json? session;
   String? accountKind;
   Future<void>? _refreshing;
@@ -774,38 +775,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 child: SelectableText(message),
               ),
             if (!client.signedIn) ...[
-              panel('Connect your service', [
-                const Text(
-                  'Connection keys are never embedded in the app or public repository. Enter your project URL and publishable key from Supabase; these settings are saved in this device’s secure storage. Never enter a service-role or secret key.',
-                ),
-                TextField(
-                  controller: url,
-                  decoration: const InputDecoration(
-                    labelText: 'Supabase HTTPS project URL',
-                  ),
-                  autocorrect: false,
-                ),
-                TextField(
-                  controller: key,
-                  decoration: const InputDecoration(
-                    labelText: 'Publishable or anon key',
-                  ),
-                  obscureText: true,
-                  autocorrect: false,
-                ),
-                OutlinedButton(
-                  onPressed: busy
-                      ? null
-                      : () {
-                          run(() async {
-                            await client.configure(url.text, key.text);
-                            setState(() {
-                              message = 'Connection saved on this device.';
-                            });
-                          });
-                        },
-                  child: const Text('Save connection'),
-                ),
+              panel('OneStep accounts', [
+                const Text('Connected to the main OneStep service. Sign in or enter your admin-issued beta key to create an account.'),
               ]),
               panel('Your account', [
                 const Text(

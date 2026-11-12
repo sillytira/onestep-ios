@@ -1,0 +1,53 @@
+{
+  "format": "OneStepContent",
+  "schema": 1,
+  "revision": 1,
+  "minAppVersion": "0.5.0",
+  "message": "Small steps, at your own pace.",
+  "packs": [
+    {
+      "id": "gentle-morning",
+      "title": "Gentle morning",
+      "description": "Three small steps. Edit or remove anything after adding.",
+      "steps": [
+        {
+          "title": "Drink some water",
+          "hour": 9,
+          "minute": 0,
+          "colorName": "blue"
+        },
+        {
+          "title": "Let some daylight in",
+          "hour": 9,
+          "minute": 5,
+          "colorName": "amber"
+        },
+        {
+          "title": "Choose one small thing",
+          "hour": 9,
+          "minute": 10,
+          "colorName": "violet"
+        }
+      ]
+    },
+    {
+      "id": "evening-reset",
+      "title": "Evening reset",
+      "description": "A light landing for tomorrow, without a catch-up backlog.",
+      "steps": [
+        {
+          "title": "Put one thing back",
+          "hour": 20,
+          "minute": 30,
+          "colorName": "mint"
+        },
+        {
+          "title": "Write down a thought for tomorrow",
+          "hour": 20,
+          "minute": 35,
+          "colorName": "coral"
+        }
+      ]
+    }
+  ]
+}

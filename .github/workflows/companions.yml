@@ -63,12 +63,12 @@ jobs:
       - name: Package companion
         run: |
           mkdir -p release
-          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-${ONESTEP_ROLE}-0.4.0.apk
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-${ONESTEP_ROLE}-0.5.0.apk
           sha256sum release/*.apk > release/SHA256SUMS.txt
           cp portable/pubspec.lock release/
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-${{ matrix.role }}-0.4.0-Android
+          name: OneStep-${{ matrix.role }}-0.5.0-Android
           path: release/
   ios:
     needs: verify
@@ -104,10 +104,10 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -qx "meow.tira.onestep.$ONESTEP_ROLE"
           file "$APP/Runner" | grep -q arm64
           ditto "$APP" build/companion-staging/Payload/Runner.app
-          (cd build/companion-staging && zip -qry "$GITHUB_WORKSPACE/release/OneStep-$ONESTEP_ROLE-0.4.0-unsigned.ipa" Payload)
+          (cd build/companion-staging && zip -qry "$GITHUB_WORKSPACE/release/OneStep-$ONESTEP_ROLE-0.5.0-unsigned.ipa" Payload)
           shasum -a 256 release/*.ipa > release/SHA256SUMS.txt
           cp portable/pubspec.lock release/
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-${{ matrix.role }}-0.4.0-iPhone
+          name: OneStep-${{ matrix.role }}-0.5.0-iPhone
           path: release/

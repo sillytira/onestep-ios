@@ -9,7 +9,7 @@ const projectDir = path.join(root, 'OneStep.xcodeproj');
 fs.mkdirSync(path.join(projectDir, 'xcshareddata', 'xcschemes'), { recursive: true });
 const id = name => crypto.createHash('sha256').update(name).digest('hex').slice(0, 24).toUpperCase();
 const q = value => JSON.stringify(value);
-const sources = ['Core/Planner.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
+const sources = ['Core/Planner.swift', 'Core/Content.swift', 'ContentUpdates.swift', 'Shared/DayActionIntent.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
 const tests = ['PlannerStoreTests.swift'];
 const objects = [];
 const object = (name, body) => objects.push(`${id(name)} = { ${body} };`);
@@ -32,6 +32,7 @@ object('live-info-ref', 'isa = PBXFileReference; lastKnownFileType = text.plist.
 object('live-source-build', `isa = PBXBuildFile; fileRef = ${id('live-source-ref')};`);
 object('live-palette-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/Palette.swift')};`);
 object('live-attributes-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/DayActivityAttributes.swift')};`);
+object('live-intent-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/DayActionIntent.swift')};`);
 object('live-embed-build', `isa = PBXBuildFile; fileRef = ${id('live-product-ref')}; settings = { ATTRIBUTES = (RemoveHeadersOnCopy); };`);
 object('live-group', `isa = PBXGroup; children = (${id('live-source-ref')},${id('live-info-ref')}); path = OneStepLive; sourceTree = "<group>";`);
 object('app-group', `isa = PBXGroup; children = (${sources.map(file => id(`ref-${file}`)).join(',')},${id('assets-ref')},${id('info-ref')}); path = OneStep; sourceTree = "<group>";`);
@@ -43,7 +44,7 @@ object('resources-phase', `isa = PBXResourcesBuildPhase; buildActionMask = 21474
 object('frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
 object('test-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${tests.map(file => id(`test-build-${file}`)).join(',')}); runOnlyForDeploymentPostprocessing = 0;`);
 object('test-frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
-object('live-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${id('live-source-build')},${id('live-palette-build')},${id('live-attributes-build')}); runOnlyForDeploymentPostprocessing = 0;`);
+object('live-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${id('live-source-build')},${id('live-intent-build')},${id('live-palette-build')},${id('live-attributes-build')}); runOnlyForDeploymentPostprocessing = 0;`);
 object('live-frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
 object('live-copy-phase', `isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (${id('live-embed-build')}); name = "Embed Live Activity"; runOnlyForDeploymentPostprocessing = 0;`);
 object('proxy', `isa = PBXContainerItemProxy; containerPortal = ${id('project')}; proxyType = 1; remoteGlobalIDString = ${id('target')}; remoteInfo = OneStep;`);
@@ -67,10 +68,11 @@ for (const configuration of ['Debug', 'Release']) {
     PRODUCT_BUNDLE_IDENTIFIER = ${bundleID};
     PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = 1;
     INFOPLIST_FILE = OneStep/Info.plist; GENERATE_INFOPLIST_FILE = NO;
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ONESTEP_APP";
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.4.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.5.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
@@ -81,7 +83,7 @@ for (const configuration of ['Debug', 'Release']) {
     INFOPLIST_FILE = OneStepLive/Info.plist; GENERATE_INFOPLIST_FILE = NO;
     APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.4.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.5.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";

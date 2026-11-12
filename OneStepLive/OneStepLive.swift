@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 struct OneStepLiveBundle: WidgetBundle {
-    var body: some Widget { OneStepDayActivity() }
+    var body: some Widget { OneStepDayActivity(); OneStepShortcutsWidget() }
 }
 
 struct OneStepDayActivity: Widget {
@@ -65,6 +65,13 @@ private struct DayActivityView: View {
                 Spacer(minLength: 0)
             }
             ActivityCountdown(state: context.state)
+            Text("Updated \(context.state.snapshotAt, style: .relative) ago").font(.caption2).foregroundStyle(.secondary)
+            if let id = context.state.actionID {
+                HStack {
+                    Button("Done", intent: DayActionIntent(id)).tint(ItemPalette.mint.color)
+                    Button("Snooze", intent: DayActionIntent(id, snooze: true)).tint(ItemPalette.amber.color)
+                }.buttonStyle(.bordered)
+            }
             if context.state.totalSteps > 0 {
                 HStack(spacing: 12) {
                     ProgressView(value: Double(context.state.completedSteps), total: Double(max(1, context.state.totalSteps)))
@@ -95,5 +102,40 @@ private struct ActivityCountdown: View {
                 Text(due, style: .time).font(.subheadline.weight(.semibold))
             }.foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct ShortcutEntry: TimelineEntry { let date: Date }
+private struct ShortcutProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ShortcutEntry { ShortcutEntry(date: .now) }
+    func getSnapshot(in context: Context, completion: @escaping (ShortcutEntry) -> Void) { completion(placeholder(in: context)) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ShortcutEntry>) -> Void) { completion(Timeline(entries: [placeholder(in: context)], policy: .never)) }
+}
+private struct OneStepShortcutsWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "OneStepShortcuts", provider: ShortcutProvider()) { _ in ShortcutsWidgetView() }
+            .configurationDisplayName("OneStep shortcuts")
+            .description("Open your next action, routines, a new task, or focus timer. Private tasks stay inside OneStep.")
+            .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+private struct ShortcutsWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("OneStep", systemImage: "sparkle").font(.headline).foregroundStyle(ItemPalette.violet.color)
+            if family == .systemSmall {
+                Text("One thing at a time.").font(.subheadline)
+                Label("Open Now", systemImage: "arrow.up.right")
+            } else {
+                HStack(spacing: 18) {
+                    Link(destination: URL(string: "onestep://now")!) { Label("Now", systemImage: "sparkle") }
+                    Link(destination: URL(string: "onestep://routines")!) { Label("Routine", systemImage: "sunrise") }
+                    Link(destination: URL(string: "onestep://add")!) { Label("Add", systemImage: "plus") }
+                    Link(destination: URL(string: "onestep://timer")!) { Label("Timer", systemImage: "timer") }
+                }.font(.caption).labelStyle(.titleAndIcon)
+            }
+        }.containerBackground(.fill.tertiary, for: .widget)
+            .widgetURL(URL(string: "onestep://now"))
     }
 }

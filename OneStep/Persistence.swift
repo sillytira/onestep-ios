@@ -19,10 +19,12 @@ final class PlannerDocument {
 @MainActor
 @Observable
 final class PlannerStore {
+    static var shared: PlannerStore?
     private(set) var state: PlannerState
     var errorMessage: String?
     var notificationStatus: UNAuthorizationStatus = .notDetermined
     var coverageUntil: Date?
+    var timeSensitiveAvailable = false
     var scheduledCount = 0
     var omittedCount = 0
     var focusedItem: ActionItem?
@@ -66,6 +68,7 @@ final class PlannerStore {
         }
         delegate.onOpen = { [weak self] reference in self?.open(reference) }
         UNUserNotificationCenter.current().delegate = delegate
+        if !inMemory && storeURL == nil { Self.shared = self }
     }
 
     enum StoreError: LocalizedError {
@@ -193,7 +196,7 @@ final class PlannerStore {
             feedback = skip ? "Skipped for today. Tomorrow stays the same." : "Done. One thing less to carry."
             if guidedRoutine, item.kind == .routine {
                 focusedItem = state.routines.sorted { $0.position < $1.position }
-                    .first { PlannerRules.record($0, on: Date(), in: state)?.status == nil }
+                    .first { let record = PlannerRules.record($0, on: Date(), in: state); return record?.status == nil && (record?.snoozedUntil ?? .distantPast) <= Date() }
                     .map { PlannerRules.routineAction($0, on: Date(), state: state) }
                 if focusedItem == nil { guidedRoutine = false }
             }
@@ -216,6 +219,12 @@ final class PlannerStore {
         if commit(next) { feedback = "Set aside for a little while." }
     }
 
+    func undoRoutine(_ id: UUID) { _ = commit(PlannerRules.undoRoutine(id, in: state, now: Date())) }
+    func rescheduleRoutine(_ id: UUID, to date: Date) -> Bool {
+        let next = PlannerRules.rescheduleRoutine(id, to: date, in: state, now: Date())
+        guard next != state else { errorMessage = "Choose a future time today for an incomplete step."; return false }
+        return commit(next)
+    }
     func undoTask(_ task: TaskEntry) {
         var next = state
         guard let index = next.tasks.firstIndex(where: { $0.id == task.id }) else { return }
@@ -323,13 +332,14 @@ final class PlannerStore {
             liveRunning = dayActivity.isRunning
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             notificationStatus = settings.authorizationStatus
+            timeSensitiveAvailable = settings.timeSensitiveSetting == .enabled
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
                 coverageUntil = nil
                 continue
             }
             do {
                 let plan = PlannerRules.reminderPlan(state, now: Date())
-                try await notifications.apply(plan)
+                try await notifications.apply(plan, timeSensitive: state.preferences?.timeSensitive == true && timeSensitiveAvailable)
                 coverageUntil = plan.coverageUntil
                 scheduledCount = plan.reminders.count
                 omittedCount = plan.omittedCount

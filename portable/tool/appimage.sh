@@ -20,8 +20,8 @@ EOF
 chmod +x release/OneStep.AppDir/AppRun
 curl -fL --retry 3 https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage -o build/appimagetool.AppImage
 chmod +x build/appimagetool.AppImage
-ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 build/appimagetool.AppImage release/OneStep.AppDir release/OneStep-0.4.0-x86_64.AppImage
-release/OneStep-0.4.0-x86_64.AppImage --appimage-extract >/dev/null
+ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 build/appimagetool.AppImage release/OneStep.AppDir release/OneStep-0.5.0-x86_64.AppImage
+release/OneStep-0.5.0-x86_64.AppImage --appimage-extract >/dev/null
 xvfb-run -a bash -c '
   squashfs-root/AppRun > build/linux-smoke.log 2>&1 &
   app_pid=$!
@@ -31,4 +31,4 @@ xvfb-run -a bash -c '
   kill "$app_pid"
   wait "$app_pid" || true
 '
-sha256sum release/OneStep-0.4.0-x86_64.AppImage > release/OneStep-0.4.0-x86_64.AppImage.sha256
+sha256sum release/OneStep-0.5.0-x86_64.AppImage > release/OneStep-0.5.0-x86_64.AppImage.sha256

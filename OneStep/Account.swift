@@ -1,6 +1,6 @@
 import Foundation
 
-/// Public-key format validation only; runtime keys are stored in Keychain.
+/// Public client configuration; never place privileged keys or enrollment codes here.
 enum OnlineAccount {
     static func isPublicKey(_ key: String) -> Bool {
         if key.hasPrefix("sb_publishable_") { return true }
@@ -12,4 +12,9 @@ enum OnlineAccount {
         return claims["role"] as? String == "anon"
     }
 
+}
+
+enum PublicService {
+    static let url = "https://zibmxjwfamimyclcwubi.supabase.co"
+    static let key = "sb_publishable_TOsTyzcdGyeSDE1-60ChGw_TxAhOh_T"
 }

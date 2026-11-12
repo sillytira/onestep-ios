@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'model.dart';
 import 'services.dart';
 import 'family.dart';
+import 'content.dart';
 
 const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
 
@@ -80,6 +81,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   String search = '';
   bool archived = false;
   Json? guided;
+  String? guidedDay;
   Timer? ticker;
   @override
   void initState() {
@@ -100,6 +102,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         fatal = null;
       });
       loaded.addListener(changed);
+      if (loaded.state['contentAutoUpdate'] != false) { unawaited(ContentCache(loaded.directory).refreshQuietly()); }
     } catch (e) {
       if (mounted)
         setState(() {
@@ -329,6 +332,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               a['sourceID'] == guided!['sourceID'],
         ))
       guided = null;
+    if (guidedDay != dayKey(now)) { guided = null; guidedDay = null; }
+    if (guidedDay != null) { guided = nextGuidedRoutine(state, now); if (guided == null) guidedDay = null; }
     final item = guided ?? nextAction(state, now);
     final session = state['focusSession'] as Map?;
     final count =
@@ -465,7 +470,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     : () {
                         run(() async {
                           await p.save(complete(p.state, item));
-                          guided = null;
+                          guided = guidedDay == dayKey(DateTime.now()) ? nextGuidedRoutine(p.state, DateTime.now()) : null;
+                          if (guided == null) guidedDay = null;
                         });
                       },
                 icon: const Icon(Icons.check),
@@ -515,6 +521,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             '$count',
             style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
           ),
+          if (guidedDay != null) TextButton(onPressed: () => setState(() { guidedDay = null; guided = null; }), child: const Text('Leave guided routine')),
           const Text('Steps finished', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 12),
           const Text(
@@ -721,6 +728,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> todayTime(Json step) async {
+    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(minutes: 10))));
+    if(picked == null || !mounted) return;
+    final now = DateTime.now();
+    await run(() => planner!.save(rescheduleRoutine(planner!.state, step['id'] as String, DateTime(now.year, now.month, now.day, picked.hour, picked.minute), now)));
+  }
   Widget routinesPage(Json state, DateTime now) {
     final routines = rows(state, 'routines')
       ..sort((a, b) => (a['position'] as int).compareTo(b['position'] as int));
@@ -737,12 +750,13 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             );
             if (pending.isNotEmpty)
               setState(() {
-                guided = action(pending.first, day: now, state: state);
+                guidedDay = dayKey(now);
+                guided = nextGuidedRoutine(state, now);
                 tab = 0;
               });
           },
           icon: const Icon(Icons.play_arrow),
-          label: const Text('Start a guided step'),
+          label: const Text('Start a guided routine'),
         ),
         for (final step in routines)
           box([
@@ -773,6 +787,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 },
               ),
             ),
+            if (record(state, step, now)?['status'] != null) TextButton(onPressed: busy ? null : () { run(() => planner!.save(undoRoutine(planner!.state, step['id'] as String, DateTime.now()))); }, child: const Text('Undo today')),
+            if (record(state, step, now)?['status'] == null) TextButton(onPressed: busy ? null : () { todayTime(step); }, child: const Text('Change today’s time')),
             if (record(state, step, now)?['status'] == null)
               Wrap(
                 spacing: 10,
@@ -916,6 +932,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             ),
             title: Text(r['title'] as String),
             subtitle: Text('${r['day']} · ${r['status']}'),
+            trailing: r['day'] == dayKey(DateTime.now()) ? TextButton(onPressed: () { run(() => planner!.save(undoRoutine(planner!.state, r['stepID'] as String, DateTime.now()))); }, child: const Text('Undo today')) : null,
           ),
         ),
     ],
@@ -1371,6 +1388,10 @@ class _SettingsPageState extends State<SettingsPage>
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              section('Content updates', [
+                FilledButton.icon(onPressed: () { Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ContentPage(planner: p))); }, icon: const Icon(Icons.system_update_alt), label: const Text('Content updates and routine packs')),
+                const Text('Refresh routine packs inside the installed app. Native code changes still require an app update.'),
+              ]),
               section('Rewards and family', [
                 for (final role in ['bank', 'kids', 'parent'])
                   OutlinedButton.icon(
@@ -1427,6 +1448,7 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
               ]),
               section('Reminders', [
+                Text(reminderCoverage(p.state, DateTime.now())),
                 if (Platform.isAndroid)
                   FilledButton(
                     onPressed: busy
@@ -1661,7 +1683,7 @@ class _SettingsPageState extends State<SettingsPage>
               ]),
               section('About this beta', [
                 const Text(
-                  'OneStep · 0.4.0 beta\nApplication identity: meow.tira.onestep',
+                  'OneStep · 0.5.0 beta\nApplication identity: meow.tira.onestep',
                 ),
                 const Text(
                   'iOS keeps its native SwiftUI app and Live Activity. Android uses Material 3. Desktop clients require their bundled libraries; keep the Windows distribution folder together.',

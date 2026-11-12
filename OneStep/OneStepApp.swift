@@ -26,7 +26,7 @@ struct BootstrapView: View {
                 }
             } else { ProgressView("Opening OneStep…") }
         }
-        .task { if store == nil { load() }; await store?.refresh() }
+        .task { if store == nil { load() }; await store?.refresh(); if UserDefaults.standard.object(forKey: "automaticContentUpdates") as? Bool != false { await ContentLibrary().refresh() } }
         .onChange(of: scenePhase) {
             if scenePhase == .active { Task { await store?.refresh() } }
         }
@@ -47,7 +47,7 @@ struct BootstrapView: View {
                 return
             }
             #endif
-            store = try PlannerStore()
+            store = try PlannerStore.shared ?? PlannerStore()
             startupError = nil
         }
         catch { startupError = error.localizedDescription }

@@ -28,7 +28,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @u
 final class NotificationScheduler {
     private let center = UNUserNotificationCenter.current()
 
-    func apply(_ plan: ReminderPlan) async throws {
+    func apply(_ plan: ReminderPlan, timeSensitive: Bool = false) async throws {
         let pending = await center.pendingNotificationRequests()
         let wanted = Set(plan.reminders.map(\.id))
         let obsolete = pending.filter { $0.identifier.hasPrefix("task.") || $0.identifier.hasPrefix("routine.") || $0.identifier.hasPrefix("focus.") }
@@ -43,7 +43,7 @@ final class NotificationScheduler {
             content.title = reminder.title
             content.body = reminder.body
             content.sound = .default
-            content.interruptionLevel = .active
+            content.interruptionLevel = timeSensitive && reminder.item.kind == .routine ? .timeSensitive : .active
             content.threadIdentifier = reminder.item.id
             var info: [String: String] = ["kind": reminder.item.kind.rawValue, "id": reminder.item.sourceID.uuidString]
             if let day = reminder.item.day { info["day"] = day }

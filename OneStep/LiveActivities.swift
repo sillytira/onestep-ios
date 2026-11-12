@@ -22,7 +22,7 @@ final class DayActivityController {
             colorName: next?.colorName ?? (next?.kind == .routine ? "violet" : "blue"),
             completedSteps: done, totalSteps: state.routines.count, snapshotAt: now,
             scheduledAt: next?.scheduledAt,
-            timerStartedAt: timer?.startedAt, timerEndsAt: timer?.endsAt)
+            timerStartedAt: timer?.startedAt, timerEndsAt: timer?.endsAt, actionID: next?.id)
     }
 
     private func activityContent(_ state: PlannerState, now: Date) -> ActivityContent<DayActivityAttributes.ContentState> {

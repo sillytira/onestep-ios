@@ -25,8 +25,8 @@ enum RewardsVault {
 }
 
 @MainActor @Observable final class RewardsStore {
-    var project = ""
-    var key = ""
+    var project = PublicService.url
+    var key = PublicService.key
     var email = ""
     var password = ""
     var betaKey = ""
@@ -53,7 +53,7 @@ enum RewardsVault {
     var signedIn: Bool { session?["access_token"] is String }
     var userID: String? { (session?["user"] as? [String: Any])?["id"] as? String }
     init() {
-        if let data = RewardsVault.read("connection"), let value = try? JSONSerialization.jsonObject(with: data) as? [String: String] { project = value["url"] ?? ""; key = value["key"] ?? "" }
+        if let data = RewardsVault.read("connection"), let value = try? JSONSerialization.jsonObject(with: data) as? [String: String] { project = value["url"] ?? PublicService.url; key = value["key"] ?? PublicService.key }
         if let data = RewardsVault.read("session") { session = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] }
         if let data = RewardsVault.read("kind") { kind = String(data: data, encoding: .utf8) }
         if let id = userID, let data = RewardsVault.read("snapshot.\(id)"), let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -177,10 +177,8 @@ struct RewardsView: View {
             if model.busy { ProgressView() }
             if !model.message.isEmpty { Text(model.message).font(.footnote).textSelection(.enabled) }
             if !model.signedIn {
-                Section("Connect your service") {
-                    TextField("Supabase HTTPS URL", text: $fields.project).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    SecureField("Publishable or anon key", text: $fields.key).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Text("No project key is embedded in this app or source. Connection settings and sessions stay in this device's Keychain. Never enter a service-role or secret key.").font(.footnote)
+                Section("OneStep accounts") {
+                    Text("Connected to the main OneStep service. Sign in or use an admin-issued beta key to join.").font(.footnote)
                 }
                 Section("Account") {
                     TextField("Email", text: $fields.email).textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()

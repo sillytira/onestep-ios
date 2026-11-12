@@ -56,3 +56,13 @@ Automated build results are recorded in BUILD-VERIFICATION.md. These real-accoun
 - [ ] Verify coincident task/routine reminders share a banner and completing all referenced steps removes pending reminders. Check queue coverage and regular refill.
 - [ ] Add the OneStep shortcuts widget. Verify Now/Routines/Add/Timer destinations. Start a Live Activity and test Done/Snooze after device authentication; stale/previous-day actions must not affect another task.
 - [ ] Verify Time Sensitive is unavailable or falls back safely when absent from provisioning, and ordinary notifications continue.
+
+## Version 0.6 rewards and Screen Time acceptance
+
+- [ ] Enroll a normal-account task with a chosen 0–100 reward; finish it offline and reopen online. Verify server credit once after the minimum age, duplicate-title filter, and displayed pending state. A second account must not claim its enrollment.
+- [ ] Verify UTC daily caps of 20 counted tasks and 500 earned points; switch weekly ranking metrics and confirm child identities, admin grants, and spending never increase earned rankings.
+- [ ] Reload a parent's saved app-time policy, select another child, change price/limit, and confirm independent settings persist. Child purchases must show cost; a changed price must reject before debit.
+- [ ] Provision the Screen Time variant with Family Controls/App Groups and authorize Apple individual/family mode. Select an app and verify its shield, then a paid timed unlock and automatic re-blocking while the app is closed and phone locked.
+- [ ] Lose a purchase response, recover the same receipt without a second debit, and verify expired receipts do not create free time. Test reboot/timezone changes and guardian/parent-code settings gates.
+- [ ] Enable private widget titles explicitly, verify next action/stale-day fallback, then disable sharing and confirm the widget no longer reveals a title.
+- [ ] Install delivered 0.6 over delivered 0.5 with matching Apple identity/Android certificate; retain tasks and history. Export a backup first.

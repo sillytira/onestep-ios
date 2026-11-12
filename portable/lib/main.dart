@@ -91,7 +91,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     load();
     ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
-      if (DateTime.now().second == 0 && planner != null) unawaited(syncPersonalTasks(planner!.state));
+      if (DateTime.now().second == 0 && planner != null)
+        unawaited(syncPersonalTasks(planner!.state));
     });
   }
 
@@ -1043,7 +1044,9 @@ class _EntryEditorState extends State<EntryEditor> {
     final t = widget.item;
     rewardEnabled = widget.item?['rewardPoints'] != null;
     rewardPoints = widget.item?['rewardPoints'] as int? ?? 10;
-    rewardAccount.load().then((_) { if(mounted)setState((){}); });
+    rewardAccount.load().then((_) {
+      if (mounted) setState(() {});
+    });
     title = TextEditingController(text: t?['title'] as String? ?? '');
     notes = TextEditingController(
       text: t?[widget.note ? 'body' : 'notes'] as String? ?? '',
@@ -1119,8 +1122,15 @@ class _EntryEditorState extends State<EntryEditor> {
           : clone(widget.item!);
       t['title'] = title.text.trim();
       if (!widget.note && !widget.routine && t['completedAt'] == null) {
-        if (rewardEnabled && rewardAccount.signedIn && rewardAccount.accountKind != 'kids') { t['rewardPoints']=rewardPoints; t['rewardAccountID']=t['rewardAccountID'] ?? rewardAccount.userID; }
-        else { t.remove('rewardPoints'); t.remove('rewardAccountID'); }
+        if (rewardEnabled &&
+            rewardAccount.signedIn &&
+            rewardAccount.accountKind != 'kids') {
+          t['rewardPoints'] = rewardPoints;
+          t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
+        } else {
+          t.remove('rewardPoints');
+          t.remove('rewardAccountID');
+        }
       }
       if (widget.note) {
         t['body'] = notes.text;
@@ -1202,10 +1212,34 @@ class _EntryEditorState extends State<EntryEditor> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            if(!widget.note && !widget.routine && rewardAccount.signedIn && rewardAccount.accountKind!='kids') ...[
-              SwitchListTile(title:const Text('Enroll this task for account rewards'),value:rewardEnabled,onChanged:widget.item?['completedAt']!=null?null:(v)=>setState(()=>rewardEnabled=v)),
-              if(rewardEnabled) DropdownButtonFormField<int>(initialValue:rewardPoints,decoration:const InputDecoration(labelText:'Points for this task'),items:[for(var i=0;i<=100;i++)DropdownMenuItem(value:i,child:Text('$i'))],onChanged:widget.item?['completedAt']!=null?null:(v)=>setState(()=>rewardPoints=v??10)),
-              const Text('Self-reported: up to20 counted tasks and500 earned points per UTC day. The title is sent for duplicate checks; only a hash is stored. Done remains immediate/offline. Points wait for the server.'),
+            if (!widget.note &&
+                !widget.routine &&
+                rewardAccount.signedIn &&
+                rewardAccount.accountKind != 'kids') ...[
+              SwitchListTile(
+                title: const Text('Enroll this task for account rewards'),
+                value: rewardEnabled,
+                onChanged: widget.item?['completedAt'] != null
+                    ? null
+                    : (v) => setState(() => rewardEnabled = v),
+              ),
+              if (rewardEnabled)
+                DropdownButtonFormField<int>(
+                  initialValue: rewardPoints,
+                  decoration: const InputDecoration(
+                    labelText: 'Points for this task',
+                  ),
+                  items: [
+                    for (var i = 0; i <= 100; i++)
+                      DropdownMenuItem(value: i, child: Text('$i')),
+                  ],
+                  onChanged: widget.item?['completedAt'] != null
+                      ? null
+                      : (v) => setState(() => rewardPoints = v ?? 10),
+                ),
+              const Text(
+                'Self-reported: up to20 counted tasks and500 earned points per UTC day. The title is sent for duplicate checks; only a hash is stored. Done remains immediate/offline. Points wait for the server.',
+              ),
             ],
 
             TextField(

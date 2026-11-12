@@ -1,4 +1,4 @@
-# Install OneStep 0.5 beta
+# Install OneStep 0.6 beta
 
 ## Main iPhone app
 
@@ -18,7 +18,7 @@ The owner then opens Application admin to generate email-bound Parent/Kids beta 
 
 ## Android main app
 
-Install the APK through your normal Android installer. Package is meow.tira.onestep. Enable notifications and precise alarms under Your space; inexact alarms are the fallback. Version 0.5 delivered APKs use the permanent private OneStep signing key. Earlier 0.4 APKs used unrecoverable per-run test keys, so this is a one-time signing migration: export the old planner and verify the backup before uninstalling an old Android build. Import after installing the new APK; sign in again to online services. Future APKs must retain the new certificate. Do not uninstall the only copy of your data. See ANDROID-SIGNING.md.
+Install the APK through your normal Android installer. Package is meow.tira.onestep. Enable notifications and precise alarms under Your space; inexact alarms are the fallback. Version 0.5 and later delivered APKs use the permanent private OneStep signing key. Earlier 0.4 APKs used unrecoverable per-run test keys, so this is a one-time signing migration: export the old planner and verify the backup before uninstalling an old Android build. Import after installing the new APK; sign in again to online services. Future APKs must retain the new certificate. Do not uninstall the only copy of your data. See ANDROID-SIGNING.md.
 
 ## Windows / Linux main app
 
@@ -35,3 +35,7 @@ Compare package SHA-256 with the delivered checksum manifest. Confirm restart pe
 ## Enable content updates once
 
 Install this 0.5 application over the matching existing identity to add the updater. Future routine-pack/content revisions can refresh inside it without another IPA/APK installation. New native code still needs an application update; Apple signing expiry is unaffected. See UPDATES.md.
+
+## Optional Apple Screen Time variant
+
+The ordinary IPA keeps its existing Live Activity extension. The separately named screen-time IPA uses the same main bundle ID, adds a DeviceActivity monitor extension, and requires Family Controls plus a shared App Group in the signing profiles. Install one main variant, not both. This is not promised to work with free Personal Team signing. Bank/Kids/Parent Flutter companions do not contain Apple blocking extensions. Read SCREEN-TIME.md before choosing this variant. Back up before changing variants. Android updates from the delivered 0.5 APKs reuse the permanent certificate; no uninstall should be needed.

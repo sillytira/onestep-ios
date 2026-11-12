@@ -1,6 +1,6 @@
-# OneStep family beta — 0.5
+# OneStep family beta — 0.6
 
-OneStep remains an offline planner. Optional online services add family tasks, parent-approved virtual points, transactions, rankings, and administration. A managed Supabase backend is sufficient; no home server or VPS is required. No points can be purchased with real money. Spending points on real OS-enforced app time is not implemented yet.
+OneStep remains an offline planner. Optional online services add family tasks, parent-approved virtual points, transactions, rankings, and administration. A managed Supabase backend is sufficient; no home server or VPS is required. No points can be purchased with real money. Version 0.6 adds bounded personal rewards and point-funded app time in the separately provisioned native Apple build. See REWARDS.md and SCREEN-TIME.md.
 
 ## Choose the apps you need
 
@@ -37,7 +37,7 @@ In OneStep Parent, select the child and generate an offline parent code. The app
 
 Ordinary child device logout is replaced by **Parent-authorized device sign-out** in every client. A cached correct code can authorize this without the backend. Failed guesses are persisted and locked after five attempts for fifteen minutes; clock rollback is rejected. Device sign-out does not unlink the server family. Only the linked parent can call the unlink operation. Points/history are retained when the link is marked inactive. An unconfigured child device cannot invent its own offline code.
 
-Code rotation/revocation reaches the child at its next successful refresh. The outage path uses the last cached verifier; it cannot receive new server policy while disconnected. This is an application-level guard: it cannot stop uninstalling, clearing app data, resetting a device, using a modified client, or a compromised OS. Real Screen Time/Google-style OS management requires separate platform authorization and suitable distribution/device-management setup. No TikTok shielding is claimed in this beta.
+Code rotation/revocation reaches the child at its next successful refresh. The outage path uses the last cached verifier; it cannot receive new server policy while disconnected. This is an application-level guard: it cannot stop uninstalling, clearing app data, resetting a device, using a modified client, or a compromised OS. Version 0.6 supplies a separately provisioned native Apple Screen Time build; see SCREEN-TIME.md for Apple authorization, signing, and real-device acceptance requirements. Android OS blocking is not implemented.
 
 Balances and task snapshots are securely cached per account and labeled with their last sync time. No saved balance displays as unknown rather than zero. New invitations, account creation, task submissions/approvals, public-profile changes, and point adjustments require the backend. Failed online actions are not silently credited or queued as trusted awards. Portable clients refresh while open about every twenty seconds; native Bank has an explicit refresh control.
 
@@ -49,6 +49,6 @@ The main private planner continues offline without accounts. Online rewards/acco
 
 ## Backend setup from source
 
-Apply backend migrations 001 through 004 to a new empty Supabase project in order. The project used for this beta has already received them; do not blindly rerun non-idempotent migrations. RLS is enabled, anonymous table access is denied, and authenticated users have only explicit privileges. Create the initial owner invitation privately through the project owner's SQL Editor using a SHA-256 hash of a cryptographically random 256-bit secret and an email binding; never commit that secret, its seed file, or privileged connection credentials. Configure email-confirmation policy only after invite gating is installed and tested.
+Apply backend migrations 001 through 005 to a new empty Supabase project in order. The main instance has received them after approval; do not blindly rerun non-idempotent migrations. RLS is enabled, anonymous table access is denied, and authenticated users have only explicit privileges. Create any initial owner invitation privately using a hashed secret and email binding; never commit that secret or privileged credentials. The existing owner account is present; do not reseed its consumed invitation. Configure email-confirmation policy only after invite gating is installed and tested.
 
 CI database tests cover family isolation, no self-approval, exactly-once credit, beta gate bypass rejection, owner/name binding, metadata privilege rejection, private child identities, and parent-only unlink/PIN setup. scripts/check-public-source.mjs scans source for embedded project keys, JWTs, and private keys. Device enrollment, signed installs, physical offline PIN behavior, and real app notification delivery still need acceptance checks.

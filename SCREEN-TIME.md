@@ -11,3 +11,7 @@ Parent code gates child selection/stop changes and works offline only after veri
 An optional next-action Home Screen widget reuses the Live Activity extension and reads an atomic private App Group snapshot. Task titles are disabled by default and require explicit opt-in in Data tools. Calendar-day/staleness checks and privacy-sensitive rendering are implemented.
 
 Successful unsigned compilation does not establish Family Controls provisioning, App Store distribution approval, or shield/expiry behavior on a signed iPhone. Free Personal Team signing support is not promised. Test locked/closed expiry, lost-response recovery, reboot/timezone changes, guardian flows, and data retention before relying on restrictions. This is a beta self-control/family tool, not tamper-proof device management.
+
+## 0.8 economy contract
+
+After migration 006, one point buys one minute, with 1–1,000-minute choices and an account-wide 1,000-minute daily redemption cap (UTC). Parent allowances may be lower; the exchange rate is fixed. The native screen checks service version 6, confirmed balance and remaining minutes, and rechecks authorization/account/blocking before applying a receipt. XP is separate and cannot be redeemed. Migration 006 is not live yet; see ECONOMY.md. Apple's authorization and monitoring APIs remain unchanged.

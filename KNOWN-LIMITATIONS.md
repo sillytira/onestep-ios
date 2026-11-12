@@ -1,4 +1,4 @@
-# OneStep 0.7 beta limitations
+# OneStep 0.8 beta limitations
 
 - Physical installs, phone reminder delivery, retained data after updates/migration, actual phone-to-PC LAN transfer, and offline parent-code behavior on real devices still require acceptance checks. CI/simulator results are not those device results.
 - Core planner use is offline. Online enrollment, family linking, task submission/approval, profile/ranking changes, and admin adjustments need the hosted service. Account snapshots are labeled with last sync; a missing snapshot is shown as unknown, not zero. Portable service views poll about every 20 seconds while open; native Bank has manual refresh. No guaranteed instant background delivery.
@@ -16,3 +16,7 @@
 
 - Version 0.5 content updates fetch public, bounded data from the fixed OneStep GitHub feed. They do not replace native code. Automatic checks can be disabled; valid cached packs remain available offline. Adding a pack is explicit and does not overwrite personal edits.
 - Parent/account enrollment, physical-phone behavior, private widget data sharing, and OS app shielding are implemented but remain conditional or require user/device/Apple action; they have not been reported as completed by content updates.
+
+## Economy and XP service upgrade
+
+Version 0.8 adds the 1-point/minute exchange, 1,000-point daily earning/spending ceilings, and a separate non-spendable XP system/opt-in leaderboard. These need migration 006, which is tested but not deployed to the main instance from this CLI session. Clients show setup-needed and disable new native redemption until the new service contract is available. See ECONOMY.md.

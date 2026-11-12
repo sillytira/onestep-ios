@@ -90,7 +90,8 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> with WidgetsBindingObserver {
-  Json completed(Json state, Json item, {bool skip=false}) => complete(state,item,skip:skip,accountID:FamilyClient.shared.userID);
+  Json completed(Json state, Json item, {bool skip = false}) =>
+      complete(state, item, skip: skip, accountID: FamilyClient.shared.userID);
   Planner? planner;
   String? fatal;
   int tab = 0;

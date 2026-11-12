@@ -1,4 +1,4 @@
-# Install OneStep 0.7 beta
+# Install OneStep 0.8 beta
 
 ## Main iPhone app
 
@@ -34,7 +34,7 @@ Compare package SHA-256 with the delivered checksum manifest. Confirm restart pe
 
 ## Enable content updates once
 
-Install this 0.5 application over the matching existing identity to add the updater. Future routine-pack/content revisions can refresh inside it without another IPA/APK installation. New native code still needs an application update; Apple signing expiry is unaffected. See UPDATES.md.
+Install the current application over the matching existing identity to add the updater. Future routine-pack/content revisions can refresh inside it without another IPA/APK installation. New native code still needs an application update; Apple signing expiry is unaffected. See UPDATES.md.
 
 ## Optional Apple Screen Time variant
 
@@ -43,3 +43,7 @@ The ordinary IPA keeps its existing Live Activity extension. The separately name
 ## Version 0.7 account and navigation repair
 
 Back up, then install over the same app identity and signing account. Bank is now a main iPhone tab and a desktop sidebar destination; Notes/History/settings are in More on iPhone. Old manual connection settings no longer override the main service. If a cached session needs recovery, open Bank → Account → Reconnect this account and enter that account’s password. This does not unlink a child. Only the user enters real credentials. The separate Apple Screen Time provisioning requirement is unchanged.
+
+## Economy and XP activation
+
+The 0.8 clients require backend migration 006 for the new rate, limits and XP. It is not yet deployed from this CLI session. See ECONOMY.md. Install over the existing identity with the same signing settings; use the Screen Time variant for native Apple blocking with appropriate profiles. XP and points are separate, and public XP membership defaults off.

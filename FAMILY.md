@@ -1,4 +1,4 @@
-# OneStep family beta — 0.7
+# OneStep family beta — 0.8
 
 OneStep remains an offline planner. Optional online services add family tasks, parent-approved virtual points, transactions, rankings, and administration. A managed Supabase backend is sufficient; no home server or VPS is required. No points can be purchased with real money. Version 0.6 adds bounded personal rewards and point-funded app time in the separately provisioned native Apple build. See REWARDS.md and SCREEN-TIME.md.
 
@@ -52,3 +52,7 @@ The main private planner continues offline without accounts. Online rewards/acco
 Apply backend migrations 001 through 005 to a new empty Supabase project in order. The main instance has received them after approval; do not blindly rerun non-idempotent migrations. RLS is enabled, anonymous table access is denied, and authenticated users have only explicit privileges. Create any initial owner invitation privately using a hashed secret and email binding; never commit that secret or privileged credentials. The existing owner account is present; do not reseed its consumed invitation. Configure email-confirmation policy only after invite gating is installed and tested.
 
 CI database tests cover family isolation, no self-approval, exactly-once credit, beta gate bypass rejection, owner/name binding, metadata privilege rejection, private child identities, and parent-only unlink/PIN setup. scripts/check-public-source.mjs scans source for embedded project keys, JWTs, and private keys. Device enrollment, signed installs, physical offline PIN behavior, and real app notification delivery still need acceptance checks.
+
+## Economy and XP service upgrade
+
+Version 0.8 adds the 1-point/minute exchange, 1,000-point daily earning/spending ceilings, and a separate non-spendable XP system/opt-in leaderboard. These need migration 006, which is tested but not deployed to the main instance from this CLI session. Clients show setup-needed and disable new native redemption until the new service contract is available. See ECONOMY.md.

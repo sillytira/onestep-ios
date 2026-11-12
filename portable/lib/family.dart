@@ -558,7 +558,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       if (cached != null) {
         final saved = jsonDecode(cached) as Json;
         balance = (saved['balance'] as num).toInt();
-        xpTotal=(saved['xpTotal'] as num?)?.toInt()??0; xpOptIn=saved['xpOptIn']==true;
+        xpTotal = (saved['xpTotal'] as num?)?.toInt() ?? 0;
+        xpOptIn = saved['xpOptIn'] == true;
         ledger = rows(saved, 'ledger');
         tasks = rows(saved, 'tasks');
         children = rows(saved, 'children');
@@ -683,22 +684,30 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       message =
           'App-time policy could not refresh. Account data is still available.';
     }
-    xpReady=false;
+    xpReady = false;
     try {
-      final economy=await client.rpc('onestep_economy_status',{}) as Map;
-      xpReady=economy['version']==6;
-      xpTotal=(economy['xp_total'] as num?)?.toInt()??0;
-      xpOptIn=economy['xp_opt_in']==true;
-    } catch(_) { message='XP and the 1,000-point economy need service migration 006 or a connection. Your planner and saved account remain available.'; }
+      final economy = await client.rpc('onestep_economy_status', {}) as Map;
+      xpReady = economy['version'] == 6;
+      xpTotal = (economy['xp_total'] as num?)?.toInt() ?? 0;
+      xpOptIn = economy['xp_opt_in'] == true;
+    } catch (_) {
+      message =
+          'XP and the 1,000-point economy need service migration 006 or a connection. Your planner and saved account remain available.';
+    }
     if (client.accountKind != 'kids')
       try {
         rankings =
-            (await client.rpc(rankingMetric=='xp' ? 'onestep_xp_rankings' : 'onestep_rankings', rankingMetric=='xp' ? {} : {'metric': rankingMetric})
+            (await client.rpc(
+                      rankingMetric == 'xp'
+                          ? 'onestep_xp_rankings'
+                          : 'onestep_rankings',
+                      rankingMetric == 'xp' ? {} : {'metric': rankingMetric},
+                    )
                     as List)
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList();
       } catch (_) {
-        rankings=[];
+        rankings = [];
         message =
             'Rankings could not refresh. Your account data is still available.';
       }
@@ -732,7 +741,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     await FamilyClient.vault.write(
       key: 'family.snapshot.${client.userID}',
       value: jsonEncode({
-        'xpTotal':xpTotal,'xpOptIn':xpOptIn,
+        'xpTotal': xpTotal,
+        'xpOptIn': xpOptIn,
         'balance': balance,
         'ledger': ledger,
         'tasks': tasks,
@@ -784,7 +794,10 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       children = [];
       families = [];
       ledger = [];
-      balance = 0; xpTotal=0;xpReady=false;xpOptIn=false;
+      balance = 0;
+      xpTotal = 0;
+      xpReady = false;
+      xpOptIn = false;
       hasSnapshot = false;
       lastSync = '';
       rankings = [];
@@ -1015,10 +1028,18 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   label: const Text('Application admin console'),
                 ),
               if (bankTab == 0)
-                panel('Your XP',[
-                  Text('$xpTotal XP',style:Theme.of(context).textTheme.headlineMedium),
-                  const Text('10 XP per completed task or routine step. XP is non-spendable, with a separate 1,000 XP daily cap and optional leaderboard.'),
-                  if(!xpReady) const Text('Saved total. The XP service needs migration 006 or a connection.'),
+                panel('Your XP', [
+                  Text(
+                    '$xpTotal XP',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const Text(
+                    '10 XP per completed task or routine step. XP is non-spendable, with a separate 1,000 XP daily cap and optional leaderboard.',
+                  ),
+                  if (!xpReady)
+                    const Text(
+                      'Saved total. The XP service needs migration 006 or a connection.',
+                    ),
                 ]),
               if (bankTab == 0)
                 BankOverview(
@@ -1165,7 +1186,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                               policyDirty = true;
                             }),
                     ),
-                    const Text('1 point = 1 minute. Parents can set a lower daily unlock allowance.'),
+                    const Text(
+                      '1 point = 1 minute. Parents can set a lower daily unlock allowance.',
+                    ),
                     DropdownButtonFormField<int>(
                       key: ValueKey('minutes-$policyRevision'),
                       initialValue: screenDailyMinutes,
@@ -1465,8 +1488,24 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 ]),
               if (client.accountKind != 'kids')
                 panel('Public profile', [
-                  SwitchListTile(title:const Text('Join the separate XP leaderboard'),value:xpOptIn,onChanged:busy||!xpReady?null:(v)=>setState(()=>xpOptIn=v)),
-                  FilledButton(onPressed:busy||!xpReady?null:()=>run(() async {await client.rpc('onestep_set_xp_public',{'opt_in':xpOptIn});await refresh();}),child:const Text('Save XP visibility')),
+                  SwitchListTile(
+                    title: const Text('Join the separate XP leaderboard'),
+                    value: xpOptIn,
+                    onChanged: busy || !xpReady
+                        ? null
+                        : (v) => setState(() => xpOptIn = v),
+                  ),
+                  FilledButton(
+                    onPressed: busy || !xpReady
+                        ? null
+                        : () => run(() async {
+                            await client.rpc('onestep_set_xp_public', {
+                              'opt_in': xpOptIn,
+                            });
+                            await refresh();
+                          }),
+                    child: const Text('Save XP visibility'),
+                  ),
                   TextField(
                     controller: publicName,
                     decoration: const InputDecoration(
@@ -1510,11 +1549,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   SegmentedButton<String>(
                     segments: const [
                       ButtonSegment(value: 'tasks', label: Text('Tasks')),
-                      ButtonSegment(
-                        value: 'points',
-                        label: Text('Points'),
-                      ),
-                      ButtonSegment(value:'xp',label:Text('XP')),
+                      ButtonSegment(value: 'points', label: Text('Points')),
+                      ButtonSegment(value: 'xp', label: Text('XP')),
                     ],
                     selected: {rankingMetric},
                     onSelectionChanged: (v) {
@@ -1525,7 +1561,11 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   const Text(
                     'Eligible self-reported tasks. Max20 tasks /1,000 earned points per UTC day; 0–100 per task. Duplicate-title, age and rate filters apply. Admin credits do not count.',
                   ),
-                  Text(rankingMetric=='xp' ? 'XP leaderboard: separate opt-in, up to 1,000 XP per UTC day.' : 'Task and points leaderboard'),
+                  Text(
+                    rankingMetric == 'xp'
+                        ? 'XP leaderboard: separate opt-in, up to 1,000 XP per UTC day.'
+                        : 'Task and points leaderboard',
+                  ),
                   if (rankings.isEmpty)
                     const Text(
                       'No public scores yet. Joining the leaderboard is optional.',
@@ -1536,7 +1576,15 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       title: Text(rankings[index]['display_name'] as String),
                       subtitle: Text('@${rankings[index]['handle'] ?? ''}'),
                       trailing: Text(
-                        '${rankings[index][rankingMetric == 'tasks' ? 'completed_tasks' : rankingMetric=='xp' ? 'earned_xp' : 'earned_points']} ${rankingMetric == 'tasks' ? 'tasks' : rankingMetric=='xp' ? 'XP' : 'points'}',
+                        '${rankings[index][rankingMetric == 'tasks'
+                            ? 'completed_tasks'
+                            : rankingMetric == 'xp'
+                            ? 'earned_xp'
+                            : 'earned_points']} ${rankingMetric == 'tasks'
+                            ? 'tasks'
+                            : rankingMetric == 'xp'
+                            ? 'XP'
+                            : 'points'}',
                       ),
                     ),
                   const Text(
@@ -1600,7 +1648,10 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 children = [];
                                 families = [];
                                 ledger = [];
-                                balance = 0; xpTotal=0;xpReady=false;xpOptIn=false;
+                                balance = 0;
+                                xpTotal = 0;
+                                xpReady = false;
+                                xpOptIn = false;
                                 hasSnapshot = false;
                                 lastSync = '';
                                 rankings = [];

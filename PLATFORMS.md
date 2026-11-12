@@ -1,4 +1,4 @@
-# OneStep 0.7 platform and service architecture
+# OneStep 0.8 platform and service architecture
 
 Main iOS: native SwiftUI, deployment iOS 26+, intended for iPhone 12, one WidgetKit Live Activity extension in the ordinary build. The optional Screen Time variant adds a DeviceActivity monitor and requires Family Controls/shared App Group provisioning. Main bundle ID meow.tira.onestep; extensions .liveactivity and, for that variant, .activitymonitor. Source models preserve schema 1 JSON compatibility. The historical old-ID bridge exists only for safe export/migration.
 
@@ -15,3 +15,7 @@ Account creation requires a single-use admin-issued beta key. The service is con
 The managed free service needs no VPS/home server. Full self-hosted Supabase currently lists minimum 2 CPU cores / 4 GB and recommends more; a 1-core / 4-GB VM is more appropriate to a small custom service than the full stack. No paid hosting is provisioned by these workflows. Managed Free projects can pause when inactive, and quotas/rate limits apply. Verify current provider documentation before changing hosting.
 
 Build toolchain: Node 22, Flutter 3.38.5, Xcode 26.6 for native/macOS builds, Java 17 for Android, platform desktop toolchains. Flutter secure storage 9.2.4 adds Linux libsecret/jsoncpp dependencies. pubspec.lock is retained. Public source scanning and behavior/permission tests run in Actions; role-specific native/package checks precede artifact upload. No Apple signing credentials or private release keystore is committed.
+
+## Economy and XP service upgrade
+
+Version 0.8 adds the 1-point/minute exchange, 1,000-point daily earning/spending ceilings, and a separate non-spendable XP system/opt-in leaderboard. These need migration 006, which is tested but not deployed to the main instance from this CLI session. Clients show setup-needed and disable new native redemption until the new service contract is available. See ECONOMY.md.

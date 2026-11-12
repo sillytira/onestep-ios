@@ -1,3 +1,7 @@
+# OneStep 0.8 economy and XP beta
+
+Adds fixed 1-point/minute redemption, 1,000-point daily earnings and spending limits, and separate non-spendable XP with independent opt-in rankings. The backend upgrade is staged/tested but needs live Supabase deployment. See [ECONOMY.md](ECONOMY.md). Existing private planner data and app identifiers are preserved.
+
 # OneStep — 0.7 family beta
 
 An offline task/routine planner with a clear Now screen, microsteps, notes, recurring tasks, local reminders, focus timers, JSON backups, and encrypted private-Wi-Fi snapshot transfers. iOS remains native SwiftUI with Liquid Glass and a Live Activity; Android, Windows, and Linux use Material 3. Core planner use needs no account, internet connection, or server.

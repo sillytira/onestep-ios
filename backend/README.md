@@ -1,15 +1,26 @@
-# Optional hosted identity and points foundation
+# Hosted OneStep accounts, points and XP
 
-Supabase provides the managed database, Auth API, and admin dashboard; no VM is required. Its Free plan has quotas and may pause after inactivity. The mobile/desktop apps operate without this service. No project is deployed merely by checking out source.
+Supabase provides the managed Auth/database service. Offline planner use and local Wi-Fi snapshots do not require a server. Public connection defaults are embedded in the clients; privileged service keys, database credentials, private Android signing material and owner enrollment stay outside public source and archives.
 
-The 0.5 clients connect to the configured main service with an approved publishable key. Password sign-in and single-use beta enrollment, family tasks, parent-approved points, private child identities, and app administration are implemented. Planner sync and OS app-time spending are separate future work; see FAMILY.md and UPDATES.md.
+## Main instance status
 
-`001_points_foundation.sql` prepares an opt-in top-100 total-points view and an append-only adjustment ledger. Clients may read their own ledger and edit only their own public profile/opt-in. They cannot directly insert/update/delete ledger rows or grant themselves admin. The adjustment function checks a server-side allowlist, validates bounds, locks per account, rejects overdrafts, records the actor/reason, and uses an idempotent event UUID. No user task contents are included. This is a foundation, not a complete rewards product, parental authorization system, or anti-cheat implementation.
+Migrations 001-005 were deployed with explicit authorization. **006_economy_xp.sql is tested and staged, but not deployed.** The CLI session has no available Edge/browser host or privileged database connection. To activate the 0.8 economy/XP clients on the existing project, the project owner must apply only 006 once in the authenticated SQL Editor. Do not replay 001-005 or any synthetic test script on live data. Review the normal backup/snapshot before applying.
 
-Only the project owner should bootstrap an administrator, in the authenticated Supabase SQL Editor, using an actual verified Auth user UUID. Never put a service-role/secret key into a client. Do not grant admin access using a UUID imported from a local profile. Local profiles are untrusted data. The dashboard already lets the owner inspect users and ledger events; a separate real-time admin UI is future work. Task awards and app-time redemption require further server-side authorization rules and authenticated sessions before activation.
+## Migration sequence for a new project
 
-Changing a displayed balance should always add an audited adjustment, not overwrite or erase past entries. Public rankings are opt-in and omit email, task text, app usage, private reasons, and IDs. Migrations 002–004 add application family links and private child identities. These invitation links do not establish verified age or legal guardianship.
+1. 001_points_foundation.sql: private profiles, append-only points ledger, server-controlled administrators and audited adjustments.
+2. 002_family_services.sql: invitation-based families, parent-assigned tasks, child submissions and exactly-once parent approval.
+3. 003_beta_identity.sql: invite-only enrollment, owner/email binding, reserved handles, server roles and email-only child identity.
+4. 004_parent_controls.sql: parent-only unlink and salted offline-code verifier storage.
+5. 005_personal_rewards.sql: bounded self-reported task rewards, private child policies, weekly opt-in task/point rankings and idempotent app-time purchases.
+6. 006_economy_xp.sql: fixed 1 point/minute, 1,000 daily earned points and redeemed minutes across devices, lower optional child allowances, private XP events/status, independent opt-in XP rankings and authenticated RPCs. Existing receipts stay unchanged; existing child prices become one point/minute and existing minute allowances stay intact.
 
-No real-money purchasing or monetary value is supported. The optional Bank, Kids, and Parent phone clients are built and share the managed service. Screen Time enforcement is local Apple platform work and depends on Family Controls authorization, managed entitlements, and suitable signing; database hosting does not unlock those capabilities.
+See ../ECONOMY.md for exact limits, award rules, offline behavior and activation checks. XP and points are separate ledgers; admin point adjustments and spending cannot inflate earned rankings. XP cannot fund Screen Time. Children and linked child identities are excluded from both public rankings, regardless of client flags.
 
-Apply migrations only to a new empty OneStep project after reviewing them. They are not written to overwrite an existing application's schema. The CI database test uses synthetic users and no real account data.
+## Authorization and testing
+
+Private tables use row-level security. Clients cannot write points or XP ledger rows directly; functions validate enrolled identities, parent links, bounds, replay and account-wide locking. New XP functions are authenticated-only, and only the user can read their XP events. Independent XP leaderboard membership defaults off. No role or administrator grants are added by 006.
+
+The cloud PostgreSQL 16 workflow runs economy-xp-test.sql, which chains the earlier authorization tests then applies the upgrade using disposable synthetic users. It covers caps, fixed pricing, a one-minute purchase, cross-device spending, receipt replay, child allowances, parent reward ceiling, independent XP, visibility, child privacy and denied anonymous/direct writes. **Never run these test scripts against a live project.**
+
+Planner activity is self-reported; the filters bound spam and do not establish proof of effort. Backend purchases do not grant Apple capabilities. Native blocking still requires Family Controls/App Group provisioning and OS individual/guardian authorization; the companion clients only configure the online family/account service.

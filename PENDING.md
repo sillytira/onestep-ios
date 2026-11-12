@@ -1,6 +1,6 @@
 # Remaining acceptance checks
 
-Version 0.7 retains personal rewards, bounded weekly rankings, server-side app-time receipts, the native Apple shield/unlock lifecycle, and an opt-in private next-action widget. The 0.7 repair adds account/navigation/UI corrections with 62 passing app tests. Main-instance migration 005 remains deployed; no new database migration is needed. Build evidence is recorded separately; these outcomes still need real users/devices:
+Version 0.8 adds fixed 1-point/minute redemption, 1,000-point daily earning/spending limits, and separate XP/opt-in rankings. Migration 006 is tested but not deployed: the CLI has no Edge/browser host. Apply only 006 to the existing project; updated clients fail closed for redemption until its contract is available. See ECONOMY.md. It retains the prior account/navigation repairs, native Apple shield/unlock lifecycle and private widget. The 0.8 clients pass 66 app tests plus the backend suite. Main-instance migrations 001–005 remain deployed; migration 006 is pending. Build evidence is recorded separately; these outcomes still need real users/devices:
 
 - **Family acceptance:** owner account exists in Auth Users; confirm owner/admin GUI, separate parent-child linking, one approval credit, hidden child identity, and a previously synced offline parent code. No owner password was read or entered by Codex.
 - **Signed iPhone acceptance:** update over the same signing identity, verify retained history, locked offline alerts, Live Activities, next-day behavior, and real phone-to-PC transfer.

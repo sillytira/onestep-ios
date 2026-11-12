@@ -1,0 +1,28 @@
+name: Inspect Bank design preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/design-preview.yml']
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: portable
+      - run: flutter test tool/render_bank_preview_test.dart
+        working-directory: portable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-0.7-Bank-design-preview
+          path: release/OneStep-Bank-preview.png
+          if-no-files-found: error

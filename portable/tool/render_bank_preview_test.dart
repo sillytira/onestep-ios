@@ -11,6 +11,8 @@ void main(){
   testWidgets('Capture banking design with clearly labeled synthetic data',(tester)async{
     tester.view.physicalSize=const Size(430,1150);tester.view.devicePixelRatio=1;
     addTearDown(tester.view.resetPhysicalSize);addTearDown(tester.view.resetDevicePixelRatio);
+    final iconFont=FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await iconFont.load();
     final font=File('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
     if(font.existsSync()){
       final loader=FontLoader('OneStepPreview')..addFont(Future.value(ByteData.sublistView(font.readAsBytesSync())));

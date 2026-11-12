@@ -10,7 +10,7 @@ Future<void> syncPersonalTasks(Json state) async {
   if (_syncingPersonal) return;
   _syncingPersonal = true;
   try {
-    final client = FamilyClient();
+    final client = FamilyClient.shared;
     await client.load();
     if (!client.signedIn ||
         client.userID == null ||

@@ -5,7 +5,7 @@ import Observation
 
 @MainActor @Observable final class ScreenTimeModel {
     var state = ScreenTimeShared.load()
-    var account = RewardsStore()
+    var account = RewardsStore.shared
     var message = ""
     var busy = false
     var parentCode = ""
@@ -37,6 +37,7 @@ import Observation
     func configureAuthorization() async {
         await run {
             guard supported else { throw ScreenTimeFailure.unavailable }
+            if account.signedIn && account.kind == nil { try await account.reload() }
             try await AuthorizationCenter.shared.requestAuthorization(for: child ? .child : .individual)
             try ScreenTimeShared.update { $0.childManaged = child }
             if child, let id = account.userID { try RewardsVault.write("screen.childAccount", Data(id.utf8)) }
@@ -108,11 +109,21 @@ import Observation
 }
 
 struct ScreenTimeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model = ScreenTimeModel()
     @State private var selection = FamilyActivitySelection()
     var body: some View {
         @Bindable var fields = model
-        Form {
+        Group {
+        if !model.supported {
+            ContentUnavailableView {
+                Label("Screen Time needs a different signing profile", systemImage:"lock.shield")
+            } description: {
+                Text("This installed copy cannot use Apple's Family Controls or shared container. Install the Screen Time variant with those capabilities enabled in its signing profiles. The planner, timers, and ordinary reminders work independently.")
+            } actions: {
+                Link("Apple setup requirements",destination:URL(string:"https://developer.apple.com/documentation/familycontrols")!)
+            }
+        } else { Form {
             Section("Apple Screen Time") {
                 Text(model.child ? "Child mode uses Apple's family authorization and parent-managed unlock policy." : "Self-control mode uses Apple's individual authorization. You remain able to revoke it in system settings.")
                 if !model.supported { Text("Use the separately packaged Screen Time IPA with Family Controls/App Group provisioning. The ordinary free-signing beta cannot claim this access.").foregroundStyle(.secondary) }
@@ -127,14 +138,17 @@ struct ScreenTimeView: View {
                 }
             }
             Section("Blocked apps and websites") {
+                Label(model.authorized ? "Apple access approved" : "First authorize with Apple",systemImage:model.authorized ? "checkmark.shield" : "1.circle")
                 Button("Choose what to block") { selection = model.state.selection; model.picker = true }.disabled(!model.supported || !model.authorized || (model.child && !model.parentAuthorized))
+                Text("Selected: \(selection.applicationTokens.count) apps · \(selection.categoryTokens.count) categories · \(selection.webDomainTokens.count) websites").font(.footnote).foregroundStyle(.secondary)
                 Button("Apply chosen blocking") { do { try model.saveSelection(selection) } catch { model.message = error.localizedDescription } }.disabled(!model.supported || !model.authorized || (model.child && !model.parentAuthorized))
-                Text(model.state.enabled ? "Blocking configured" : "Blocking not configured")
+                Label(model.state.enabled ? "Blocking applied" : "Choose apps, then apply blocking",systemImage:model.state.enabled ? "checkmark.circle.fill" : "2.circle").foregroundStyle(model.state.enabled ? .green : .secondary)
                 Button("Stop blocking", role: .destructive) { do { try model.stopBlocking() } catch { model.message = error.localizedDescription } }.disabled(!model.supported || (model.child && !model.parentAuthorized))
             }
             Section("Spend earned points") {
                 Button("Refresh price and policy") { Task { await model.refreshPolicy() } }.disabled(model.busy)
                 if model.policyLoaded { Text("\(model.minuteCost) point(s) per minute · \(model.dailyMinutes) minutes/day. \(model.unlockAllowed ? "Purchases enabled" : "Parent has not enabled purchases")") }
+                if !model.account.signedIn { Text("Sign in from Bank to use earned points. App blocking itself does not require a points purchase.").font(.footnote) }
                 ForEach([15,30,60], id: \.self) { minutes in Button("Unlock \(minutes) minutes · \(minutes * model.minuteCost) points") { Task { await model.purchase(minutes: minutes) } }.disabled(model.busy || !model.state.enabled || !model.supported || !model.authorized || !model.policyLoaded || !model.unlockAllowed) }
                 Button("Recover pending purchase") { Task { await model.purchase(minutes: 15, recovering: true) } }.disabled(model.busy || !model.supported || !model.authorized || !model.state.enabled)
                 Text("Normal accounts: 1 point/minute, up to 120 minutes per UTC day. A child's linked parent sets its price and limit. Purchases require the service. Retrying a pending purchase reuses its receipt and never charges twice.").font(.footnote)
@@ -142,9 +156,13 @@ struct ScreenTimeView: View {
                 Text("A lost connection can leave a purchase pending. Retry to recover the same receipt. If it expired before activation, review it with the administrator; no automatic refund or free unlock is invented.").font(.footnote)
             }
             if !model.message.isEmpty { Section { Text(model.message) } }
-        }.navigationTitle("Screen Time")
+        }} }.navigationTitle("Screen Time")
         .familyActivityPicker(isPresented: $fields.picker, selection: $selection)
         
-        .task { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load(); await model.refreshPolicy() }
+        .task { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load(); selection = model.state.selection; if model.account.signedIn { await model.refreshPolicy() } }
+        .onChange(of:scenePhase) { _, phase in
+            if phase != .active { model.parentAuthorized = false; model.parentCode = "" }
+            else { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load() }
+        }
     }
 }

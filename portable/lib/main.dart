@@ -8,6 +8,7 @@ import 'services.dart';
 import 'family.dart';
 import 'content.dart';
 import 'personal.dart';
+import 'desktop_sidebar.dart';
 
 const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
 
@@ -50,6 +51,9 @@ class OneStepApp extends StatelessWidget {
           borderRadius: BorderRadius.all(Radius.circular(28)),
         ),
       ),
+      dividerTheme: const DividerThemeData(color:Color(0xff2a2c37),thickness:1),
+      appBarTheme: const AppBarTheme(backgroundColor:Color(0xff0e1016),surfaceTintColor:Colors.transparent,centerTitle:false),
+      navigationBarTheme:const NavigationBarThemeData(backgroundColor:Color(0xff14161e),indicatorColor:Color(0xff37314f)),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
@@ -211,6 +215,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         title: Text(names[tab]),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(tooltip:'OneStep Bank',icon:const Icon(Icons.account_balance_wallet_outlined),onPressed:(){Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const RewardsPage(role:'bank')));}),
           IconButton(
             tooltip: 'Data, devices, and settings',
             icon: const Icon(Icons.settings_outlined),
@@ -226,25 +231,16 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       ),
       body: Row(
         children: [
-          if (wide)
-            NavigationRail(
-              selectedIndex: tab,
-              labelType: NavigationRailLabelType.all,
-              onDestinationSelected: (v) => setState(() {
-                tab = v;
-              }),
-              destinations: List.generate(
-                names.length,
-                (i) => NavigationRailDestination(
-                  icon: Icon(icons[i]),
-                  label: Text(names[i]),
-                ),
-              ),
-            ),
+          if (wide) DesktopSidebar(
+            selected:tab,names:names,icons:icons,expanded:MediaQuery.sizeOf(context).width>=1100,
+            onSelect:(i)=>setState(()=>tab=i),onAdd:()=>edit(),
+            onBank:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const RewardsPage(role:'bank'))),
+            onSettings:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SettingsPage(planner:p))),
+          ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 840),
+                constraints: const BoxConstraints(maxWidth: 1120),
                 child: Column(
                   children: [
                     if (p.warning != null)
@@ -353,7 +349,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
-        Text(dayKey(now), style: TextStyle(color: accents['amber'])),
+        Text(MaterialLocalizations.of(context).formatFullDate(now), style: TextStyle(color: accents['amber'])),
         const SizedBox(height: 12),
         const Text(
           'One thing at a time.',
@@ -1035,7 +1031,7 @@ class _EntryEditorState extends State<EntryEditor> {
   late bool hasDate, remind;
   bool busy = false;
   String? error;
-  final rewardAccount = FamilyClient();
+  final rewardAccount = FamilyClient.shared;
   bool rewardEnabled = false;
   int rewardPoints = 10;
   @override

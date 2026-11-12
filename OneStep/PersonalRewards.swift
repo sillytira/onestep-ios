@@ -8,7 +8,7 @@ import Observation
     private var busy = false
     func sync(_ state: PlannerState) async {
         guard !busy else { return }; busy = true; defer { busy = false }
-        let account = RewardsStore()
+        let account = RewardsStore.shared
         guard account.signedIn, let user = account.userID, account.kind != "kids" else { return }
         let storage = "personal.receipts.\(user)"
         var receipts = RewardsVault.read(storage).flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: [String: Any]] } ?? [:]

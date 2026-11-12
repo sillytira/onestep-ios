@@ -35,6 +35,7 @@ enum ScreenTimeShared {
         settings.shield.applications = blocking && !state.selection.applicationTokens.isEmpty ? state.selection.applicationTokens : nil
         settings.shield.applicationCategories = blocking && !state.selection.categoryTokens.isEmpty ? .specific(state.selection.categoryTokens) : nil
         settings.shield.webDomains = blocking && !state.selection.webDomainTokens.isEmpty ? state.selection.webDomainTokens : nil
+        settings.shield.webDomainCategories = blocking && !state.selection.categoryTokens.isEmpty ? .specific(state.selection.categoryTokens) : nil
     }
 }
 enum ScreenTimeFailure: LocalizedError {

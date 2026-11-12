@@ -7,9 +7,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'model.dart';
 import 'parent_pin.dart';
 import 'connection.dart';
+import 'bank_ui.dart';
 
 /// Public connection defaults ship with the app; user sessions remain in secure storage.
 class FamilyClient {
+  static final shared = FamilyClient();
+  Future<void>? _loading;
+  Future<void> load() => _loading ??= _load().catchError((Object error) {
+    _loading = null;
+    throw error;
+  });
   static const vault = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
@@ -19,7 +26,7 @@ class FamilyClient {
   Future<void>? _refreshing;
   bool get signedIn => session?['access_token'] is String;
   String? get userID => session?['user']?['id'] as String?;
-  Future<void> load() async {
+  Future<void> _load() async {
     final config = await vault.read(key: 'family.connection');
     if (config != null) {
       final value = jsonDecode(config) as Json;
@@ -123,7 +130,12 @@ class FamilyClient {
       throw const FormatException(
         'Check your email to confirm your account, then sign in.',
       );
-    session = Map<String, dynamic>.from(response);
+    final next = Map<String,dynamic>.from(response);
+    if (next['user']?['id'] != userID) {
+      accountKind = null;
+      await vault.delete(key:'family.kind');
+    }
+    session = next;
     session!['expires_at'] ??=
         DateTime.now().millisecondsSinceEpoch ~/ 1000 +
         (session!['expires_in'] as int? ?? 3600);
@@ -139,13 +151,13 @@ class FamilyClient {
       throw const FormatException('Please sign in again.');
     if (_refreshing != null) return _refreshing!;
     final pending = () async {
-      await acceptSession(
-        await request(
+      final updated = await request(
           '/auth/v1/token?grant_type=refresh_token',
           body: {'refresh_token': refresh},
           authenticated: false,
-        ),
-      );
+        );
+      if (session?['refresh_token'] != refresh) throw const FormatException('Account changed. Please retry.');
+      await acceptSession(updated);
     }();
     _refreshing = pending;
     try {
@@ -461,7 +473,7 @@ class _AdminPageState extends State<AdminPage> {
 }
 
 class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
-  final client = FamilyClient();
+  final client = FamilyClient.shared;
   final url = TextEditingController(),
       key = TextEditingController(),
       email = TextEditingController(),
@@ -481,6 +493,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   bool screenPoliciesLoaded = false;
   int policyRevision = 0;
   void selectPolicy(String? child) {
+    policyDirty = false;
     selectedChild = child;
     final matches = screenPolicies.where((p) => p['user_id'] == child);
     final policy = matches.isEmpty ? null : matches.first;
@@ -500,13 +513,16 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   String? selectedChild;
   bool busy = true;
   bool externalBank = false;
+  int bankTab = 0;
+  bool policyDirty = false;
   bool ready = false;
   bool admin = false;
   bool hasSnapshot = false;
   String lastSync = '';
   Timer? poll;
-  String get effectiveRole =>
-      client.accountKind == 'kids' ? 'kids' : widget.role;
+  String get effectiveRole => client.signedIn
+      ? (client.accountKind == 'parent' ? 'parent' : client.accountKind == 'kids' ? 'kids' : 'bank')
+      : widget.role;
   String get appName => effectiveRole == 'parent'
       ? 'OneStep Parent'
       : effectiveRole == 'kids'
@@ -625,7 +641,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     final values = await Future.wait<dynamic>([
       client.rpc('onestep_my_balance', {}),
       client.list(
-        'onestep_points_ledger?select=delta,reason,created_at&order=created_at.desc&limit=100',
+        'onestep_points_ledger?select=event_id,delta,reason,created_at&user_id=eq.${client.userID}&order=created_at.desc&limit=100',
       ),
       client.list(
         'onestep_family_tasks?select=*&order=updated_at.desc&limit=100',
@@ -647,16 +663,19 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       );
     admin = await client.rpc('onestep_is_admin', {}) as bool;
     screenPoliciesLoaded = false;
-    screenPolicies = await client.list(
-      'onestep_screen_time_policies?select=user_id,enabled,cost_per_minute,daily_minutes&limit=100',
-    );
-    screenPoliciesLoaded = true;
-    if (client.accountKind != 'kids')
+    try {
+      screenPolicies = await client.list(
+        'onestep_screen_time_policies?select=user_id,enabled,cost_per_minute,daily_minutes&limit=100',
+      );
+      screenPoliciesLoaded = true;
+    } catch (_) { message = 'App-time policy could not refresh. Account data is still available.'; }
+    if (client.accountKind != 'kids') try {
       rankings =
           (await client.rpc('onestep_rankings', {'metric': rankingMetric})
                   as List)
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList();
+    } catch (_) { message = 'Rankings could not refresh. Your account data is still available.'; }
     if (publicName.text.isEmpty) {
       final profile = await client.list(
         'onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1',
@@ -682,7 +701,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       hasSnapshot = true;
       if (selectedChild == null && children.isNotEmpty)
         selectedChild = children.first['child_id'] as String;
-      selectPolicy(selectedChild);
+      if (!policyDirty) selectPolicy(selectedChild);
     });
     await FamilyClient.vault.write(
       key: 'family.snapshot.${client.userID}',
@@ -731,6 +750,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       throw const FormatException('Incorrect parent code.');
     await client.signOut(parentAuthorized: true);
     setState(() {
+      admin = false; screenPoliciesLoaded = false; bankTab = 0;
       tasks = [];
       children = [];
       families = [];
@@ -744,7 +764,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     });
   }
 
-  Widget panel(String title, List<Widget> content, {Color? color}) => Card(
+  Widget panel(String title, List<Widget> content, {Color? color}) {
+    if (client.signedIn && !bankSectionVisible(title, bankTab)) return const SizedBox.shrink();
+    return Card(
     child: Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -769,6 +791,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       ),
     ),
   );
+  }
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -784,6 +807,17 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   },
             icon: const Icon(Icons.refresh),
           ),
+      ],
+    ),
+    bottomNavigationBar: !client.signedIn ? null : NavigationBar(
+      selectedIndex: [0,1,if(effectiveRole!='bank')2,if(client.accountKind!='kids')3,4].indexOf(bankTab).clamp(0,4),
+      onDestinationSelected:(i)=>setState(()=>bankTab=[0,1,if(effectiveRole!='bank')2,if(client.accountKind!='kids')3,4][i]),
+      destinations: [
+        const NavigationDestination(icon:Icon(Icons.account_balance_wallet_outlined),selectedIcon:Icon(Icons.account_balance_wallet),label:'Home'),
+        const NavigationDestination(icon:Icon(Icons.receipt_long_outlined),label:'Activity'),
+        if(effectiveRole!='bank') const NavigationDestination(icon:Icon(Icons.family_restroom),label:'Family'),
+        if(client.accountKind!='kids') const NavigationDestination(icon:Icon(Icons.leaderboard_outlined),label:'Rankings'),
+        const NavigationDestination(icon:Icon(Icons.person_outline),label:'Account'),
       ],
     ),
     body: Center(
@@ -890,7 +924,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     : 'Connect to load your account. No saved balance yet.',
               ),
               const SizedBox(height: 12),
-              if (admin)
+              if (admin && bankTab == 4)
                 OutlinedButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -902,23 +936,15 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   icon: const Icon(Icons.admin_panel_settings),
                   label: const Text('Application admin console'),
                 ),
-              if (effectiveRole == 'bank' || effectiveRole == 'kids')
-                panel('Your points', [
-                  const Icon(Icons.credit_card_rounded, size: 46),
-                  Text(
-                    hasSnapshot ? '$balance' : '—',
-                    style: const TextStyle(
-                      fontSize: 54,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Text(
-                    'Virtual points · earned through parent-approved tasks',
-                  ),
-                  const Text(
-                    'Points cannot be bought with real money. App-time spending and Screen Time enforcement are not enabled yet.',
-                  ),
-                ], color: const Color(0xff7760c9)),
+              if (bankTab == 0) BankOverview(
+                balance: hasSnapshot ? balance : null,
+                name: effectiveRole == 'kids' ? 'OneStep Kids' : '@${handle.text}',
+                ledger: ledger,
+                familyAccount: effectiveRole == 'parent' || effectiveRole == 'kids',
+                onActivity: ()=>setState(()=>bankTab=1),
+                onAccount: ()=>setState(()=>bankTab=4),
+                onFamily: ()=>setState(()=>bankTab=2),
+              ),
               if (effectiveRole == 'parent') ...[
                 if (families.isEmpty)
                   panel('Start your family', [
@@ -1044,7 +1070,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     SwitchListTile(
                       title: const Text('Allow points-funded unlocks'),
                       value: screenUnlockAllowed,
-                      onChanged: (v) => setState(() => screenUnlockAllowed = v),
+                      onChanged: busy ? null : (v) => setState(() { screenUnlockAllowed = v; policyDirty = true; }),
                     ),
                     DropdownButtonFormField<int>(
                       key: ValueKey('price-$policyRevision'),
@@ -1056,8 +1082,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         for (var i = 1; i <= 10; i++)
                           DropdownMenuItem(value: i, child: Text('$i')),
                       ],
-                      onChanged: (v) =>
-                          setState(() => screenMinuteCost = v ?? 1),
+                      onChanged: busy ? null : (v) => setState(() { screenMinuteCost = v ?? 1; policyDirty = true; }),
                     ),
                     DropdownButtonFormField<int>(
                       key: ValueKey('minutes-$policyRevision'),
@@ -1075,8 +1100,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         }.toList()..sort())
                           DropdownMenuItem(value: i, child: Text('$i')),
                       ],
-                      onChanged: (v) =>
-                          setState(() => screenDailyMinutes = v ?? 120),
+                      onChanged: busy ? null : (v) => setState(() { screenDailyMinutes = v ?? 120; policyDirty = true; }),
                     ),
                     FilledButton(
                       onPressed:
@@ -1090,6 +1114,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                   'minute_cost': screenMinuteCost,
                                   'day_minutes': screenDailyMinutes,
                                 });
+                                policyDirty = false;
                                 await refresh();
                                 setState(
                                   () => message = 'Parent policy saved.',
@@ -1309,28 +1334,13 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       ),
                   ],
                 ),
-              if (effectiveRole != 'parent')
+              if (client.signedIn)
                 panel('Transactions', [
                   if (ledger.isEmpty)
                     const Text(
-                      'No points awarded yet. Finish an assigned task and ask your parent to approve it.',
+                      'No activity yet. Earn points by completing eligible tasks.',
                     ),
-                  for (final entry in ledger)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        (entry['delta'] as num) > 0
-                            ? Icons.add_circle_outline
-                            : Icons.remove_circle_outline,
-                      ),
-                      title: Text(entry['reason'] as String),
-                      subtitle: Text(
-                        (entry['created_at'] as String).split('T').first,
-                      ),
-                      trailing: Text(
-                        '${(entry['delta'] as num) > 0 ? '+' : ''}${entry['delta']}',
-                      ),
-                    ),
+                  for (final entry in ledger) BankTransaction(entry:entry),
                   const Text(
                     'Balances are calculated by the service. Updates refresh automatically while this screen is open, or when you tap Refresh.',
                   ),
@@ -1439,7 +1449,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     'Kids accounts are excluded by the service, regardless of client settings.',
                   ),
                 ]),
-              if (client.accountKind == 'kids' || client.accountKind == null)
+              if (bankTab == 4) if (client.accountKind == 'kids' || client.accountKind == null)
                 OutlinedButton(
                   onPressed: busy
                       ? null
@@ -1456,7 +1466,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                           run(() async {
                             await client.signOut();
                             setState(() {
-                              tasks = [];
+                              admin = false; screenPoliciesLoaded = false; bankTab = 0;
+      tasks = [];
                               children = [];
                               families = [];
                               ledger = [];

@@ -48,11 +48,20 @@ struct RootView: View {
                             }
                     }
                 }
-                Tab("History", systemImage: "clock", value: 3) {
-                    NavigationStack { HistoryView() }
+                Tab("Bank", systemImage: "creditcard", value: 3) {
+                    NavigationStack { RewardsView() }
                 }
-                Tab("Notes", systemImage: "note.text", value: 4) {
-                    NavigationStack { NotesView() }
+                Tab("More", systemImage: "square.grid.2x2", value: 4) {
+                    NavigationStack {
+                        List {
+                            NavigationLink("Notes", systemImage: "note.text") { NotesView() }
+                            NavigationLink("History", systemImage: "clock") { HistoryView() }
+                            NavigationLink("Screen Time", systemImage: "hourglass") { ScreenTimeView() }
+                            NavigationLink("Backups and Wi-Fi", systemImage: "arrow.triangle.2.circlepath") { DataToolsView() }
+                            NavigationLink("Routine library", systemImage: "books.vertical") { ContentUpdatesView() }
+                            Button("Reminders and settings", systemImage: "gearshape") { editor = .settings }
+                        }.navigationTitle("Your space")
+                    }
                 }
             }
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
@@ -375,7 +384,7 @@ private struct TaskEditor: View {
     @State private var listName: String
     @State private var rewardEnabled: Bool
     @State private var rewardPoints: Int
-    @State private var rewardAccount = RewardsStore()
+    @State private var rewardAccount = RewardsStore.shared
 
     init(task: TaskEntry?) {
         self.task = task

@@ -91,7 +91,7 @@ for (const configuration of ['Debug', 'Release']) {
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.6.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.7.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
@@ -103,7 +103,7 @@ for (const configuration of ['Debug', 'Release']) {
     ${screenTime ? "CODE_SIGN_ENTITLEMENTS = OneStepLive/Shared.entitlements;" : ""}
     APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.6.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.7.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
@@ -118,7 +118,7 @@ for (const configuration of ['Debug', 'Release']) {
   }; name = ${configuration};`);
 }
 if(screenTime){
- for(const configuration of ['Debug','Release']) object('monitor-'+configuration, `isa = XCBuildConfiguration; buildSettings = { PRODUCT_BUNDLE_IDENTIFIER = ${bundleID}.activitymonitor; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = OneStepMonitor/Info.plist; GENERATE_INFOPLIST_FILE = NO; IPHONEOS_DEPLOYMENT_TARGET = 26.0; SWIFT_VERSION = 5.0; APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES; MARKETING_VERSION = 0.6.0; CURRENT_PROJECT_VERSION = 5; CODE_SIGN_ENTITLEMENTS = OneStep/ScreenTime.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; }; name = ${configuration};`);
+ for(const configuration of ['Debug','Release']) object('monitor-'+configuration, `isa = XCBuildConfiguration; buildSettings = { PRODUCT_BUNDLE_IDENTIFIER = ${bundleID}.activitymonitor; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = OneStepMonitor/Info.plist; GENERATE_INFOPLIST_FILE = NO; IPHONEOS_DEPLOYMENT_TARGET = 26.0; SWIFT_VERSION = 5.0; APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES; MARKETING_VERSION = 0.7.0; CURRENT_PROJECT_VERSION = 5; CODE_SIGN_ENTITLEMENTS = OneStep/ScreenTime.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; }; name = ${configuration};`);
  object('monitor-target',`isa = PBXNativeTarget; buildConfigurationList = ${id('monitor-configs')}; buildPhases = (${id('monitor-sources')},${id('monitor-frameworks')}); buildRules = (); dependencies = (); name = OneStepMonitor; productName = OneStepMonitor; productReference = ${id('monitor-product')}; productType = "com.apple.product-type.app-extension";`);
 }
 for (const kind of ['project', 'target', 'test', 'live', ...(screenTime ? ['monitor'] : [])]) {

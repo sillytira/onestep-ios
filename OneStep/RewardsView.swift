@@ -25,6 +25,8 @@ enum RewardsVault {
 }
 
 @MainActor @Observable final class RewardsStore {
+    static let shared = RewardsStore()
+    private var sessionRefresh: Task<Void, Error>?
     var project = PublicService.url
     var key = PublicService.key
     var email = ""
@@ -52,6 +54,7 @@ enum RewardsVault {
     var reason = ""
     private var session: [String: Any]?
     var signedIn: Bool { session?["access_token"] is String }
+    var accountEmail: String { (session?["user"] as? [String: Any])?["email"] as? String ?? "" }
     var userID: String? { (session?["user"] as? [String: Any])?["id"] as? String }
     init() {
         if let data = RewardsVault.read("connection"), let value = try? JSONSerialization.jsonObject(with: data) as? [String: String] { project = value["url"] ?? PublicService.url; key = value["key"] ?? PublicService.key }
@@ -80,9 +83,18 @@ enum RewardsVault {
         if auth {
             guard signedIn else { throw failure("Sign in first.") }
             if (session?["expires_at"] as? Double ?? 0) <= Date().timeIntervalSince1970 + 60 {
-                guard let refresh = session?["refresh_token"] as? String else { throw failure("Sign in again.") }
-                let updated = try await request("/auth/v1/token?grant_type=refresh_token", body: ["refresh_token": refresh], auth: false)
-                try accept(updated)
+                if let sessionRefresh { try await sessionRefresh.value }
+                else {
+                    guard let refresh = session?["refresh_token"] as? String else { throw failure("Sign in again.") }
+                    let task = Task { @MainActor in
+                        let updated = try await self.request("/auth/v1/token?grant_type=refresh_token", body: ["refresh_token": refresh], auth: false)
+                        guard self.session?["refresh_token"] as? String == refresh else { throw self.failure("Account changed. Please retry.") }
+                        try self.accept(updated)
+                    }
+                    sessionRefresh = task
+                    defer { sessionRefresh = nil }
+                    try await task.value
+                }
             }
         }
         guard let url = URL(string: project + path), url.scheme == "https", url.host?.hasSuffix(".supabase.co") == true else { throw failure("Configure your connection first.") }
@@ -103,7 +115,14 @@ enum RewardsVault {
     private func accept(_ value: Any) throws {
         guard var result = value as? [String: Any], result["access_token"] is String else { throw failure("Account creation did not return a session. Check beta enrollment and service settings.") }
         if result["expires_at"] == nil { result["expires_at"] = Date().timeIntervalSince1970 + (result["expires_in"] as? Double ?? 3600) }
-        try RewardsVault.write("session", JSONSerialization.data(withJSONObject: result)); session = result
+        try RewardsVault.write("session", JSONSerialization.data(withJSONObject: result))
+        let nextID = (result["user"] as? [String: Any])?["id"] as? String
+        if nextID != userID {
+            kind = nil; admin = false; balance = 0; ledger = []; rankings = []; users = []
+            snapshotLoaded = false; lastSync = ""; publicName = ""; username = ""
+            try RewardsVault.write("kind", nil)
+        }
+        session = result
     }
     func authenticate(create: Bool) async throws {
         try configure()
@@ -118,14 +137,20 @@ enum RewardsVault {
         guard let role = roles?.first?["kind"] as? String else { throw failure("Account enrollment is not ready.") }
         kind = role; try RewardsVault.write("kind", Data(role.utf8))
         balance = (try await rpc("onestep_my_balance") as? NSNumber)?.intValue ?? 0
-        ledger = try await request("/rest/v1/onestep_points_ledger?select=delta,reason,created_at&order=created_at.desc&limit=100") as? [[String: Any]] ?? []
+        ledger = try await request("/rest/v1/onestep_points_ledger?select=event_id,delta,reason,created_at&user_id=eq.\(userID ?? "")&order=created_at.desc&limit=100") as? [[String: Any]] ?? []
         admin = try await rpc("onestep_is_admin") as? Bool ?? false
         let profile = try await request("/rest/v1/onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1") as? [[String: Any]]
         username = profile?.first?["handle"] as? String ?? ""
         publicName = profile?.first?["display_name"] as? String ?? ""
         optIn = profile?.first?["leaderboard_opt_in"] as? Bool ?? false
-        if role != "kids" { rankings = try await rpc("onestep_rankings", ["metric": rankingMetric]) as? [[String: Any]] ?? [] }
-        if admin { users = try await rpc("onestep_admin_users") as? [[String: Any]] ?? [] }
+        if role != "kids" {
+            do { rankings = try await rpc("onestep_rankings", ["metric": rankingMetric]) as? [[String: Any]] ?? [] }
+            catch { message = "Your balance is available. Rankings could not refresh: \(error.localizedDescription)" }
+        }
+        if admin {
+            do { users = try await rpc("onestep_admin_users") as? [[String: Any]] ?? [] }
+            catch { message = "Your account is available. Admin accounts could not refresh: \(error.localizedDescription)" }
+        }
         if role == "kids", let userID {
             let rows = try await request("/rest/v1/onestep_children?select=offline_pin_verifier,active&child_id=eq.\(userID)&limit=1") as? [[String: Any]]
             if let verifier = rows?.first?["offline_pin_verifier"] as? [String: Any], rows?.first?["active"] as? Bool == true {
@@ -170,84 +195,140 @@ enum RewardsVault {
 }
 
 struct RewardsView: View {
-    @State private var model = RewardsStore()
+    @State private var model = RewardsStore.shared
+    @State private var section = 0
+    @State private var creating = false
     @State private var parentCode = ""
-    @AppStorage("useSeparateBank") private var separateBank = false
     var body: some View {
         @Bindable var fields = model
-        Form {
-            if model.busy { ProgressView() }
-            if !model.message.isEmpty { Text(model.message).font(.footnote).textSelection(.enabled) }
-            if !model.signedIn {
-                Section("OneStep accounts") {
-                    Text("Connected to the main OneStep service. Sign in or use an admin-issued beta key to join.").font(.footnote)
-                }
-                Section("Account") {
-                    TextField("Email", text: $fields.email).textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()
-                    SecureField("Password", text: $fields.password)
-                    SecureField("Beta key for a new account", text: $fields.betaKey)
-                    TextField("Handle for a new normal/parent account", text: $fields.username).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Button("Sign in") { Task { await model.action { try await model.authenticate(create: false) } } }.disabled(model.busy)
-                    Button("Create beta account") { Task { await model.action { try await model.authenticate(create: true) } } }.disabled(model.busy)
-                    Text("An admin-issued enrollment key is required. Only family-assigned tasks go online; your private planner is never uploaded automatically.").font(.footnote)
-                }
-            } else {
-                Section("Account") {
-                    if model.kind == "kids" { Text(model.publicName) }
-                    else { Text("@\(model.username)") }
-                }
-                Section("Your points") {
-                    Label(model.snapshotLoaded ? "\(model.balance)" : "—", systemImage: "creditcard.fill").font(.largeTitle.bold()).foregroundStyle(ItemPalette.violet.color)
-                    Text(model.snapshotLoaded ? "Last synced: \(model.lastSync). Saved account snapshot." : "Connect to load your account. No saved balance yet.").font(.footnote)
-                    Text("Virtual points from approved tasks. No real-money purchases.")
-                    NavigationLink("Apple Screen Time blocking and points unlocks") { ScreenTimeView() }
-                    Text(PersonalRewards.shared.message).font(.footnote)
-                    Button("Refresh") { Task { await model.action { try await model.reload() } } }.disabled(model.busy)
-                }
-                Section("Transactions") {
-                    ForEach(Array(model.ledger.enumerated()), id: \.offset) { _, entry in
-                        HStack { Text(entry["reason"] as? String ?? "Adjustment"); Spacer(); Text("\((entry["delta"] as? NSNumber)?.intValue ?? 0)").monospacedDigit() }
-                    }
-                    if model.ledger.isEmpty { Text("No points awarded yet.").foregroundStyle(.secondary) }
-                }
-                Section("Bank companion") {
-                    Toggle("Use the separate Bank app", isOn: $separateBank)
-                    if separateBank { Text("Open OneStep Bank and sign in with this same service and account. Both views use the same ledger. The built-in view remains available.").font(.footnote) }
-                    Text("Family setup and parent codes are available in OneStep Parent and OneStep Kids.").font(.footnote)
-                }
-                if model.kind != "kids" {
-                    Section("Public profile") {
-                        TextField("Display name", text: $fields.publicName)
-                        TextField("Handle", text: $fields.username).textInputAutocapitalization(.never).autocorrectionDisabled()
-                        Toggle("Opt in to leaderboard", isOn: $fields.optIn)
-                        Button("Save public profile") { Task { await model.action {
-                            _ = try await model.rpc("onestep_update_profile", ["profile_name": model.publicName, "profile_handle": model.username, "opt_in": model.optIn])
-                            try await model.reload()
-                        } } }.disabled(model.busy)
-                    }
-                    Section("This week · opt-in rankings") {
-                        Picker("Rank by", selection: $fields.rankingMetric) { Text("Tasks done").tag("tasks"); Text("Points earned").tag("points") }.pickerStyle(.segmented)
-                        .onChange(of: model.rankingMetric) { _, _ in Task { await model.action { try await model.reload() } } }
-                        Text("Self-reported eligible tasks; 20 tasks / 500 points per UTC day, 0–100 per task. Admin credits and spending do not inflate earned-point rankings.").font(.footnote)
-                        ForEach(Array(model.rankings.enumerated()), id: \.offset) { index, entry in
-                            HStack { Text("#\(index + 1) · \(entry["display_name"] as? String ?? "Member")"); Spacer(); Text("\((entry[model.rankingMetric == "tasks" ? "completed_tasks" : "earned_points"] as? NSNumber)?.intValue ?? 0)") }
-                        }
-                        Text("Kids accounts are excluded by the service.").font(.footnote)
-                    }
-                }
-                if model.admin { adminSection }
-                Section("This device") {
-                    if model.kind == "kids" || model.kind == nil {
-                        SecureField("10-digit parent code", text: $parentCode).keyboardType(.numberPad)
-                        Button("Parent-authorized device sign-out") { Task { await model.action { try await model.signOut(parentCode: parentCode); parentCode = "" } } }.disabled(model.busy)
-                        Text("Signing out does not unlink your family. Only your parent can unlink it. Offline authorization needs a previously synced code verifier.").font(.footnote)
-                    } else {
-                        Button("Sign out") { Task { await model.action { try await model.signOut() } } }.disabled(model.busy)
-                    }
+        Group {
+            if !model.signedIn { login }
+            else {
+                VStack(spacing: 0) {
+                    Picker("Bank section", selection: $section) {
+                        Text("Home").tag(0); Text("Activity").tag(1)
+                        if model.kind != "kids" { Text("Rankings").tag(2) }
+                        Text("Account").tag(3)
+                    }.pickerStyle(.segmented).padding()
+                    if !model.message.isEmpty { Text(model.message).font(.callout).foregroundStyle(.orange).padding(.horizontal).textSelection(.enabled) }
+                    if model.busy { ProgressView().padding(8) }
+                    if section == 0 { overview }
+                    else if section == 1 { activity }
+                    else if section == 2 { rankings }
+                    else { account }
                 }
             }
-        }.navigationTitle("Bank and rewards")
-            .task { if model.signedIn { await model.action { try await model.reload() } } }
+        }.navigationTitle("OneStep Bank")
+        .toolbar {
+            if model.signedIn { ToolbarItem(placement:.primaryAction) { Button("Refresh account",systemImage:"arrow.clockwise") { Task { await model.action { try await model.reload() } } }.disabled(model.busy) } }
+        }
+        .task { if model.signedIn { await model.action { try await model.reload() } } }
+    }
+    private var login: some View {
+        @Bindable var fields = model
+        return Form {
+            Section {
+                Image(systemName:"creditcard.fill").font(.largeTitle).foregroundStyle(ItemPalette.violet.color)
+                Text("Your effort, in one place.").font(.title2.bold())
+                Text("Earn points with OneStep. View rewards and activity across your devices.").foregroundStyle(.secondary)
+            }
+            Section(creating ? "Create your account" : "Welcome back") {
+                TextField("Email",text:$fields.email).textContentType(.username).textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()
+                SecureField("Password",text:$fields.password).textContentType(creating ? .newPassword : .password)
+                if creating {
+                    SecureField("Admin-issued beta key",text:$fields.betaKey)
+                    TextField("Handle (normal/parent accounts)",text:$fields.username).textInputAutocapitalization(.never).autocorrectionDisabled()
+                }
+                Button(creating ? "Create account" : "Sign in") { Task { await model.action { try await model.authenticate(create:creating) } } }.buttonStyle(.borderedProminent).disabled(model.busy || model.email.isEmpty || model.password.isEmpty)
+                Button(creating ? "I already have an account" : "Join with a beta key") { creating.toggle() }
+                if model.busy { ProgressView("Connecting…") }
+                if !model.message.isEmpty { Text(model.message).foregroundStyle(.orange) }
+            }
+            Section { Text("Virtual points only. No cash purchases or bank account is created.").font(.footnote).foregroundStyle(.secondary) }
+        }
+    }
+    private var overview: some View {
+        ScrollView {
+            VStack(spacing:24) {
+                VStack(spacing:8) {
+                    Text("POINTS ACCOUNT").font(.caption.weight(.semibold)).tracking(2).foregroundStyle(.secondary)
+                    Text(model.snapshotLoaded ? "\(model.balance)" : "—").font(.system(size:64,weight:.bold,design:.rounded)).minimumScaleFactor(0.5).lineLimit(1)
+                    Text("Available points").foregroundStyle(.secondary)
+                    Text(model.snapshotLoaded ? "Updated \(model.lastSync)" : "Connect to load your balance").font(.caption).foregroundStyle(.secondary)
+                }.frame(maxWidth:.infinity).padding(.vertical,12)
+                HStack(spacing:20) {
+                    Button { section = 1 } label: { Label("Activity",systemImage:"list.bullet.rectangle") }
+                    NavigationLink { ScreenTimeView() } label: { Label("App time",systemImage:"hourglass") }
+                    Button { section = 3 } label: { Label("Account",systemImage:"person.crop.circle") }
+                }.buttonStyle(.glass).controlSize(.large).font(.subheadline)
+                VStack(alignment:.leading,spacing:18) {
+                    HStack { Label("OneStep",systemImage:"sparkle").font(.title2.bold()); Spacer(); Image(systemName:"wave.3.right") }
+                    Spacer(minLength:22)
+                    Text(model.kind == "kids" ? "OneStep Kids" : "@\(model.username)").font(.title3.weight(.semibold))
+                    Text("Earned, one step at a time.").font(.subheadline)
+                    Text("VIRTUAL POINTS · NO CASH VALUE").font(.caption2).tracking(1.4).foregroundStyle(.white.opacity(0.7))
+                }.padding(24).frame(maxWidth:.infinity,alignment:.leading)
+                .background(LinearGradient(colors:[Color(red:0.39,green:0.28,blue:0.65),Color(red:0.13,green:0.12,blue:0.23)],startPoint:.topLeading,endPoint:.bottomTrailing),in:.rect(cornerRadius:26))
+                HStack { Text("Recent activity").font(.title3.bold()); Spacer(); Button("See all") { section = 1 } }
+                if model.ledger.isEmpty { ContentUnavailableView("No activity yet",systemImage:"tray",description:Text("Your earned points and rewards will appear here.")) }
+                else { VStack(spacing:16) { ForEach(Array(model.ledger.prefix(4).enumerated()),id:\.offset) { _, row in transaction(row) } } }
+                if !PersonalRewards.shared.message.isEmpty { Text(PersonalRewards.shared.message).font(.footnote).foregroundStyle(.secondary) }
+            }.padding(20).frame(maxWidth:640)
+        }.refreshable { await model.action { try await model.reload() } }
+    }
+    private var activity: some View {
+        List {
+            if model.ledger.isEmpty { ContentUnavailableView("No activity yet",systemImage:"tray") }
+            ForEach(Array(model.ledger.enumerated()),id:\.offset) { _, row in transaction(row) }
+        }.refreshable { await model.action { try await model.reload() } }
+    }
+    private func transaction(_ row: [String:Any]) -> some View {
+        let value = (row["delta"] as? NSNumber)?.intValue ?? 0
+        return HStack(spacing:14) {
+            Image(systemName:value > 0 ? "arrow.down" : "lock.open").foregroundStyle(value > 0 ? ItemPalette.mint.color : ItemPalette.violet.color).frame(width:42,height:42).background(.quaternary,in:.circle)
+            VStack(alignment:.leading,spacing:4) { Text(row["reason"] as? String ?? "Points activity").font(.subheadline.weight(.medium)); Text(String((row["created_at"] as? String ?? "").prefix(10))).font(.caption).foregroundStyle(.secondary) }
+            Spacer(); Text("\(value > 0 ? "+" : "")\(value)").font(.headline).foregroundStyle(value > 0 ? ItemPalette.mint.color : .primary)
+        }
+    }
+    private var rankings: some View {
+        @Bindable var fields = model
+        return List {
+            Section {
+                Picker("Rank by",selection:$fields.rankingMetric) { Text("Tasks done").tag("tasks");Text("Points earned").tag("points") }.pickerStyle(.segmented)
+                    .onChange(of:model.rankingMetric) { _,_ in Task { await model.action { try await model.reload() } } }
+                Text("This week · up to 20 counted tasks and 500 earned points per day.").font(.footnote).foregroundStyle(.secondary)
+            }
+            if model.rankings.isEmpty { ContentUnavailableView("A fresh start",systemImage:"trophy",description:Text("Public rankings are optional. Join from Account.")) }
+            ForEach(Array(model.rankings.enumerated()),id:\.offset) { index,row in
+                HStack { Text("#\(index+1)").foregroundStyle(.secondary);Text(row["display_name"] as? String ?? "Member");Spacer();Text("\((row[model.rankingMetric == "tasks" ? "completed_tasks" : "earned_points"] as? NSNumber)?.intValue ?? 0)").fontWeight(.semibold) }
+            }
+        }
+    }
+    private var account: some View {
+        @Bindable var fields = model
+        return Form {
+            Section("Your account") {
+                Text(model.accountEmail).textSelection(.enabled)
+                Text(model.kind == "kids" ? "Private child account" : "@\(model.username)").foregroundStyle(.secondary)
+                NavigationLink("Apple Screen Time") { ScreenTimeView() }
+                Text("Family invitations and approvals are available in OneStep Parent and Kids.").font(.footnote)
+            }
+            if model.kind != "kids" {
+                Section("Public profile") {
+                    TextField("Display name",text:$fields.publicName)
+                    TextField("Handle",text:$fields.username).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Toggle("Join the leaderboard",isOn:$fields.optIn)
+                    Button("Save profile") { Task { await model.action { _ = try await model.rpc("onestep_update_profile",["profile_name":model.publicName,"profile_handle":model.username,"opt_in":model.optIn]);try await model.reload() } } }.disabled(model.busy)
+                }
+            }
+            if model.admin { adminSection }
+            Section("This device") {
+                if model.kind == "kids" || model.kind == nil {
+                    SecureField("10-digit parent code",text:$parentCode).keyboardType(.numberPad)
+                    Button("Parent-authorized sign-out") { Task { await model.action { try await model.signOut(parentCode:parentCode);parentCode="" } } }.disabled(model.busy)
+                } else { Button("Sign out",role:.destructive) { Task { await model.action { try await model.signOut() } } }.disabled(model.busy) }
+            }
+        }
     }
     @ViewBuilder private var adminSection: some View {
         @Bindable var fields = model

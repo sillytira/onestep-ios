@@ -11,7 +11,7 @@ final class ContentAndRoutineTests: XCTestCase {
         XCTAssertEqual(try ContentCatalog.decode(JSONEncoder().encode(good)), good)
         var bad = good; bad.schema = 2
         XCTAssertThrowsError(try bad.validated())
-        bad = good; bad.minAppVersion = "0.7.0"
+        bad = good; bad.minAppVersion = "0.8.0"
         XCTAssertThrowsError(try bad.validated())
         bad = good; bad.packs[0].steps[0].hour = 25
         XCTAssertThrowsError(try bad.validated())

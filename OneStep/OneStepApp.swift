@@ -11,6 +11,7 @@ struct BootstrapView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: PlannerStore?
     @State private var startupError: String?
+    @State private var pendingURL: URL?
 
     var body: some View {
         Group {
@@ -25,6 +26,10 @@ struct BootstrapView: View {
                     Button("Try again") { load() }.buttonStyle(.borderedProminent)
                 }
             } else { ProgressView("Opening OneStep…") }
+        }
+        .onOpenURL { url in
+            if let store { store.receiveURL(url) }
+            else { pendingURL = url }
         }
         .task { if store == nil { load() }; await store?.refresh(); if UserDefaults.standard.object(forKey: "automaticContentUpdates") as? Bool != false { await ContentLibrary().refresh() } }
         .onChange(of: scenePhase) {
@@ -43,11 +48,13 @@ struct BootstrapView: View {
                 _ = preview.saveRoutine(id: nil, title: "A moment to stretch", time: Date(), colorName: "coral")
                 _ = preview.startFocus(PlannerRules.taskAction(preview.state.tasks[0]), until: Date().addingTimeInterval(900))
                 store = preview
+                if let url = pendingURL { preview.receiveURL(url); pendingURL = nil }
                 startupError = nil
                 return
             }
             #endif
             store = try PlannerStore.shared ?? PlannerStore()
+            if let url = pendingURL { store?.receiveURL(url); pendingURL = nil }
             startupError = nil
         }
         catch { startupError = error.localizedDescription }

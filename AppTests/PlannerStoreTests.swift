@@ -4,6 +4,18 @@ import CryptoKit
 
 @MainActor
 final class PlannerStoreTests: XCTestCase {
+    func testURLRouteIsRetainedUntilTheInterfaceConsumesIt() throws {
+        let store = try PlannerStore(inMemory:true)
+        store.receiveURL(URL(string:"onestep://bank")!)
+        XCTAssertEqual(store.selectedTab,3)
+        XCTAssertEqual(store.pendingRoute,.bank)
+        store.receiveURL(URL(string:"https://example.invalid/now")!)
+        XCTAssertEqual(store.selectedTab,3)
+        XCTAssertEqual(store.pendingRoute,.bank)
+        store.receiveURL(URL(string:"onestep://add")!)
+        XCTAssertEqual(store.selectedTab,1)
+        XCTAssertEqual(store.pendingRoute,.add)
+    }
     func testLiveActivityActionsUseExactTaskAndDoNotRepeatCompletion() async throws {
         let previous = PlannerStore.shared
         defer { PlannerStore.shared = previous }

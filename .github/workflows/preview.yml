@@ -1,5 +1,5 @@
 name: Capture simulator preview
-# Inspect the 0.7 planner and Bank login with native Apple controls.
+# Verify app-level URL routing and the 0.7 planner/Bank screens.
 on:
   workflow_dispatch:
   push:

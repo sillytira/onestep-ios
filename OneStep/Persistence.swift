@@ -29,6 +29,13 @@ final class PlannerStore {
     var omittedCount = 0
     var focusedItem: ActionItem?
     var selectedTab = 0
+    var pendingRoute: AppRoute?
+    func receiveURL(_ url: URL) {
+        guard let route = AppRoute(url: url) else { return }
+        focusedItem = nil
+        selectedTab = route.tab
+        pendingRoute = route
+    }
     var feedback: String?
     var liveRunning = false
     var liveMessage: String?

@@ -37,6 +37,7 @@ import Observation
     func configureAuthorization() async {
         await run {
             guard supported else { throw ScreenTimeFailure.unavailable }
+            await account.load()
             if account.signedIn && account.kind == nil { try await account.reload() }
             try await AuthorizationCenter.shared.requestAuthorization(for: child ? .child : .individual)
             try ScreenTimeShared.update { $0.childManaged = child }
@@ -159,7 +160,7 @@ struct ScreenTimeView: View {
         }} }.navigationTitle("Screen Time")
         .familyActivityPicker(isPresented: $fields.picker, selection: $selection)
         
-        .task { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load(); selection = model.state.selection; if model.account.signedIn { await model.refreshPolicy() } }
+        .task { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load(); selection = model.state.selection; await model.account.load(); if model.account.signedIn { await model.refreshPolicy() } }
         .onChange(of:scenePhase) { _, phase in
             if phase != .active { model.parentAuthorized = false; model.parentCode = "" }
             else { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load() }

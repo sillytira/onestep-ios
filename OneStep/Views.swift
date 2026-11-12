@@ -85,17 +85,13 @@ struct RootView: View {
             store.focusedItem = nil
             Task { await store.refresh() }
         }
-        .onOpenURL { url in
-            if url.scheme == "onestep" {
-                store.focusedItem = nil
-                switch url.host {
-                case "routines": store.selectedTab = 2
-                case "bank": store.selectedTab = 3
-                case "space": store.selectedTab = 4
-                case "add": store.selectedTab = 1; editor = .task(nil)
-                case "timer": store.selectedTab = 0; if let item = PlannerRules.nextAction(store.state, now: Date()) { editor = .focus(item) }
-                default: store.selectedTab = 0
-                }
+        .onChange(of: store.pendingRoute, initial: true) { _, route in
+            guard let route else { return }
+            store.pendingRoute = nil
+            switch route {
+            case .add: editor = .task(nil)
+            case .timer: if let item = PlannerRules.nextAction(store.state, now: Date()) { editor = .focus(item) }
+            default: break
             }
         }
     }
@@ -463,6 +459,7 @@ private struct TaskEditor: View {
                 if let error = store.errorMessage { Text(error).font(.footnote).padding().background(.regularMaterial) }
             }
         }.tint(ItemPalette.resolve(colorName).color)
+        .task { await rewardAccount.load() }
     }
 }
 

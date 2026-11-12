@@ -27,6 +27,8 @@ enum RewardsVault {
 @MainActor @Observable final class RewardsStore {
     static let shared = RewardsStore()
     private var sessionRefresh: Task<Void, Error>?
+    private var accountLoad: Task<Void, Never>?
+    var accountLoading = true
     var project = PublicService.url
     var key = PublicService.key
     var email = ""
@@ -56,14 +58,26 @@ enum RewardsVault {
     var signedIn: Bool { session?["access_token"] is String }
     var accountEmail: String { (session?["user"] as? [String: Any])?["email"] as? String ?? "" }
     var userID: String? { (session?["user"] as? [String: Any])?["id"] as? String }
-    init() {
-        if let data = RewardsVault.read("session") { session = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] }
-        if let data = RewardsVault.read("kind") { kind = String(data: data, encoding: .utf8) }
-        if let id = userID, let data = RewardsVault.read("snapshot.\(id)"), let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+    func load() async {
+        guard accountLoading else { return }
+        if let accountLoad { await accountLoad.value; return }
+        let task = Task { @MainActor in
+            let (savedSession, savedKind) = await Task.detached { (RewardsVault.read("session"), RewardsVault.read("kind")) }.value
+            if let data = savedSession { session = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] }
+            if let data = savedKind { kind = String(data: data, encoding: .utf8) }
+            if let id = userID {
+                let data = await Task.detached { RewardsVault.read("snapshot.\(id)") }.value
+                if let data, let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             balance = saved["balance"] as? Int ?? 0; ledger = saved["ledger"] as? [[String: Any]] ?? []
             username = saved["handle"] as? String ?? ""; publicName = saved["name"] as? String ?? ""
             lastSync = saved["lastSync"] as? String ?? ""; snapshotLoaded = true
+                }
+            }
+            accountLoading = false
         }
+        accountLoad = task
+        await task.value
+        accountLoad = nil
     }
     func action(_ work: @MainActor () async throws -> Void) async {
         guard !busy else { return }; busy = true; message = ""; defer { busy = false }
@@ -79,6 +93,7 @@ enum RewardsVault {
     }
     private func failure(_ text: String) -> NSError { NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: text]) }
     func request(_ path: String, body: [String: Any]? = nil, auth: Bool = true) async throws -> Any {
+        await load()
         if auth {
             guard signedIn else { throw failure("Sign in first.") }
             if (session?["expires_at"] as? Double ?? 0) <= Date().timeIntervalSince1970 + 60 {
@@ -125,6 +140,7 @@ enum RewardsVault {
         session = result
     }
     func authenticate(create: Bool) async throws {
+        await load()
         try configure()
         var body: [String: Any] = ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password]
         if create { body["data"] = ["beta_key": betaKey.trimmingCharacters(in: .whitespacesAndNewlines), "username": username.trimmingCharacters(in: .whitespacesAndNewlines)] }
@@ -216,7 +232,8 @@ struct RewardsView: View {
     var body: some View {
         @Bindable var fields = model
         Group {
-            if !model.signedIn { login }
+            if model.accountLoading { ProgressView("Opening your account…") }
+            else if !model.signedIn { login }
             else {
                 VStack(spacing: 0) {
                     Picker("Bank section", selection: $section) {
@@ -236,7 +253,7 @@ struct RewardsView: View {
         .toolbar {
             if model.signedIn { ToolbarItem(placement:.primaryAction) { Button("Refresh account",systemImage:"arrow.clockwise") { Task { await model.action { try await model.reload() } } }.disabled(model.busy) } }
         }
-        .task { if model.signedIn { await model.action { try await model.reload() } } }
+        .task { await model.load(); if model.signedIn { await model.action { try await model.reload() } } }
     }
     private var login: some View {
         @Bindable var fields = model

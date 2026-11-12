@@ -11,11 +11,29 @@ import Observation
     var parentCode = ""
     var picker = false
     var parentAuthorized = false
+    var minuteCost = 1
+    var dailyMinutes = 120
+    var policyLoaded = false
+    var unlockAllowed = false
     var supported: Bool { ScreenTimeShared.enabledBuild && ScreenTimeShared.container != nil }
     var child: Bool { state.childManaged || account.kind == "kids" }
     var authorized: Bool { AuthorizationCenter.shared.authorizationStatus == .approved }
     private let center = DeviceActivityCenter()
     static let activity = DeviceActivityName("onestep.unlock")
+    func refreshPolicy() async {
+        policyLoaded = false
+        do {
+            try await account.reload()
+            if child {
+                let rows = try await account.request("/rest/v1/onestep_screen_time_policies?select=enabled,cost_per_minute,daily_minutes&user_id=eq.\(account.userID ?? "")&limit=1") as? [[String: Any]]
+                let policy = rows?.first
+                minuteCost = policy?["cost_per_minute"] as? Int ?? 1
+                dailyMinutes = policy?["daily_minutes"] as? Int ?? 120
+                unlockAllowed = policy?["enabled"] as? Bool ?? false
+            } else { minuteCost = 1; dailyMinutes = 120; unlockAllowed = true }
+            policyLoaded = true
+        } catch { message = error.localizedDescription }
+    }
     func configureAuthorization() async {
         await run {
             guard supported else { throw ScreenTimeFailure.unavailable }
@@ -48,23 +66,31 @@ import Observation
         let end = calendar.dateComponents([.year,.month,.day,.hour,.minute,.second,.timeZone], from: ShieldLeaseRules.monitorEnd(for: until))
         try center.startMonitoring(Self.activity, during: DeviceActivitySchedule(intervalStart: start, intervalEnd: end, repeats: false))
     }
-    func purchase(minutes: Int) async {
+    func purchase(minutes: Int, recovering: Bool = false) async {
         await run {
             guard supported, authorized, state.enabled else { throw ScreenTimeFailure.unavailable }
-            guard state.unlockUntil == nil || state.unlockUntil! <= Date() else { throw ScreenTimeFailure.expired }
+            guard state.unlockUntil == nil || state.unlockUntil! <= Date() else { throw NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: "An unlock is already active on this device."]) }
             guard let user = account.userID else { throw NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: "Sign in to your points account first."]) }
             let key = "screen.pending.\(user)"
             let pending: [String: Any]
             if let data = RewardsVault.read(key), let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] { pending = value }
             else {
+                guard !recovering else { throw NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: "No pending purchase to recover."]) }
+                guard policyLoaded, unlockAllowed else { throw NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: "Refresh the unlock policy first. Child purchases need parent approval."]) }
                 let device = RewardsVault.read("screen.device").flatMap { String(data: $0, encoding: .utf8) } ?? UUID().uuidString
                 try RewardsVault.write("screen.device", Data(device.utf8))
-                pending = ["event": UUID().uuidString, "device": device, "duration": minutes]
+                pending = ["event": UUID().uuidString, "device": device, "duration": minutes, "expected_cost": minutes * minuteCost]
                 try RewardsVault.write(key, JSONSerialization.data(withJSONObject: pending))
             }
             // Prove the OS monitor accepts a schedule before spending any points.
             try monitor(until: Date().addingTimeInterval(Double(pending["duration"] as? Int ?? minutes) * 60))
-            guard let receipt = try await account.rpc("onestep_redeem_screen_time", pending) as? [String: Any],
+            let response: Any
+            do { response = try await account.rpc("onestep_redeem_screen_time", pending) }
+            catch {
+                if error.localizedDescription.contains("Unlock price changed.") { try RewardsVault.write(key, nil); policyLoaded = false }
+                throw error
+            }
+            guard let receipt = response as? [String: Any],
                   let text = receipt["expires_at"] as? String else { throw ScreenTimeFailure.unavailable }
             let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             let fallback = ISO8601DateFormatter()
@@ -107,7 +133,10 @@ struct ScreenTimeView: View {
                 Button("Stop blocking", role: .destructive) { do { try model.stopBlocking() } catch { model.message = error.localizedDescription } }.disabled(!model.supported || (model.child && !model.parentAuthorized))
             }
             Section("Spend earned points") {
-                ForEach([15,30,60], id: \.self) { minutes in Button("Unlock for \(minutes) minutes") { Task { await model.purchase(minutes: minutes) } }.disabled(model.busy || !model.state.enabled || !model.supported || !model.authorized) }
+                Button("Refresh price and policy") { Task { await model.refreshPolicy() } }.disabled(model.busy)
+                if model.policyLoaded { Text("\(model.minuteCost) point(s) per minute · \(model.dailyMinutes) minutes/day. \(model.unlockAllowed ? "Purchases enabled" : "Parent has not enabled purchases")") }
+                ForEach([15,30,60], id: \.self) { minutes in Button("Unlock \(minutes) minutes · \(minutes * model.minuteCost) points") { Task { await model.purchase(minutes: minutes) } }.disabled(model.busy || !model.state.enabled || !model.supported || !model.authorized || !model.policyLoaded || !model.unlockAllowed) }
+                Button("Recover pending purchase") { Task { await model.purchase(minutes: 15, recovering: true) } }.disabled(model.busy || !model.supported || !model.authorized || !model.state.enabled)
                 Text("Normal accounts: 1 point/minute, up to 120 minutes per UTC day. A child's linked parent sets its price and limit. Purchases require the service. Retrying a pending purchase reuses its receipt and never charges twice.").font(.footnote)
                 if let until = model.state.unlockUntil { Text("Last unlock expiry: \(until.formatted())") }
                 Text("A lost connection can leave a purchase pending. Retry to recover the same receipt. If it expired before activation, review it with the administrator; no automatic refund or free unlock is invented.").font(.footnote)
@@ -116,6 +145,6 @@ struct ScreenTimeView: View {
         }.navigationTitle("Screen Time")
         .familyActivityPicker(isPresented: $fields.picker, selection: $selection)
         
-        .task { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load() }
+        .task { ScreenTimeShared.reconcile(); model.state = ScreenTimeShared.load(); await model.refreshPolicy() }
     }
 }

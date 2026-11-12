@@ -11,6 +11,14 @@ do $$ begin
 end $$;
 reset role;
 delete from public.onestep_personal_tasks where user_id='66666666-6666-4666-8666-666666666666';
+do $$ declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); result jsonb; begin
+ insert into public.onestep_personal_tasks(user_id,client_id,title_hash,reward,eligible_at) values(auth.uid(),a,'duplicate-check',0,now()-interval '1 minute'),(auth.uid(),b,'duplicate-check',0,now()-interval '1 minute');
+ perform public.onestep_complete_personal_task(a);
+ update public.onestep_personal_tasks set completed_at=now()-interval '31 seconds' where user_id=auth.uid() and client_id=a;
+ result:=public.onestep_complete_personal_task(b);
+ if result->>'status'<>'duplicate' or (result->>'counted')::boolean then raise exception 'Duplicate-title filter failed'; end if;
+ delete from public.onestep_personal_tasks where user_id=auth.uid();
+end $$;
 do $$ declare i integer; c uuid; result jsonb; before_balance bigint; e uuid:=gen_random_uuid(); d uuid:=gen_random_uuid(); begin
  for i in 1..21 loop
   c:=gen_random_uuid();
@@ -25,6 +33,8 @@ do $$ declare i integer; c uuid; result jsonb; before_balance bigint; e uuid:=ge
  if (select sum(awarded) from public.onestep_personal_tasks where user_id=auth.uid())<>500 then raise exception 'Wrong earned total';end if;
  if (select count(*) from public.onestep_personal_tasks where user_id=auth.uid() and counted)<>20 then raise exception 'Wrong counted total';end if;
  before_balance:=public.onestep_my_balance();
+ begin perform public.onestep_redeem_screen_time(e,d,15,30);raise exception 'Changed quote accepted' using errcode='P0002';exception when raise_exception then null;end;
+ if public.onestep_my_balance()<>before_balance then raise exception 'Rejected quote charged points';end if;
  perform public.onestep_redeem_screen_time(e,d,15);perform public.onestep_redeem_screen_time(e,d,15);
  if public.onestep_my_balance()<>before_balance-15 then raise exception 'Redemption not exactly once';end if;
  begin perform public.onestep_redeem_screen_time(gen_random_uuid(),d,15);raise exception 'Concurrent unlock allowed' using errcode='P0002';exception when raise_exception then null;end;
@@ -49,7 +59,7 @@ select public.onestep_set_screen_policy('55555555-5555-4555-8555-555555555555',t
 select public.onestep_admin_adjust_points('55555555-5555-4555-8555-555555555555',100,'Synthetic child funding',gen_random_uuid());
 select set_config('request.jwt.claim.sub','55555555-5555-4555-8555-555555555555',false);
 set role authenticated;
-select public.onestep_redeem_screen_time(gen_random_uuid(),gen_random_uuid(),15);
+select public.onestep_redeem_screen_time(gen_random_uuid(),gen_random_uuid(),15,30);
 do $$ begin if public.onestep_my_balance()<>70 then raise exception 'Parent price not enforced';end if;end $$;
 reset role;
 select 'PASS: bounded self rewards, anti-spam, weekly rankings, private children and idempotent policy-bound redemption';

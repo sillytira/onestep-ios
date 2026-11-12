@@ -99,17 +99,11 @@ alter table public.onestep_screen_time_receipts enable row level security;
 revoke all on public.onestep_screen_time_receipts from public,anon,authenticated;
 grant select on public.onestep_screen_time_receipts to authenticated;
 create policy receipt_read on public.onestep_screen_time_receipts for select to authenticated using(user_id=auth.uid());
-create function public.onestep_redeem_screen_time(event uuid,device uuid,duration integer) returns jsonb
+create function public.onestep_redeem_screen_time(event uuid,device uuid,duration integer,expected_cost integer default null) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); receipt public.onestep_screen_time_receipts%rowtype; balance bigint; account_kind text; price integer:=1; day_limit integer:=120; begin
  select kind into account_kind from public.onestep_account_kinds where user_id=actor;
  if account_kind is null then raise exception 'Enrolled account required' using errcode='42501'; end if;
- if account_kind='kids' then
-   select p.cost_per_minute,p.daily_minutes into price,day_limit from public.onestep_screen_time_policies p
-    join public.onestep_children c on c.child_id=p.user_id and c.active join public.onestep_families f on f.id=c.family_id and f.parent_id=p.approved_by
-    where p.user_id=actor and p.enabled;
-   if price is null then raise exception 'Your parent must enable a points-unlock policy' using errcode='42501'; end if;
- end if;
  if event is null or device is null or duration is null or duration not in(15,30,60) then raise exception 'Choose 15, 30 or 60 minutes'; end if;
  perform pg_advisory_xact_lock(hashtextextended(actor::text,0));
  select * into receipt from public.onestep_screen_time_receipts where id=event;
@@ -117,6 +111,13 @@ declare actor uuid:=auth.uid(); receipt public.onestep_screen_time_receipts%rowt
   if receipt.user_id<>actor or receipt.device_id<>device or receipt.minutes<>duration then raise exception 'Receipt identifier already used'; end if;
   return to_jsonb(receipt);
  end if;
+ if account_kind='kids' then
+   select p.cost_per_minute,p.daily_minutes into price,day_limit from public.onestep_screen_time_policies p
+    join public.onestep_children c on c.child_id=p.user_id and c.active join public.onestep_families f on f.id=c.family_id and f.parent_id=p.approved_by
+    where p.user_id=actor and p.enabled;
+   if price is null then raise exception 'Your parent must enable a points-unlock policy' using errcode='42501'; end if;
+ end if;
+ if expected_cost is not null and expected_cost<>duration*price then raise exception 'Unlock price changed. Refresh the policy and confirm the new cost.'; end if;
  if exists(select 1 from public.onestep_screen_time_receipts where user_id=actor and device_id=device and expires_at>now()) then raise exception 'This device already has an active unlock'; end if;
  if (select coalesce(sum(minutes),0) from public.onestep_screen_time_receipts where user_id=actor and created_at>=date_trunc('day',now() at time zone 'UTC') at time zone 'UTC')+duration>day_limit then raise exception 'Daily unlock limit reached'; end if;
  select coalesce(sum(delta),0) into balance from public.onestep_points_ledger where user_id=actor;
@@ -125,8 +126,8 @@ declare actor uuid:=auth.uid(); receipt public.onestep_screen_time_receipts%rowt
  insert into public.onestep_points_ledger(event_id,user_id,delta,reason,actor_id) values(event,actor,-duration*price,'Screen Time unlock',actor);
  return to_jsonb(receipt);
 end $$;
-revoke all on function public.onestep_register_personal_task(uuid,text,integer),public.onestep_complete_personal_task(uuid),public.onestep_rankings(text),public.onestep_redeem_screen_time(uuid,uuid,integer) from public,anon,authenticated;
-grant execute on function public.onestep_register_personal_task(uuid,text,integer),public.onestep_complete_personal_task(uuid),public.onestep_rankings(text),public.onestep_redeem_screen_time(uuid,uuid,integer) to authenticated;
+revoke all on function public.onestep_register_personal_task(uuid,text,integer),public.onestep_complete_personal_task(uuid),public.onestep_rankings(text),public.onestep_redeem_screen_time(uuid,uuid,integer,integer) from public,anon,authenticated;
+grant execute on function public.onestep_register_personal_task(uuid,text,integer),public.onestep_complete_personal_task(uuid),public.onestep_rankings(text),public.onestep_redeem_screen_time(uuid,uuid,integer,integer) to authenticated;
 revoke all on function public.onestep_set_screen_policy(uuid,boolean,integer,integer) from public,anon,authenticated;
 grant execute on function public.onestep_set_screen_policy(uuid,boolean,integer,integer) to authenticated;
 commit;

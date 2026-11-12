@@ -477,6 +477,18 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   String rankingMetric = "tasks";
   bool screenUnlockAllowed = false;
   int screenMinuteCost = 1, screenDailyMinutes = 120;
+  List<Json> screenPolicies = [];
+  bool screenPoliciesLoaded = false;
+  int policyRevision = 0;
+  void selectPolicy(String? child) {
+    selectedChild = child;
+    final matches = screenPolicies.where((p) => p['user_id'] == child);
+    final policy = matches.isEmpty ? null : matches.first;
+    screenUnlockAllowed = policy?['enabled'] == true;
+    screenMinuteCost = (policy?['cost_per_minute'] as num?)?.toInt() ?? 1;
+    screenDailyMinutes = (policy?['daily_minutes'] as num?)?.toInt() ?? 120;
+    policyRevision++;
+  }
   List<Json> ledger = [],
       tasks = [],
       children = [],
@@ -633,6 +645,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         value: jsonEncode(own.first['offline_pin_verifier']),
       );
     admin = await client.rpc('onestep_is_admin', {}) as bool;
+    screenPoliciesLoaded = false;
+    screenPolicies = await client.list('onestep_screen_time_policies?select=user_id,enabled,cost_per_minute,daily_minutes&limit=100');
+    screenPoliciesLoaded = true;
     if (client.accountKind != 'kids')
       rankings = (await client.rpc('onestep_rankings', {'metric':rankingMetric}) as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList();
     if (publicName.text.isEmpty) {
@@ -660,6 +675,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       hasSnapshot = true;
       if (selectedChild == null && children.isNotEmpty)
         selectedChild = children.first['child_id'] as String;
+      selectPolicy(selectedChild);
     });
     await FamilyClient.vault.write(
       key: 'family.snapshot.${client.userID}',
@@ -971,7 +987,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       onChanged: busy
                           ? null
                           : (id) => setState(() {
-                              selectedChild = id;
+                              selectPolicy(id);
                             }),
                     ),
                     TextField(
@@ -1014,11 +1030,11 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   ]),
                 if (children.isNotEmpty)
                   panel('Apple app-time policy', [
-                  const Text('Select the child above. This policy permits point purchases on the entitled native iPhone app; it does not grant Apple authorization or block Android apps.'),
+                  Text('Policy for ${children.where((c)=>c["child_id"]==selectedChild).map((c)=>c["nickname"]).join()}. This permits purchases on the entitled native iPhone app; Apple authorization is separate.'),
                   SwitchListTile(title:const Text('Allow points-funded unlocks'),value:screenUnlockAllowed,onChanged:(v)=>setState(()=>screenUnlockAllowed=v)),
-                  DropdownButtonFormField<int>(initialValue:screenMinuteCost,decoration:const InputDecoration(labelText:'Points per minute'),items:[for(var i=1;i<=10;i++)DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenMinuteCost=v??1)),
-                  DropdownButtonFormField<int>(initialValue:screenDailyMinutes,decoration:const InputDecoration(labelText:'Daily minutes limit'),items:[for(final i in [15,30,60,120])DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenDailyMinutes=v??120)),
-                  FilledButton(onPressed:busy||selectedChild==null?null:(){run(()async{await client.rpc('onestep_set_screen_policy',{'child':selectedChild,'allow_unlock':screenUnlockAllowed,'minute_cost':screenMinuteCost,'day_minutes':screenDailyMinutes});setState(()=>message='Parent policy saved.');});},child:const Text('Save child policy')),
+                  DropdownButtonFormField<int>(key:ValueKey('price-$policyRevision'),initialValue:screenMinuteCost,decoration:const InputDecoration(labelText:'Points per minute'),items:[for(var i=1;i<=10;i++)DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenMinuteCost=v??1)),
+                  DropdownButtonFormField<int>(key:ValueKey('minutes-$policyRevision'),initialValue:screenDailyMinutes,decoration:const InputDecoration(labelText:'Daily minutes limit'),items:[for(final i in {15,30,60,120,screenDailyMinutes}.toList()..sort())DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenDailyMinutes=v??120)),
+                  FilledButton(onPressed:busy||selectedChild==null||!screenPoliciesLoaded?null:(){run(()async{await client.rpc('onestep_set_screen_policy',{'child':selectedChild,'allow_unlock':screenUnlockAllowed,'minute_cost':screenMinuteCost,'day_minutes':screenDailyMinutes});await refresh();setState(()=>message='Parent policy saved.');});},child:const Text('Save child policy')),
                 ]),
                 if (children.isNotEmpty) panel('Offline parent authorization', [
                     DropdownButtonFormField<String>(
@@ -1037,7 +1053,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       onChanged: busy
                           ? null
                           : (id) => setState(() {
-                              selectedChild = id;
+                              selectPolicy(id);
                             }),
                     ),
                     FilledButton(

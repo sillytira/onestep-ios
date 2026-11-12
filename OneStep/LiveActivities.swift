@@ -12,17 +12,31 @@ final class DayActivityController {
         let next = PlannerRules.nextAction(state, now: now)
         let today = PlannerRules.dayKey(now)
         let done = state.routines.filter { step in state.days.contains { $0.stepID == step.id && $0.day == today && $0.status == .done } }.count
+        let skipped = state.routines.filter { step in state.days.contains { $0.stepID == step.id && $0.day == today && $0.status == .skipped } }.count
+        var preview = state; preview.focusSession = nil
+        if let next {
+            if next.kind == .task { preview.tasks.removeAll { $0.id == next.sourceID } }
+            else { preview.routines.removeAll { $0.id == next.sourceID } }
+        }
+        let following = PlannerRules.nextAction(preview,now:now)
+        let microstep = state.tasks.first { $0.id == next?.sourceID }?.microsteps?.first { !$0.done }?.title
+        let detail = microstep.map { "Small step: " + $0 } ?? following.map { "Up next: " + $0.title }
         let timer = state.focusSession.flatMap { session in
-            session.pausedRemaining != nil || PlannerRules.currentAction(for: session.action, in: state, now: now) == nil ? nil : session
+            PlannerRules.currentAction(for: session.action, in: state, now: now) == nil ? nil : session
         }
         return DayActivityAttributes.ContentState(
-            title: next?.title ?? "A little breathing room",
+            title: String(decoding:(next?.title ?? "A little breathing room").utf8.prefix(240),as:UTF8.self),
             subtitle: next?.kind == .routine ? "Daily routine" : "One thing at a time",
             isRoutine: next?.kind == .routine,
             colorName: next?.colorName ?? (next?.kind == .routine ? "violet" : "blue"),
             completedSteps: done, totalSteps: state.routines.count, snapshotAt: now,
             scheduledAt: next?.scheduledAt,
-            timerStartedAt: timer?.startedAt, timerEndsAt: timer?.endsAt, actionID: next?.id)
+            timerStartedAt: timer?.pausedRemaining == nil ? timer?.startedAt : nil,
+            timerEndsAt: timer?.pausedRemaining == nil ? timer?.endsAt : nil, actionID: next?.id,
+            tasksDone:state.tasks.filter { $0.completedAt.map { Calendar.current.isDate($0,inSameDayAs:now) } == true }.count,
+            tasksRemaining:state.tasks.filter { $0.completedAt == nil && $0.archived != true }.count,
+            skippedSteps:skipped, detail:detail.map { String(decoding:$0.utf8.prefix(160),as:UTF8.self) },
+            timerPausedRemaining:timer?.pausedRemaining, snoozeMinutes:state.preferences?.snoozeMinutes ?? 10)
     }
 
     private func activityContent(_ state: PlannerState, now: Date) -> ActivityContent<DayActivityAttributes.ContentState> {

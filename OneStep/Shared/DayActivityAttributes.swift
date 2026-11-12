@@ -14,6 +14,12 @@ struct DayActivityAttributes: ActivityAttributes {
         var timerStartedAt: Date?
         var timerEndsAt: Date?
         var actionID: String?
+        var tasksDone: Int?
+        var tasksRemaining: Int?
+        var skippedSteps: Int?
+        var detail: String?
+        var timerPausedRemaining: Double?
+        var snoozeMinutes: Int?
     }
     var dayLabel: String
     var startedAt: Date

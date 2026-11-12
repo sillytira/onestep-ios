@@ -10,7 +10,7 @@ const projectDir = path.join(root, 'OneStep.xcodeproj');
 fs.mkdirSync(path.join(projectDir, 'xcshareddata', 'xcschemes'), { recursive: true });
 const id = name => crypto.createHash('sha256').update(name).digest('hex').slice(0, 24).toUpperCase();
 const q = value => JSON.stringify(value);
-const sources = ['Core/XP.swift', 'Core/AppRoute.swift', 'ScreenTimeView.swift', 'PersonalRewards.swift', 'Shared/ScreenTimeState.swift', 'Shared/WidgetSnapshot.swift', 'Core/Planner.swift', 'Core/RewardsRules.swift', 'Core/Content.swift', 'ContentUpdates.swift', 'Shared/DayActionIntent.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
+const sources = ['Shared/LiveActivityCard.swift', 'Core/XP.swift', 'Core/AppRoute.swift', 'ScreenTimeView.swift', 'PersonalRewards.swift', 'Shared/ScreenTimeState.swift', 'Shared/WidgetSnapshot.swift', 'Core/Planner.swift', 'Core/RewardsRules.swift', 'Core/Content.swift', 'ContentUpdates.swift', 'Shared/DayActionIntent.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
 const tests = ['PlannerStoreTests.swift'];
 const objects = [];
 const object = (name, body) => objects.push(`${id(name)} = { ${body} };`);
@@ -32,6 +32,7 @@ object('live-source-ref', 'isa = PBXFileReference; lastKnownFileType = sourcecod
 object('live-info-ref', 'isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>";');
 object('live-source-build', `isa = PBXBuildFile; fileRef = ${id('live-source-ref')};`);
 object('live-palette-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/Palette.swift')};`);
+object('live-card-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/LiveActivityCard.swift')};`);
 object('live-attributes-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/DayActivityAttributes.swift')};`);
 object('live-intent-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/DayActionIntent.swift')};`);
 object('live-embed-build', `isa = PBXBuildFile; fileRef = ${id('live-product-ref')}; settings = { ATTRIBUTES = (RemoveHeadersOnCopy); };`);
@@ -61,7 +62,7 @@ object('resources-phase', `isa = PBXResourcesBuildPhase; buildActionMask = 21474
 object('frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
 object('test-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${tests.map(file => id(`test-build-${file}`)).join(',')}); runOnlyForDeploymentPostprocessing = 0;`);
 object('test-frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
-object('live-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${id('live-source-build')},${id('live-widget-build')},${id('live-intent-build')},${id('live-palette-build')},${id('live-attributes-build')}); runOnlyForDeploymentPostprocessing = 0;`);
+object('live-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${id('live-card-build')},${id('live-source-build')},${id('live-widget-build')},${id('live-intent-build')},${id('live-palette-build')},${id('live-attributes-build')}); runOnlyForDeploymentPostprocessing = 0;`);
 object('live-frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
 object('live-copy-phase', `isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (${id('live-embed-build')}); name = "Embed Live Activity"; runOnlyForDeploymentPostprocessing = 0;`);
 object('proxy', `isa = PBXContainerItemProxy; containerPortal = ${id('project')}; proxyType = 1; remoteGlobalIDString = ${id('target')}; remoteInfo = OneStep;`);

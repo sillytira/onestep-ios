@@ -55,6 +55,9 @@ jobs:
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             -derivedDataPath build/Simulator -resultBundlePath build/OneStepTests.xcresult \
             CODE_SIGNING_ALLOWED=NO
+          APP_DATA="$(xcrun simctl get_app_container "$DEVICE_ID" meow.tira.onestep data)"
+          mkdir -p release/Previews
+          cp "$APP_DATA"/Documents/OneStep-LiveActivity-*.png release/Previews/
       - name: Build unsigned IPA
         run: bash scripts/build-ipa.sh
       - name: Build old-identity migration bridge

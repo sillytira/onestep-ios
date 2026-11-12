@@ -1,5 +1,7 @@
 import XCTest
 import CryptoKit
+import SwiftUI
+import UIKit
 @testable import OneStep
 
 @MainActor
@@ -163,4 +165,49 @@ final class PlannerStoreTests: XCTestCase {
         XCTAssertNotNil(snapshot.timerEndsAt)
         XCTAssertEqual(snapshot.actionID, item.id)
     }
+
+    func testDetailedActivitySnapshotHandlesPausedTimersAndSkippedSteps() throws {
+        let now = Date(); let day = PlannerRules.dayKey(now)
+        let done = TaskEntry(title:"Finished task",completedAt:now)
+        let task = TaskEntry(title:"Read one page",microsteps:[SmallStep(title:"Open the book")])
+        let following = TaskEntry(title:"Fill the water bottle")
+        let first = RoutineStep(title:"Breakfast",hour:8,minute:0,position:0)
+        let second = RoutineStep(title:"Walk",hour:9,minute:0,position:1)
+        var state=PlannerState();state.tasks=[done,task,following];state.routines=[first,second]
+        state.days=[DailyRecord(stepID:first.id,day:day,title:first.title,status:.done,updatedAt:now),DailyRecord(stepID:second.id,day:day,title:second.title,status:.skipped,updatedAt:now)]
+        state.focusSession=FocusSession(action:PlannerRules.taskAction(task),startedAt:now,endsAt:now.addingTimeInterval(100),durationBased:true,pausedRemaining:45)
+        let snapshot=DayActivityController.content(state,now:now)
+        XCTAssertEqual(snapshot.tasksDone,1);XCTAssertEqual(snapshot.tasksRemaining,2)
+        XCTAssertEqual(snapshot.skippedSteps,1);XCTAssertEqual(snapshot.completedSteps,1)
+        XCTAssertEqual(snapshot.detail,"Small step: Open the book")
+        XCTAssertEqual(snapshot.timerPausedRemaining,45);XCTAssertNil(snapshot.timerEndsAt)
+        var legacy=try XCTUnwrap(JSONSerialization.jsonObject(with:JSONEncoder().encode(snapshot)) as? [String:Any])
+        for key in ["tasksDone","tasksRemaining","skippedSteps","detail","timerPausedRemaining","snoozeMinutes"] { legacy.removeValue(forKey:key) }
+        let restored=try JSONDecoder().decode(DayActivityAttributes.ContentState.self,from:JSONSerialization.data(withJSONObject:legacy))
+        XCTAssertNil(restored.tasksDone);XCTAssertEqual(restored.title,snapshot.title)
+    }
+    func testActivityPayloadIsBoundedAndFollowingActionUsesPlannerOrder() throws {
+        var state=PlannerState()
+        let title=String(repeating:"👨‍👩‍👧‍👦\\\"\n",count:1000)
+        let task=TaskEntry(title:title,microsteps:[SmallStep(title:title)])
+        state.tasks=[task,TaskEntry(title:"A following action")]
+        let now=Date();let snapshot=DayActivityController.content(state,now:now)
+        let attributes=DayActivityAttributes(dayLabel:"Thursday",startedAt:now)
+        XCTAssertLessThan(try JSONEncoder().encode(snapshot).count+JSONEncoder().encode(attributes).count,4096)
+        state.tasks[0].microsteps=[]
+        XCTAssertEqual(DayActivityController.content(state,now:now).detail,"Up next: A following action")
+    }
+    func testDetailedLockScreenCardRendersWithinSystemHeight() throws {
+        let now=Date()
+        let state=DayActivityAttributes.ContentState(title:"Make a little space for your next idea",subtitle:"One thing at a time",isRoutine:false,colorName:"violet",completedSteps:3,totalSteps:5,snapshotAt:now,timerStartedAt:now,timerEndsAt:now.addingTimeInterval(900),actionID:"task."+UUID().uuidString+".",tasksDone:4,tasksRemaining:2,skippedSteps:1,detail:"Small step: Open your notebook",snoozeMinutes:10)
+        for (name,width,size) in [("standard",366.0,DynamicTypeSize.large),("large-text",320.0,DynamicTypeSize.accessibility2)] {
+            let renderer=ImageRenderer(content:DayActivityCard(state:state,dayLabel:"Thursday").environment(\.dynamicTypeSize,size).preferredColorScheme(.dark).frame(width:width,height:160).background(Color.black))
+            renderer.scale=2
+            let image=try XCTUnwrap(renderer.uiImage)
+            XCTAssertLessThanOrEqual(image.size.height,160);XCTAssertGreaterThan(image.size.width,0)
+            let url=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("OneStep-LiveActivity-"+name+".png")
+            try XCTUnwrap(image.pngData()).write(to:url)
+        }
+    }
+
 }

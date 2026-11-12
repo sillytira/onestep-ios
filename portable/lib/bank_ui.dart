@@ -45,7 +45,7 @@ class BankOverview extends StatelessWidget {
         borderRadius:BorderRadius.circular(26),
         gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xff6b54bd),Color(0xff282248),Color(0xff15151d)]),
         border:Border.all(color:Colors.white12)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Row(children:[Icon(Icons.blur_on_rounded,color:Color(0xffd5c7ff)),SizedBox(width:8),Text('OneStep',style:TextStyle(fontSize:22,fontWeight:FontWeight.w700)),Spacer(),Icon(Icons.auto_awesome,color:Color(0xffd5c7ff))]),
+          const Row(children:[Icon(Icons.blur_on_rounded,color:Color(0xffd5c7ff)),SizedBox(width:8),Expanded(child:Text('OneStep',style:TextStyle(fontSize:22,fontWeight:FontWeight.w700))),Icon(Icons.auto_awesome,color:Color(0xffd5c7ff))]),
           const SizedBox(height:40),
           Text(name.isEmpty?'Your points account':name,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w600)),
           const SizedBox(height:6),
@@ -56,7 +56,7 @@ class BankOverview extends StatelessWidget {
       const SizedBox(height:20),
       Row(children:[Expanded(child:_summary('Earned today','+$earned',const Color(0xff78e4bb))),const SizedBox(width:12),Expanded(child:_summary('Used today','−$spent',const Color(0xffc2afff)))]),
       const SizedBox(height:24),
-      Row(children:[Text('Recent activity',style:Theme.of(context).textTheme.titleLarge),const Spacer(),TextButton(onPressed:onActivity,child:const Text('See all'))]),
+      Row(children:[Expanded(child:Text('Recent activity',style:Theme.of(context).textTheme.titleLarge)),const SizedBox(width:8),TextButton(onPressed:onActivity,child:const Text('See all'))]),
       if(ledger.isEmpty) const Padding(padding:EdgeInsets.symmetric(vertical:24),child:Text('Your earned points and rewards will appear here.',style:TextStyle(color:Colors.white60))),
       for(final entry in ledger.take(4)) BankTransaction(entry:entry),
     ]);

@@ -52,16 +52,7 @@ struct RootView: View {
                     NavigationStack { RewardsView() }
                 }
                 Tab("More", systemImage: "square.grid.2x2", value: 4) {
-                    NavigationStack {
-                        List {
-                            NavigationLink("Notes", systemImage: "note.text") { NotesView() }
-                            NavigationLink("History", systemImage: "clock") { HistoryView() }
-                            NavigationLink("Screen Time", systemImage: "hourglass") { ScreenTimeView() }
-                            NavigationLink("Backups and Wi-Fi", systemImage: "arrow.triangle.2.circlepath") { DataToolsView() }
-                            NavigationLink("Routine library", systemImage: "books.vertical") { ContentUpdatesView() }
-                            Button("Reminders and settings", systemImage: "gearshape") { editor = .settings }
-                        }.navigationTitle("Your space")
-                    }
+                    NavigationStack { MoreDestinations(openSettings: { editor = .settings }) }
                 }
             }
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
@@ -116,6 +107,20 @@ struct RootView: View {
         ToolbarItem(placement: .primaryAction) {
             Button("Reminder settings", systemImage: "bell") { editor = .settings }
         }
+    }
+}
+
+private struct MoreDestinations: View {
+    let openSettings: () -> Void
+    var body: some View {
+        List {
+            NavigationLink { NotesView() } label: { Label("Notes", systemImage:"note.text") }
+            NavigationLink { HistoryView() } label: { Label("History", systemImage:"clock") }
+            NavigationLink { ScreenTimeView() } label: { Label("Screen Time", systemImage:"hourglass") }
+            NavigationLink { DataToolsView() } label: { Label("Backups and Wi-Fi", systemImage:"arrow.triangle.2.circlepath") }
+            NavigationLink { ContentUpdatesView() } label: { Label("Routine library", systemImage:"books.vertical") }
+            Button(action:openSettings) { Label("Reminders and settings",systemImage:"gearshape") }
+        }.navigationTitle("Your space")
     }
 }
 

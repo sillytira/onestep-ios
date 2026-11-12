@@ -7,6 +7,10 @@ import 'package:onestep/family.dart';
 void main(){
   TestWidgetsFlutterBinding.ensureInitialized();
   test('Concurrent requests rotate a session once and all use the new token',()async{
+    // This test talks only to its loopback fixture, not Flutter's default HTTP-400 stub.
+    final previousOverrides=HttpOverrides.current;
+    HttpOverrides.global=null;
+    addTearDown(()=>HttpOverrides.global=previousOverrides);
     FlutterSecureStorage.setMockInitialValues({});
     final server=await HttpServer.bind(InternetAddress.loopbackIPv4,0);
     addTearDown(()=>server.close(force:true));

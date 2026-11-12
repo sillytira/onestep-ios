@@ -73,7 +73,8 @@ class OneStepApp extends StatelessWidget {
 }
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  const Home({super.key, this.initialPlanner});
+  final Planner? initialPlanner;
   @override
   State<Home> createState() => _HomeState();
 }
@@ -102,7 +103,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
 
   Future<void> load() async {
     try {
-      final loaded = await Planner.load();
+      final loaded = widget.initialPlanner ?? await Planner.load();
       if (!mounted) return;
       setState(() {
         planner = loaded;
@@ -1100,7 +1101,8 @@ class _EntryEditorState extends State<EntryEditor> {
   }
 
   Future<void> save() async {
-    if (title.text.trim().isEmpty || busy) return;
+    if (busy) return;
+    if (title.text.trim().isEmpty) { setState(()=>error='Give this step a name before saving.'); return; }
     setState(() {
       busy = true;
       error = null;
@@ -1123,7 +1125,8 @@ class _EntryEditorState extends State<EntryEditor> {
             rewardAccount.accountKind != 'kids') {
           t['rewardPoints'] = rewardPoints;
           t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
-        } else {
+        } else if (rewardAccount.signedIn && rewardAccount.accountKind != null &&
+            (t['rewardAccountID'] == null || t['rewardAccountID'] == rewardAccount.userID)) {
           t.remove('rewardPoints');
           t.remove('rewardAccountID');
         }
@@ -1196,7 +1199,7 @@ class _EntryEditorState extends State<EntryEditor> {
             ? 'Keep a thought'
             : widget.routine
             ? 'Daily step'
-            : 'Capture a thought',
+            : 'Add a task',
       ),
       actions: [
         TextButton(onPressed: busy ? null : save, child: const Text('Save')),

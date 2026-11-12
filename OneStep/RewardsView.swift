@@ -256,10 +256,10 @@ struct RewardsView: View {
                     Text("Available points").foregroundStyle(.secondary)
                     Text(model.snapshotLoaded ? "Updated \(model.lastSync)" : "Connect to load your balance").font(.caption).foregroundStyle(.secondary)
                 }.frame(maxWidth:.infinity).padding(.vertical,12)
-                HStack(spacing:20) {
-                    Button { section = 1 } label: { Label("Activity",systemImage:"list.bullet.rectangle") }
-                    NavigationLink { ScreenTimeView() } label: { Label("App time",systemImage:"hourglass") }
-                    Button { section = 3 } label: { Label("Account",systemImage:"person.crop.circle") }
+                LazyVGrid(columns:[GridItem(.adaptive(minimum:96))],spacing:12) {
+                    Button { section = 1 } label: { VStack { Image(systemName:"list.bullet.rectangle");Text("Activity") }.frame(maxWidth:.infinity) }
+                    NavigationLink { ScreenTimeView() } label: { VStack { Image(systemName:"hourglass");Text("App time") }.frame(maxWidth:.infinity) }
+                    Button { section = 3 } label: { VStack { Image(systemName:"person.crop.circle");Text("Account") }.frame(maxWidth:.infinity) }
                 }.buttonStyle(.glass).controlSize(.large).font(.subheadline)
                 VStack(alignment:.leading,spacing:18) {
                     HStack { Label("OneStep",systemImage:"sparkle").font(.title2.bold()); Spacer(); Image(systemName:"wave.3.right") }

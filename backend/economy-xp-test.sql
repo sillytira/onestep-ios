@@ -69,6 +69,7 @@ do $$ declare a uuid;b uuid;begin
  b:=public.onestep_assign_family_task('55555555-5555-4555-8555-555555555555','Second substantial task',600);
  update public.onestep_family_tasks set status='submitted' where id in(a,b);
  perform public.onestep_review_family_task(a,true);perform public.onestep_review_family_task(a,true);
+ if (select sum(awarded) from public.onestep_xp_events where user_id='55555555-5555-4555-8555-555555555555' and event_key='task.'||a::text)<>10 then raise exception 'Parent approval XP was not exactly once';end if;
  begin perform public.onestep_review_family_task(b,true);raise exception 'Parent reward cap bypassed' using errcode='P0002';exception when raise_exception then null;end;
  if (select status from public.onestep_family_tasks where id=b)<>'submitted' then raise exception 'Capped approval lost task';end if;
 end $$;

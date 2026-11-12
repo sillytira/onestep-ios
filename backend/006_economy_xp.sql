@@ -41,6 +41,9 @@ declare entry public.onestep_family_tasks%rowtype; actor uuid:=auth.uid(); begin
     if (select coalesce(sum(delta),0) from public.onestep_points_ledger where user_id=entry.child_id and delta>0 and reason in('Parent-approved task','Self-reported task reward') and created_at>=date_trunc('day',now() at time zone 'UTC') at time zone 'UTC')+entry.points>1000 then raise exception 'Daily earned-points limit is 1000. This task stays submitted for later approval.'; end if;
     insert into public.onestep_points_ledger(event_id,user_id,delta,reason,actor_id)
       values(entry.id,entry.child_id,entry.points,'Parent-approved task',actor);
+    if (select coalesce(sum(awarded),0) from public.onestep_xp_events where user_id=entry.child_id and created_at>=date_trunc('day',now() at time zone 'UTC') at time zone 'UTC')<1000 then
+      insert into public.onestep_xp_events(user_id,event_key,kind,awarded) values(entry.child_id,'task.'||entry.id::text,'task',10) on conflict(user_id,event_key) do nothing;
+    end if;
   end if;
   update public.onestep_family_tasks set status=case when approve then 'approved' else 'assigned' end,updated_at=now() where id=entry.id;
 end $$;

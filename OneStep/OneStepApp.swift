@@ -47,6 +47,7 @@ struct BootstrapView: View {
                 _ = preview.saveRoutine(id: nil, title: "A glass of water", time: Date(), colorName: "violet")
                 _ = preview.saveRoutine(id: nil, title: "A moment to stretch", time: Date(), colorName: "coral")
                 _ = preview.startFocus(PlannerRules.taskAction(preview.state.tasks[0]), until: Date().addingTimeInterval(900))
+                if ProcessInfo.processInfo.arguments.contains("--preview-bank") { preview.selectedTab = 3 }
                 store = preview
                 if let url = pendingURL { preview.receiveURL(url); pendingURL = nil }
                 startupError = nil

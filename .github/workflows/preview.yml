@@ -37,8 +37,9 @@ jobs:
           sleep 5
           mkdir -p preview
           xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.7-Now.png
-          xcrun simctl openurl "$DEVICE_ID" onestep://bank
-          sleep 2
+          xcrun simctl terminate "$DEVICE_ID" meow.tira.onestep
+          xcrun simctl launch "$DEVICE_ID" meow.tira.onestep --preview --preview-bank
+          sleep 5
           xcrun simctl io "$DEVICE_ID" screenshot preview/OneStep-0.7-Bank.png
       - uses: actions/upload-artifact@v4
         with:

@@ -200,8 +200,8 @@ final class PlannerStoreTests: XCTestCase {
     func testDetailedLockScreenCardRendersWithinSystemHeight() throws {
         let now=Date()
         let state=DayActivityAttributes.ContentState(title:"Make a little space for your next idea",subtitle:"One thing at a time",isRoutine:false,colorName:"violet",completedSteps:3,totalSteps:5,snapshotAt:now,timerStartedAt:now,timerEndsAt:now.addingTimeInterval(900),actionID:"task."+UUID().uuidString+".",tasksDone:4,tasksRemaining:2,skippedSteps:1,detail:"Small step: Open your notebook",snoozeMinutes:10)
-        for (name,width,size) in [("standard",366.0,DynamicTypeSize.large),("large-text",320.0,DynamicTypeSize.accessibility2)] {
-            let renderer=ImageRenderer(content:DayActivityCard(state:state,dayLabel:"Thursday").environment(\.dynamicTypeSize,size).preferredColorScheme(.dark).frame(width:width,height:160).background(Color.black))
+        for (name,width,size,stale) in [("standard",366.0,DynamicTypeSize.large,false),("large-text",320.0,DynamicTypeSize.accessibility2,false),("stale-timer",366.0,DynamicTypeSize.large,true)] {
+            let renderer=ImageRenderer(content:DayActivityCard(state:state,dayLabel:"Thursday",isStale:stale).environment(\.dynamicTypeSize,size).environment(\.colorScheme,.dark).frame(width:width,height:160).background(Color.black))
             renderer.scale=2
             let image=try XCTUnwrap(renderer.uiImage)
             XCTAssertLessThanOrEqual(image.size.height,160);XCTAssertGreaterThan(image.size.width,0)

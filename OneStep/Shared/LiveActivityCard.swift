@@ -18,7 +18,7 @@ struct DayActivityCard: View {
     private func card(compact: Bool) -> some View {
         VStack(alignment:.leading,spacing:5) {
             HStack(spacing:8) {
-                Label(compact ? "OneStep" : (isStale ? "OneStep Â· refresh" : "OneStep Â· \(dayLabel)"),systemImage:state.isRoutine ? "sunrise.fill" : "sparkle")
+                Label(compact ? "OneStep" : (isStale ? "OneStep \u{00B7} refresh" : "OneStep \u{00B7} \(dayLabel)"),systemImage:state.isRoutine ? "sunrise.fill" : "sparkle")
                     .font(.caption2.weight(.semibold)).foregroundStyle(palette.color).lineLimit(1)
                 Spacer(minLength:4)
                 LiveActivityTime(state:state).layoutPriority(1)
@@ -29,11 +29,11 @@ struct DayActivityCard: View {
             }
             if !compact { HStack(spacing:8) {
                 if let done=state.tasksDone, let left=state.tasksRemaining {
-                    Text("\(done) tasks done Â· \(left) left").lineLimit(1).minimumScaleFactor(0.8)
+                    Text("\(done) tasks done \u{00B7} \(left) left").lineLimit(1).minimumScaleFactor(0.8)
                 }
                 Spacer(minLength:0)
                 if state.totalSteps>0 {
-                    Text("Routine \(state.completedSteps)/\(state.totalSteps)\((state.skippedSteps ?? 0)>0 ? " Â· \(state.skippedSteps!) skipped" : "")")
+                    Text("Routine \(state.completedSteps)/\(state.totalSteps)\((state.skippedSteps ?? 0)>0 ? " \u{00B7} \(state.skippedSteps!) skipped" : "")")
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
             }.font(.caption2).foregroundStyle(.secondary) }

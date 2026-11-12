@@ -552,7 +552,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             edit();
           },
           icon: const Icon(Icons.add),
-          label: const Text('Capture a thought'),
+          label: const Text('Add a task'),
         ),
       ],
     );
@@ -1817,7 +1817,7 @@ class _SettingsPageState extends State<SettingsPage>
               ]),
               section('About this beta', [
                 const Text(
-                  'OneStep · 0.6.0 beta\nApplication identity: meow.tira.onestep',
+                  'OneStep · 0.7.0 beta\nApplication identity: meow.tira.onestep',
                 ),
                 const Text(
                   'iOS keeps its native SwiftUI app and Live Activity. Android uses Material 3. Desktop clients require their bundled libraries; keep the Windows distribution folder together.',

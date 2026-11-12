@@ -1,31 +1,38 @@
-# OneStep 0.4 family beta — build verification
+# OneStep 0.5 — verified release
 
-Verified on November 12, 2026. Compiled binaries are delivered; physical-device installation and real owner enrollment remain acceptance checks.
+Verified November 12, 2026. Eleven installable packages are delivered. Native iPhone version 0.5.0 build 15 includes the main new-ID and old-ID migration-bridge IPAs, each with one Live Activity/shortcut-widget extension. Portable main and all six phone companions are version 0.5.0 build 10. Package IDs remain meow.tira.onestep and its .bank/.kids/.parent variants; the bridge retains tech.sillycat.onestep.
 
-## Packages and source
+## What changed
 
-- Main native iPhone: 0.4.0 build 13, arm64, iOS 26+, meow.tira.onestep plus one meow.tira.onestep.liveactivity extension. Old-ID migration bridge retains tech.sillycat.onestep and its extension. Both are unsigned IPAs for signing by the user's installer.
-- Main Android: 0.4.0 code 9, meow.tira.onestep, arm64-v8a/armeabi-v7a/x86_64.
-- Bank/Kids/Parent iPhone companions: 0.4.0 build 9, arm64, meow.tira.onestep.bank/kids/parent, no extensions.
-- Bank/Kids/Parent Android companions: 0.4.0 code 9, the same corresponding identifiers and three ABIs.
-- Windows: x64 PE Tira-OneStep.exe with required DLL/data files in the distribution ZIP. Extract the complete archive.
-- Linux: x86-64 type-2 AppImage, packaged and launch-checked on Ubuntu 22.04.
+- Main-instance public connection defaults ship in all clients; the URL/key entry step is removed. Only the approved publishable key is public. Authentication/RLS and server-controlled roles still enforce access. Privileged keys, passwords, owner invitation plaintext, private Android keystore, and signing password remain outside public source and archives.
+- Versioned non-executable content packs refresh from a pinned public HTTPS feed, validate size/schema/revision/app compatibility/times/colors, and persist offline. Users review and add packs; private edits/history are never automatically replaced. Native executable updates/signing expiry remain separate.
+- Added today-only routine undo/rescheduling, portable guided sequence progression, grouped same-time task/routine reminders, reminder coverage, shortcut widgets, and Live Activity Done/Snooze with exact-action/day validation. Time Sensitive routines are gated by system/provisioning access with ordinary fallback.
 
-Native binary source: [3df798e](https://github.com/sillytira/onestep-ios/commit/3df798eb83925be9b3619f8b6f486d0e23de8614). Final portable/companion source: [527d3eb](https://github.com/sillytira/onestep-ios/commit/527d3eb06e7889d47d75e0e5e84fee40da761a94). The latter changes three portable explanatory strings, including the About version and private-progress versus approved-points explanation. The delivered source additionally retains CI-formatted Dart files, the resolved dependency lock, and current documentation; no functional changes follow the tested builds.
+## Build and test evidence
 
-## Observed checks
+- [Final main native build](https://github.com/sillytira/onestep-ios/actions/runs/43185476985): 23 Swift core tests and 11 native simulator tests passed. New tests exercise LiveActivityIntent completion, repeated/stale actions, snooze, previous-day routines, archived tasks, content validation/import, history preservation, and reminder grouping. Both unsigned device IPAs built.
+- [Portable analysis/tests and builds](https://github.com/sillytira/onestep-ios/actions/runs/43183201446): 14 tests passed, Android/Windows/Linux built, Windows launch smoke and Linux AppImage extraction/GUI launch succeeded. Two existing Radio API deprecation messages were informational; no analyzer errors. Linux screenshot inspected. A local Windows hidden-process launch check passed outside the shell sandbox; no targetable window was exposed for local GUI inspection.
+- [Six companion builds](https://github.com/sillytira/onestep-ios/actions/runs/43183201300) all passed.
+- [Dedicated Linux packaging](https://github.com/sillytira/onestep-ios/actions/runs/43183201525) passed.
+- [Backend authorization tests](https://github.com/sillytira/onestep-ios/actions/runs/43088238748) from the unchanged deployed schema cover private family/ledger access, invite gating, owner binding, parent-only approvals/unlink/PIN setup, and child privacy. Live anonymous ledger/enrollment-table reads again returned401 permission denied after the public connection key was shipped. No live owner account was created by tests.
+- [Public source scan](https://github.com/sillytira/onestep-ios/actions/runs/43185477172) passed. Local source/project validation also passed.
 
-- [Native build/tests and both IPAs](https://github.com/sillytira/onestep-ios/actions/runs/43091619862): 18 Swift core tests and 9 native simulator tests passed, including disk reopening and an independent PBKDF2 parent-code vector. Both unsigned device packages built successfully.
-- [Final portable build](https://github.com/sillytira/onestep-ios/actions/runs/43165566683): static analysis, 8 tests, Android packaging, Windows launch smoke check, Linux AppImage extraction/GUI launch/screenshot all passed. Inspected the Linux Now preview for readable text and clear progress labeling.
-- [Final companions](https://github.com/sillytira/onestep-ios/actions/runs/43165566680): all six iOS/Android role builds passed.
-- [Backend authorization tests](https://github.com/sillytira/onestep-ios/actions/runs/43088238748): migrations 001–004 tested using synthetic users; family isolation, exactly-once approval, no self-credit, invite gating, owner binding, reserved names, child privacy, and parent-only unlink/PIN setup passed.
-- [Public source scan](https://github.com/sillytira/onestep-ios/actions/runs/43165566719) passed. Local source scan also passed.
-- Downloaded artifact ZIP digests matched GitHub metadata; every delivered binary checksum matched its build manifest. Independently parsed iOS binary plists/Mach-O, Android binary manifests/ABIs, Windows PE headers, and AppImage ELF/type signatures.
-- Scanned release ZIP/IPA/APK members and raw deliverables against the actual private project/enrollment keys without logging them: no matches. Private setup/enrollment files are outside the public source/release directories.
-- With the user's explicit approvals, deployed tested private family/beta/parent schema and owner-invitation hash, then disabled email confirmation. Live anonymous API calls to the ledger and enrollment table returned permission denied. The real owner account has not been created by automated tests.
+Total: **48 app tests**, plus the backend authorization tests. Actual signed-phone/family acceptance remains pending.
 
-## Remaining acceptance and limits
+## Content-only update evidence
 
-Use ACCEPTANCE.md and FAMILY.md for the real-device flow. The user must choose their own app password and consume the private owner invitation once. A previously synced parent verifier is necessary for offline authorization. Code revocations reach disconnected devices when they reconnect.
+[Revision 2 publication](https://github.com/sillytira/onestep-ios/commit/96a31b54ea256bd086d4b4b7214fd660c40489a6) changed only content/catalog.json after the first 0.5 builds. Only the [source scan](https://github.com/sillytira/onestep-ios/actions/runs/43185137712) ran; no new native/portable binary build was triggered. An HTTPS fetch from the exact client feed returned 200, revision 2, and 3 packs. This proves publication/delivery without a new IPA; user-device cache/UI acceptance remains in ACCEPTANCE.md.
 
-OS app blocking, Screen Time entitlements, app-time redemption, continuous planner sync, and unrestricted Supabase database administration inside the apps are not delivered. Child sign-out gating cannot prevent uninstall/reset or modified clients. Ordinary notifications obey OS permissions and policy. Free Apple signing expiry and app/App-ID limits still apply; install only the companions needed on each device. Core planner use and manual encrypted local-Wi-Fi transfer need no server; online family actions need the managed service.
+## Package inspection and Android signing
+
+Downloaded artifact ZIP digests matched GitHub metadata. Original packages matched their CI checksum manifests. Independent parsing verified iOS plists/arm64 binaries/extension counts, APK binary manifests/build 10/three ABIs, Windows PE x64/Tira-OneStep.exe, and Linux ELF x86-64/type2. Public connection defaults were found in the inspected compiled native/portable payloads. Owner invitation and private Android signing files/password were absent from inspected public package contents.
+
+Android inspection found that the old debug-keystore cache never saved its target file; certificates differed between 0.4 and 0.5. The delivered 0.5 APKs were then signed locally with a saved private RSA-3072 key using official Android apksigner. All four signatures verified with APK Signature Schemes v2/v3; all share certificate SHA256 ad35a758e1304c98d1574b7849d25e2d040379bd7a1cfc391a2349f2436bf312. An independent comparison of 129 non-signature ZIP members per APK confirmed their application payloads match the tested CI builds. Final SHA256SUMS describes these newly signed APKs, not the original test-signed artifacts.
+
+The old private keys were not retained by CI and cannot be recovered from certificates. Therefore existing 0.4 Android installations require a verified backup and one-time signing migration, not an in-place update. Future delivered APKs must use the saved new key. The broken cache is removed; optional CI-secret configuration and local signing script are provided. The private release key was not uploaded to GitHub. Optional CI configuration was checked locally with synthetic material.
+
+## Source revisions and remaining boundaries
+
+Final native functional/test source: [f14967e](https://github.com/sillytira/onestep-ios/commit/f14967e8ed14c23bbca1641a8b5489ecb26b625f). Portable/companion binary source: [6582610](https://github.com/sillytira/onestep-ios/commit/6582610824c968dde08a4e000b64477652bb6447). Later source retains CI formatting/lock, documentation, content revision 2, and signing-tool/workflow corrections; Android payloads are unchanged by signing.
+
+See PENDING.md for owner enrollment, signed-device checks, Apple Family Controls/Time Sensitive/shared-container prerequisites, and future online merging/encryption scope. No OS TikTok shielding, point spending, unrestricted database administration, arbitrary executable hot patching, or signing-expiry bypass is claimed.

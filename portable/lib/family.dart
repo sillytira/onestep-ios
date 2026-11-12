@@ -776,7 +776,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
               ),
             if (!client.signedIn) ...[
               panel('OneStep accounts', [
-                const Text('Connected to the main OneStep service. Sign in or enter your admin-issued beta key to create an account.'),
+                const Text(
+                  'Connected to the main OneStep service. Sign in or enter your admin-issued beta key to create an account.',
+                ),
               ]),
               panel('Your account', [
                 const Text(

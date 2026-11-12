@@ -1,4 +1,4 @@
-# Install OneStep 0.4 beta
+# Install OneStep 0.5 beta
 
 ## Main iPhone app
 
@@ -12,13 +12,13 @@ An unsigned IPA must be signed by your installer. Use your already working AltSt
 
 Install the appropriate companion IPA on iPhone (after signing) or APK on Android. IDs are meow.tira.onestep.bank, meow.tira.onestep.kids, and meow.tira.onestep.parent. Use the same hosted service across clients and the same app email/password when viewing the same account. Parent and child accounts must be different. Installing a different app does not change the server role of an account.
 
-Open the separately supplied PRIVATE connection instructions and enter the project URL and publishable key in each app at runtime. Never enter a database password or service-role/secret key. The owner must create the app account once with their private single-use enrollment key and configured owner email, choosing their own app password. The Supabase website account is separate. Later devices just sign in. The app owner is meow; tira is reserved. Do not put the private setup/key files into a source ZIP or public repository.
+The main OneStep service is already configured in every app; sign in directly without copying a URL or public key. Never enter a database password or service-role/secret key. The owner must create the app account once with their private single-use enrollment key and configured owner email, choosing their own app password. The Supabase website account is separate. Later devices just sign in. The app owner is meow; tira is reserved. Do not put the private setup/key files into a source ZIP or public repository.
 
 The owner then opens Application admin to generate email-bound Parent/Kids beta keys. A parent creates a family and shares a separate ten-minute family invitation with the child. Parent assigns tasks/rewards; child requests approval; parent approves once. See FAMILY.md for offline parent-code setup, account linking, and privacy.
 
 ## Android main app
 
-Install the APK through your normal Android installer. Package is meow.tira.onestep. Enable notifications and precise alarms under Your space; inexact alarms are the fallback. The initial beta keys are CI-cached, not permanently managed private release keys, so future in-place compatibility is not guaranteed if caches expire. Export data before updating. Do not uninstall for a signing mismatch until your data is safe. Main and companion beta signing caches are separate.
+Install the APK through your normal Android installer. Package is meow.tira.onestep. Enable notifications and precise alarms under Your space; inexact alarms are the fallback. Version 0.5 delivered APKs use the permanent private OneStep signing key. Earlier 0.4 APKs used unrecoverable per-run test keys, so this is a one-time signing migration: export the old planner and verify the backup before uninstalling an old Android build. Import after installing the new APK; sign in again to online services. Future APKs must retain the new certificate. Do not uninstall the only copy of your data. See ANDROID-SIGNING.md.
 
 ## Windows / Linux main app
 
@@ -31,3 +31,7 @@ Private planner transfers work without accounts or a server. Keep both devices o
 ## Verify on your devices
 
 Compare package SHA-256 with the delivered checksum manifest. Confirm restart persistence, migration/update retention, offline locked-device reminders, follow-up cancellation, next-day routine reset, timer pause/expiry, and Live Activity. For family services verify owner enrollment, parent-child linking, single approval credit, private Kids identity, parent-only unlink, and a previously synced parent code with the backend unreachable. Cloud builds do not establish those physical-device outcomes.
+
+## Enable content updates once
+
+Install this 0.5 application over the matching existing identity to add the updater. Future routine-pack/content revisions can refresh inside it without another IPA/APK installation. New native code still needs an application update; Apple signing expiry is unaffected. See UPDATES.md.

@@ -6,3 +6,13 @@ DerivedData/
 xcuserdata/
 .swiftpm/
 release/
+
+# Private credentials and signing material
+private/
+.env
+.env.*
+*.jks
+*.p12
+*.keystore
+*.p8
+*.mobileprovision

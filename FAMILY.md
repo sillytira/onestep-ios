@@ -1,4 +1,4 @@
-# OneStep family beta — 0.4
+# OneStep family beta — 0.5
 
 OneStep remains an offline planner. Optional online services add family tasks, parent-approved virtual points, transactions, rankings, and administration. A managed Supabase backend is sufficient; no home server or VPS is required. No points can be purchased with real money. Spending points on real OS-enforced app time is not implemented yet.
 
@@ -13,7 +13,7 @@ Identifiers are meow.tira.onestep, meow.tira.onestep.bank, meow.tira.onestep.kid
 
 ## First connection and owner account
 
-All project keys are deliberately absent from public source, CI configuration, and packaged binaries. Enter your HTTPS project URL and publishable/anon key at runtime on each device. Settings and authentication sessions are stored in Keychain/secure storage. Never enter a database password, service-role key, or secret key into a client. Private setup/enrollment files must stay outside the source tree and source archives.
+The approved public project URL and publishable client key are built in. Open the account screen and sign in; no manual connection setup is needed. Public client keys identify the application and do not grant user/admin access. Authentication sessions are stored in Keychain/secure storage. Never enter a database password, service-role key, or secret key into a client. Private setup/enrollment files must stay outside the source tree and source archives.
 
 The site owner gets one private, single-use enrollment key bound to the configured owner email. Create the app account once with that email, the enrollment key, and a password you choose. The owner username/handle starts as **meow**; **tira** is reserved and unused. On other clients, use the same app email/password; the enrollment key is not reusable. The Supabase dashboard account is separate from the app account. Email confirmation is disabled for this beta; the invitation proves authorization to enroll, not ownership of an email inbox.
 
@@ -49,6 +49,6 @@ The main private planner continues offline without accounts. Online rewards/acco
 
 ## Backend setup from source
 
-Apply backend migrations 001 through 004 to a new empty Supabase project in order. The project used for this beta has already received them; do not blindly rerun non-idempotent migrations. RLS is enabled, anonymous table access is denied, and authenticated users have only explicit privileges. Create the initial owner invitation privately through the project owner's SQL Editor using a SHA-256 hash of a cryptographically random 256-bit secret and an email binding; never commit that secret, its seed file, or real connection settings. Configure email-confirmation policy only after invite gating is installed and tested.
+Apply backend migrations 001 through 004 to a new empty Supabase project in order. The project used for this beta has already received them; do not blindly rerun non-idempotent migrations. RLS is enabled, anonymous table access is denied, and authenticated users have only explicit privileges. Create the initial owner invitation privately through the project owner's SQL Editor using a SHA-256 hash of a cryptographically random 256-bit secret and an email binding; never commit that secret, its seed file, or privileged connection credentials. Configure email-confirmation policy only after invite gating is installed and tested.
 
 CI database tests cover family isolation, no self-approval, exactly-once credit, beta gate bypass rejection, owner/name binding, metadata privilege rejection, private child identities, and parent-only unlink/PIN setup. scripts/check-public-source.mjs scans source for embedded project keys, JWTs, and private keys. Device enrollment, signed installs, physical offline PIN behavior, and real app notification delivery still need acceptance checks.

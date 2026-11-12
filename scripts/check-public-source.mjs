@@ -13,7 +13,7 @@ function walk(directory){
     if(skip.has(entry.name))continue;
     const file=path.join(directory,entry.name);
     if(entry.isDirectory()){walk(file);continue;}
-    if(!/\.(swift|dart|mjs|json|ya?ml|sql|md|sh|plist|pbxproj|lock)$/.test(entry.name))continue;
+    if(!/\.(swift|dart|mjs|json|ya?ml|sql|md|sh|ps1|plist|pbxproj|lock)$/.test(entry.name))continue;
     let content=fs.readFileSync(file,'utf8');checked++;
     if(publicFiles.has(path.relative(root,file).replaceAll('\\','/')))content=content.replaceAll(publicConfig.publishableKey,'APPROVED_PUBLIC_CLIENT_KEY');
     if(blocked.some(pattern=>pattern.test(content)))throw new Error(`Possible embedded project token/private key: ${path.relative(root,file)}. Contents withheld.`);

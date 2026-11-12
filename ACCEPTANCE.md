@@ -38,7 +38,7 @@ These device checks are deliberately unmarked until performed on your iPhone. A 
 Automated build results are recorded in BUILD-VERIFICATION.md. These real-account/device checks remain pending.
 
 - [ ] Export a backup before updating; retain existing tasks/history after installing the main app over the same identity. Use the migration bridge first if the old identity is still installed.
-- [ ] Enter the private service settings at runtime, enroll the owner once with its private key, and confirm meow and Application admin. Sign in on another client without reusing the enrollment key.
+- [ ] Sign in to the built-in main service, enroll the owner once with its private key, and confirm meow and Application admin. Sign in on another client without reusing the enrollment key.
 - [ ] Generate email-bound Parent/Kids beta keys. Confirm reused, expired, or wrong-email keys are rejected.
 - [ ] Create a family, join with the separate short-lived invitation, assign a task, submit as child, and approve once as parent. Repeated approval must not award twice.
 - [ ] Confirm child identity is email-only and absent from rankings; normal/parent opt-in shows only public profile fields.
@@ -46,3 +46,13 @@ Automated build results are recorded in BUILD-VERIFICATION.md. These real-accoun
 - [ ] Confirm a child cannot unlink itself or join a second family; the parent can unlink while retaining history.
 - [ ] Reopen offline with the same account and inspect last-sync labels. Sign out/in as another account and confirm caches do not mix. Failed online actions must not silently award points.
 - [ ] Verify locked-phone alerts and Live Activities with the signed main iPhone app; companion apps have no Live Activity extension.
+
+## Version 0.5 content and routine acceptance
+
+- [ ] Install 0.5 once over the existing identity. Open Bank/companion login directly with no URL/key setup.
+- [ ] Check content, inspect pack steps, add a pack, relaunch offline, and confirm cached content and duplicate prevention. Publish a higher content-only revision and confirm it appears without rebuilding or resigning the app.
+- [ ] Finish or skip one routine step, undo it today, and confirm history on earlier days remains. Change an incomplete step’s time today and confirm tomorrow/task deadlines are unchanged.
+- [ ] Start a portable guided routine and complete/skip steps in sequence; snoozed steps are set aside.
+- [ ] Verify coincident task/routine reminders share a banner and completing all referenced steps removes pending reminders. Check queue coverage and regular refill.
+- [ ] Add the OneStep shortcuts widget. Verify Now/Routines/Add/Timer destinations. Start a Live Activity and test Done/Snooze after device authentication; stale/previous-day actions must not affect another task.
+- [ ] Verify Time Sensitive is unavailable or falls back safely when absent from provisioning, and ordinary notifications continue.

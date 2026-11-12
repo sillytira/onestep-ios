@@ -102,7 +102,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         fatal = null;
       });
       loaded.addListener(changed);
-      if (loaded.state['contentAutoUpdate'] != false) { unawaited(ContentCache(loaded.directory).refreshQuietly()); }
+      if (loaded.state['contentAutoUpdate'] != false) {
+        unawaited(ContentCache(loaded.directory).refreshQuietly());
+      }
     } catch (e) {
       if (mounted)
         setState(() {
@@ -332,8 +334,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               a['sourceID'] == guided!['sourceID'],
         ))
       guided = null;
-    if (guidedDay != dayKey(now)) { guided = null; guidedDay = null; }
-    if (guidedDay != null) { guided = nextGuidedRoutine(state, now); if (guided == null) guidedDay = null; }
+    if (guidedDay != dayKey(now)) {
+      guided = null;
+      guidedDay = null;
+    }
+    if (guidedDay != null) {
+      guided = nextGuidedRoutine(state, now);
+      if (guided == null) guidedDay = null;
+    }
     final item = guided ?? nextAction(state, now);
     final session = state['focusSession'] as Map?;
     final count =
@@ -470,7 +478,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     : () {
                         run(() async {
                           await p.save(complete(p.state, item));
-                          guided = guidedDay == dayKey(DateTime.now()) ? nextGuidedRoutine(p.state, DateTime.now()) : null;
+                          guided = guidedDay == dayKey(DateTime.now())
+                              ? nextGuidedRoutine(p.state, DateTime.now())
+                              : null;
                           if (guided == null) guidedDay = null;
                         });
                       },
@@ -521,7 +531,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             '$count',
             style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
           ),
-          if (guidedDay != null) TextButton(onPressed: () => setState(() { guidedDay = null; guided = null; }), child: const Text('Leave guided routine')),
+          if (guidedDay != null)
+            TextButton(
+              onPressed: () => setState(() {
+                guidedDay = null;
+                guided = null;
+              }),
+              child: const Text('Leave guided routine'),
+            ),
           const Text('Steps finished', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 12),
           const Text(
@@ -729,11 +746,26 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 
   Future<void> todayTime(Json step) async {
-    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(minutes: 10))));
-    if(picked == null || !mounted) return;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        DateTime.now().add(const Duration(minutes: 10)),
+      ),
+    );
+    if (picked == null || !mounted) return;
     final now = DateTime.now();
-    await run(() => planner!.save(rescheduleRoutine(planner!.state, step['id'] as String, DateTime(now.year, now.month, now.day, picked.hour, picked.minute), now)));
+    await run(
+      () => planner!.save(
+        rescheduleRoutine(
+          planner!.state,
+          step['id'] as String,
+          DateTime(now.year, now.month, now.day, picked.hour, picked.minute),
+          now,
+        ),
+      ),
+    );
   }
+
   Widget routinesPage(Json state, DateTime now) {
     final routines = rows(state, 'routines')
       ..sort((a, b) => (a['position'] as int).compareTo(b['position'] as int));
@@ -787,8 +819,32 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 },
               ),
             ),
-            if (record(state, step, now)?['status'] != null) TextButton(onPressed: busy ? null : () { run(() => planner!.save(undoRoutine(planner!.state, step['id'] as String, DateTime.now()))); }, child: const Text('Undo today')),
-            if (record(state, step, now)?['status'] == null) TextButton(onPressed: busy ? null : () { todayTime(step); }, child: const Text('Change today’s time')),
+            if (record(state, step, now)?['status'] != null)
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () {
+                        run(
+                          () => planner!.save(
+                            undoRoutine(
+                              planner!.state,
+                              step['id'] as String,
+                              DateTime.now(),
+                            ),
+                          ),
+                        );
+                      },
+                child: const Text('Undo today'),
+              ),
+            if (record(state, step, now)?['status'] == null)
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () {
+                        todayTime(step);
+                      },
+                child: const Text('Change today’s time'),
+              ),
             if (record(state, step, now)?['status'] == null)
               Wrap(
                 spacing: 10,
@@ -932,7 +988,22 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             ),
             title: Text(r['title'] as String),
             subtitle: Text('${r['day']} · ${r['status']}'),
-            trailing: r['day'] == dayKey(DateTime.now()) ? TextButton(onPressed: () { run(() => planner!.save(undoRoutine(planner!.state, r['stepID'] as String, DateTime.now()))); }, child: const Text('Undo today')) : null,
+            trailing: r['day'] == dayKey(DateTime.now())
+                ? TextButton(
+                    onPressed: () {
+                      run(
+                        () => planner!.save(
+                          undoRoutine(
+                            planner!.state,
+                            r['stepID'] as String,
+                            DateTime.now(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Undo today'),
+                  )
+                : null,
           ),
         ),
     ],
@@ -1389,8 +1460,20 @@ class _SettingsPageState extends State<SettingsPage>
             padding: const EdgeInsets.all(20),
             children: [
               section('Content updates', [
-                FilledButton.icon(onPressed: () { Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ContentPage(planner: p))); }, icon: const Icon(Icons.system_update_alt), label: const Text('Content updates and routine packs')),
-                const Text('Refresh routine packs inside the installed app. Native code changes still require an app update.'),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ContentPage(planner: p),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.system_update_alt),
+                  label: const Text('Content updates and routine packs'),
+                ),
+                const Text(
+                  'Refresh routine packs inside the installed app. Native code changes still require an app update.',
+                ),
               ]),
               section('Rewards and family', [
                 for (final role in ['bank', 'kids', 'parent'])

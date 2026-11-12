@@ -1,0 +1,5 @@
+{
+  "alias": "onestep",
+  "certificateSHA256": "ad35a758e1304c98d1574b7849d25e2d040379bd7a1cfc391a2349f2436bf312",
+  "note": "Public certificate fingerprint only. Private keystore and password are never committed."
+}

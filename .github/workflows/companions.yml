@@ -43,6 +43,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Configure private Android signing when available
+        env:
+          ONESTEP_KEYSTORE_BASE64: ${{ secrets.ONESTEP_KEYSTORE_BASE64 }}
+          ONESTEP_SIGNING_PASSWORD: ${{ secrets.ONESTEP_SIGNING_PASSWORD }}
+        run: node scripts/configure-android-signing.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -51,10 +56,6 @@ jobs:
           flutter-version: '3.38.5'
           channel: stable
           cache: true
-      - uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: onestep-companions-beta-key-v1
       - run: node portable/tool/bootstrap.mjs
       - run: flutter pub get
         working-directory: portable

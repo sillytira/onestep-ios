@@ -1,0 +1,12 @@
+# Remaining checks and external prerequisites
+
+The 0.5 release closes the implementable routine, content-update, connection-setup, reminder-presentation, widget-shortcut, and Live Activity interaction work. It does not claim the following external outcomes.
+
+- **Owner enrollment and family acceptance:** the account owner must enter their chosen password and existing private, email-bound beta invitation, then test separate parent/child accounts. Dashboard identity is separate from app identity. No actual owner password was entered or invitation consumed by automated tests.
+- **Signed iPhone acceptance:** install over the matching existing identity with the same signing account, retain the extension, and test locked offline alerts, next-day behavior, update/migration retention, Live Activity actions after device authentication, and real phone-to-PC transfer. CI builds and simulator tests do not establish those results.
+- **Screen Time shielding and point-funded app access:** require appropriate Apple Family Controls capability/provisioning and authorization on the child's device, followed by an implemented and tested shield/unlock lifecycle. They are not active in this release. A VPS does not grant those Apple permissions.
+- **Time Sensitive provisioning:** the implementation checks system access and falls back to ordinary alerts. The current unsigned beta does not prove that the user's free signing profile supports this entitlement. Critical Alerts are not implemented.
+- **Private next-action Home Screen data:** shortcut widgets are included without another extension or App Group. Showing private task snapshots in the widget needs a provisioned shared container; no private-data widget is claimed.
+- **Automatic cloud signing:** delivered Android APKs already use the saved permanent private key. The key/password remain outside GitHub. Future CI can use the optional private-signing secrets when the repository owner configures them, or downloaded APKs can be signed locally with the included script. Old Android test-key installs need the documented one-time backup/migration.
+
+Continuous online planner merging, advanced recurrence/folder hierarchies, password-encrypted exports, and a custom encrypted local planner store are separate future work. Current account credentials/snapshots use OS secure storage; private planner files and JSON exports still require device/backup protection. See ACCEPTANCE.md, UPDATES.md, ANDROID-SIGNING.md, and KNOWN-LIMITATIONS.md.

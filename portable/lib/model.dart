@@ -271,11 +271,21 @@ List<AlertPlan> reminders(Json state, DateTime now, {int limit = 60}) {
     }
   }
   final grouped = <int, List<AlertPlan>>{};
-  for(final alert in result) { grouped.putIfAbsent(alert.at.millisecondsSinceEpoch,()=>[]).add(alert); }
+  for (final alert in result) {
+    grouped.putIfAbsent(alert.at.millisecondsSinceEpoch, () => []).add(alert);
+  }
   result.clear();
-  for(final group in grouped.values) {
-    group.sort((a,b)=>a.key.compareTo(b.key));
-    result.add(group.length == 1 ? group.first : AlertPlan('group.${group.first.at.millisecondsSinceEpoch}', '${group.length} steps are ready · ${group.first.title}', group.first.at));
+  for (final group in grouped.values) {
+    group.sort((a, b) => a.key.compareTo(b.key));
+    result.add(
+      group.length == 1
+          ? group.first
+          : AlertPlan(
+              'group.${group.first.at.millisecondsSinceEpoch}',
+              '${group.length} steps are ready · ${group.first.title}',
+              group.first.at,
+            ),
+    );
   }
   result.sort((a, b) => a.at.compareTo(b.at));
   final timer = state['focusSession'] as Map?;
@@ -297,7 +307,8 @@ List<AlertPlan> reminders(Json state, DateTime now, {int limit = 60}) {
             : limit,
       )
       .toList();
-  if (limit > 0 && valid &&
+  if (limit > 0 &&
+      valid &&
       end != null &&
       end.isAfter(now) &&
       timer['pausedRemaining'] == null)
@@ -313,30 +324,55 @@ List<AlertPlan> reminders(Json state, DateTime now, {int limit = 60}) {
 }
 
 Json? nextGuidedRoutine(Json state, DateTime now) {
-  final steps = rows(state, 'routines')..sort((a,b)=>(a['position'] as int).compareTo(b['position'] as int));
-  for(final step in steps) {
+  final steps = rows(state, 'routines')
+    ..sort((a, b) => (a['position'] as int).compareTo(b['position'] as int));
+  for (final step in steps) {
     final r = record(state, step, now);
-    if(r?['status'] == null && (dateOf(r?['snoozedUntil'])?.isAfter(now) != true)) return action(step, day: now, state: state);
+    if (r?['status'] == null &&
+        (dateOf(r?['snoozedUntil'])?.isAfter(now) != true))
+      return action(step, day: now, state: state);
   }
   return null;
 }
+
 Json undoRoutine(Json original, String id, DateTime now) {
   final state = clone(original);
-  if(!rows(state,'routines').any((s)=>s['id']==id)) return state;
-  state['days'] = rows(state,'days')..removeWhere((r)=>r['stepID']==id && r['day']==dayKey(now));
+  if (!rows(state, 'routines').any((s) => s['id'] == id)) return state;
+  state['days'] = rows(state, 'days')
+    ..removeWhere((r) => r['stepID'] == id && r['day'] == dayKey(now));
   return state;
 }
+
 Json rescheduleRoutine(Json original, String id, DateTime date, DateTime now) {
   final state = clone(original);
-  if(!date.isAfter(now) || dayKey(date)!=dayKey(now)) throw const FormatException('Choose a future time today.');
-  final step = rows(state,'routines').where((s)=>s['id']==id).firstOrNull;
-  if(step==null || record(state,step,now)?['status']!=null) throw const FormatException('Choose an incomplete routine step.');
-  state['days'] = rows(state,'days')..removeWhere((r)=>r['stepID']==id && r['day']==dayKey(now))..add({'stepID':id,'day':dayKey(now),'title':step['title'],'snoozedUntil':stamp(date),'updatedAt':stamp(now)});
+  if (!date.isAfter(now) || dayKey(date) != dayKey(now))
+    throw const FormatException('Choose a future time today.');
+  final step = rows(state, 'routines').where((s) => s['id'] == id).firstOrNull;
+  if (step == null || record(state, step, now)?['status'] != null)
+    throw const FormatException('Choose an incomplete routine step.');
+  state['days'] = rows(state, 'days')
+    ..removeWhere((r) => r['stepID'] == id && r['day'] == dayKey(now))
+    ..add({
+      'stepID': id,
+      'day': dayKey(now),
+      'title': step['title'],
+      'snoozedUntil': stamp(date),
+      'updatedAt': stamp(now),
+    });
   return state;
 }
 
 String reminderCoverage(Json state, DateTime now) {
   final plan = reminders(state, now, limit: 100000);
-  final limit = plan.length > 60 ? plan[60].at.subtract(const Duration(seconds:1)) : DateTime(now.year, now.month, now.day+14);
-  return plan.length.clamp(0,60).toString() + ' alerts planned; continuous queue coverage through ' + dayKey(limit) + ' ' + limit.hour.toString().padLeft(2,'0') + ':' + limit.minute.toString().padLeft(2,'0') + '. Reopen to refill. Same-time steps share a banner.';
+  final limit = plan.length > 60
+      ? plan[60].at.subtract(const Duration(seconds: 1))
+      : DateTime(now.year, now.month, now.day + 14);
+  return plan.length.clamp(0, 60).toString() +
+      ' alerts planned; continuous queue coverage through ' +
+      dayKey(limit) +
+      ' ' +
+      limit.hour.toString().padLeft(2, '0') +
+      ':' +
+      limit.minute.toString().padLeft(2, '0') +
+      '. Reopen to refill. Same-time steps share a banner.';
 }

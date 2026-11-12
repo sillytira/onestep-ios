@@ -1,4 +1,4 @@
-# OneStep — 0.4 family beta
+# OneStep — 0.5 family beta
 
 An offline task/routine planner with a clear Now screen, microsteps, notes, recurring tasks, local reminders, focus timers, JSON backups, and encrypted private-Wi-Fi snapshot transfers. iOS remains native SwiftUI with Liquid Glass and a Live Activity; Android, Windows, and Linux use Material 3. Core planner use needs no account, internet connection, or server.
 
@@ -6,7 +6,7 @@ Optional OneStep Bank, OneStep Kids, and OneStep Parent phone apps share the sam
 
 Read [FAMILY.md](FAMILY.md) for beta enrollment, private runtime setup, owner/admin access, reserved handles, child privacy, parent offline codes, and exact limitations. Kids accounts display email only and are excluded from public rankings. Normal/parent users can set a handle and opt in. Owner enrollment installs meow; tira remains reserved and unused.
 
-No real project keys, JWTs, private keys, or owner-enrollment plaintext belong in this repository, CI configuration, or source archives. Users enter connection settings at runtime; clients keep sessions/configuration in platform secure storage. Private setup/enrollment material must be delivered separately and never committed. Run node scripts/check-public-source.mjs before uploading source.
+The main-instance URL and its explicitly approved publishable client key ship in source and binaries, so account setup requires no manual connection entry. Authentication and RLS enforce access. Secret/service-role keys, real session JWTs, private keys, passwords, and owner enrollment plaintext remain forbidden in source and archives. Clients keep sessions in platform secure storage. Private setup/enrollment material must be delivered separately and never committed. Run node scripts/check-public-source.mjs before uploading source.
 
 ## Build
 
@@ -17,3 +17,7 @@ Native: node scripts/generate-project.mjs, node scripts/generate-icon.mjs, node 
 Portable: node portable/tool/bootstrap.mjs, then flutter pub get/analyze/test and flutter build apk/windows/linux in portable. For a companion set ONESTEP_ROLE=bank, kids, or parent before generation and pass --dart-define=ONESTEP_ROLE=ROLE to Flutter. iOS companions use flutter build ios --release --no-codesign and package the generated Runner.app. Generated platform projects are reproducible; application source and dependency lock are retained.
 
 See [INSTALL.md](INSTALL.md), [PLATFORMS.md](PLATFORMS.md), [KNOWN-LIMITATIONS.md](KNOWN-LIMITATIONS.md), and the delivered verification report. Main Apple/Android ID stays meow.tira.onestep. Never delete your only planner copy to free a signing slot.
+
+## Version 0.5 additions
+
+Main-instance connection is automatic. Content packs update inside installed apps without a binary update; see [UPDATES.md](UPDATES.md). Added routine Undo, today-only rescheduling, portable guided sequences, grouped same-time reminder banners, Home Screen shortcuts, and Live Activity actions. Apple entitlement/provisioning and real-device acceptance constraints remain explicit.

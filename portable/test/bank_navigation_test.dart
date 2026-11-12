@@ -23,8 +23,10 @@ void main() {
     expect(find.text('Email'),findsOneWidget);expect(find.text('Password'),findsOneWidget);
     expect(find.text('Single-use beta key (new accounts)'),findsNothing);
     await tester.scrollUntilVisible(find.text('Join with a beta key'),150,scrollable:find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Join with a beta key'));await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.byWidgetPredicate((w)=>w is TextField && w.decoration?.labelText == 'Single-use beta key (new accounts)'),150,scrollable:find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
     expect(find.text('Single-use beta key (new accounts)'),findsOneWidget);
     await tester.scrollUntilVisible(find.text('Create account'),150,scrollable:find.byType(Scrollable).first);
     expect(find.text('Create account'),findsOneWidget);

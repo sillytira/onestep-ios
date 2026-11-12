@@ -4,6 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:onestep/family.dart';
 
+class OfflineClient extends FamilyClient {
+  @override Future<dynamic> request(String path,{Map<String,dynamic>? body,bool authenticated=true}) async {
+    throw const FormatException('Simulated service outage');
+  }
+}
+
 void main(){
   testWidgets('Cached account remains usable when service fails; destinations expose real controls',(tester)async{
     const user='synthetic-user';
@@ -12,7 +18,7 @@ void main(){
       'family.kind':'normal',
       'family.snapshot.$user':jsonEncode({'balance':123,'ledger':[{'event_id':'test-event','delta':12,'reason':'A completed task','created_at':'2026-11-12T12:00:00Z'}],'tasks':[],'children':[],'families':[],'rankings':[],'publicName':'Member','handle':'member','optIn':false,'lastSync':'Saved earlier'})
     });
-    await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true),home:RewardsPage(client:FamilyClient())));
+    await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true),home:RewardsPage(client:OfflineClient())));
     await tester.pumpAndSettle();
     expect(find.text('123'),findsOneWidget);
     await tester.tap(find.byType(NavigationDestination).at(1));await tester.pumpAndSettle();

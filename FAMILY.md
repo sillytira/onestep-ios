@@ -1,4 +1,4 @@
-# OneStep family beta — 0.6
+# OneStep family beta — 0.7
 
 OneStep remains an offline planner. Optional online services add family tasks, parent-approved virtual points, transactions, rankings, and administration. A managed Supabase backend is sufficient; no home server or VPS is required. No points can be purchased with real money. Version 0.6 adds bounded personal rewards and point-funded app time in the separately provisioned native Apple build. See REWARDS.md and SCREEN-TIME.md.
 

@@ -1,4 +1,4 @@
-# Install OneStep 0.6 beta
+# Install OneStep 0.7 beta
 
 ## Main iPhone app
 
@@ -39,3 +39,7 @@ Install this 0.5 application over the matching existing identity to add the upda
 ## Optional Apple Screen Time variant
 
 The ordinary IPA keeps its existing Live Activity extension. The separately named screen-time IPA uses the same main bundle ID, adds a DeviceActivity monitor extension, and requires Family Controls plus a shared App Group in the signing profiles. Install one main variant, not both. This is not promised to work with free Personal Team signing. Bank/Kids/Parent Flutter companions do not contain Apple blocking extensions. Read SCREEN-TIME.md before choosing this variant. Back up before changing variants. Android updates from the delivered 0.5 APKs reuse the permanent certificate; no uninstall should be needed.
+
+## Version 0.7 account and navigation repair
+
+Back up, then install over the same app identity and signing account. Bank is now a main iPhone tab and a desktop sidebar destination; Notes/History/settings are in More on iPhone. Old manual connection settings no longer override the main service. If a cached session needs recovery, open Bank → Account → Reconnect this account and enter that account’s password. This does not unlink a child. Only the user enters real credentials. The separate Apple Screen Time provisioning requirement is unchanged.

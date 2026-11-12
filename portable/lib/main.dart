@@ -51,9 +51,19 @@ class OneStepApp extends StatelessWidget {
           borderRadius: BorderRadius.all(Radius.circular(28)),
         ),
       ),
-      dividerTheme: const DividerThemeData(color:Color(0xff2a2c37),thickness:1),
-      appBarTheme: const AppBarTheme(backgroundColor:Color(0xff0e1016),surfaceTintColor:Colors.transparent,centerTitle:false),
-      navigationBarTheme:const NavigationBarThemeData(backgroundColor:Color(0xff14161e),indicatorColor:Color(0xff37314f)),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xff2a2c37),
+        thickness: 1,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xff0e1016),
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: Color(0xff14161e),
+        indicatorColor: Color(0xff37314f),
+      ),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
@@ -216,7 +226,17 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         title: Text(names[tab]),
         backgroundColor: Colors.transparent,
         actions: [
-          IconButton(tooltip:'OneStep Bank',icon:const Icon(Icons.account_balance_wallet_outlined),onPressed:(){Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const RewardsPage(role:'bank')));}),
+          IconButton(
+            tooltip: 'OneStep Bank',
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RewardsPage(role: 'bank'),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Data, devices, and settings',
             icon: const Icon(Icons.settings_outlined),
@@ -232,12 +252,25 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       ),
       body: Row(
         children: [
-          if (wide) DesktopSidebar(
-            selected:tab,names:names,icons:icons,expanded:MediaQuery.sizeOf(context).width>=1100,
-            onSelect:(i)=>setState(()=>tab=i),onAdd:()=>edit(),
-            onBank:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const RewardsPage(role:'bank'))),
-            onSettings:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SettingsPage(planner:p))),
-          ),
+          if (wide)
+            DesktopSidebar(
+              selected: tab,
+              names: names,
+              icons: icons,
+              expanded: MediaQuery.sizeOf(context).width >= 1100,
+              onSelect: (i) => setState(() => tab = i),
+              onAdd: () => edit(),
+              onBank: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RewardsPage(role: 'bank'),
+                ),
+              ),
+              onSettings: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SettingsPage(planner: p),
+                ),
+              ),
+            ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -350,7 +383,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
-        Text(MaterialLocalizations.of(context).formatFullDate(now), style: TextStyle(color: accents['amber'])),
+        Text(
+          MaterialLocalizations.of(context).formatFullDate(now),
+          style: TextStyle(color: accents['amber']),
+        ),
         const SizedBox(height: 12),
         const Text(
           'One thing at a time.',
@@ -1102,7 +1138,10 @@ class _EntryEditorState extends State<EntryEditor> {
 
   Future<void> save() async {
     if (busy) return;
-    if (title.text.trim().isEmpty) { setState(()=>error='Give this step a name before saving.'); return; }
+    if (title.text.trim().isEmpty) {
+      setState(() => error = 'Give this step a name before saving.');
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -1125,8 +1164,10 @@ class _EntryEditorState extends State<EntryEditor> {
             rewardAccount.accountKind != 'kids') {
           t['rewardPoints'] = rewardPoints;
           t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
-        } else if (rewardAccount.signedIn && rewardAccount.accountKind != null &&
-            (t['rewardAccountID'] == null || t['rewardAccountID'] == rewardAccount.userID)) {
+        } else if (rewardAccount.signedIn &&
+            rewardAccount.accountKind != null &&
+            (t['rewardAccountID'] == null ||
+                t['rewardAccountID'] == rewardAccount.userID)) {
           t.remove('rewardPoints');
           t.remove('rewardAccountID');
         }

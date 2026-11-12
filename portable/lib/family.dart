@@ -75,7 +75,8 @@ class FamilyClient {
     if (authenticated) {
       if (!signedIn) throw const FormatException('Sign in first.');
       await refreshSession();
-      if (userID != principal) throw const FormatException('The account changed. Please retry.');
+      if (userID != principal)
+        throw const FormatException('The account changed. Please retry.');
     }
     final accessToken = session?['access_token'];
     final client = HttpClient()
@@ -88,10 +89,7 @@ class FamilyClient {
       request.followRedirects = false;
       request.headers.set('apikey', publicKey);
       if (authenticated)
-        request.headers.set(
-          'Authorization',
-          'Bearer $accessToken',
-        );
+        request.headers.set('Authorization', 'Bearer $accessToken');
       if (body != null) {
         request.headers.contentType = ContentType.json;
         request.write(jsonEncode(body));
@@ -106,7 +104,8 @@ class FamilyClient {
           throw const FormatException('Service response too large.');
       }
       final text = utf8.decode(bytes);
-      if (authenticated && userID != principal) throw const FormatException('The account changed. Please retry.');
+      if (authenticated && userID != principal)
+        throw const FormatException('The account changed. Please retry.');
       if (response.statusCode < 200 || response.statusCode >= 300) {
         String message = 'Service request failed (${response.statusCode}).';
         try {
@@ -891,12 +890,20 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
               ),
             if (!client.signedIn) ...[
               panel('Your effort, in one place.', [
-                const Icon(Icons.account_balance_wallet_outlined,size:42,color:Color(0xffc5baff)),
-                const Text('Earn points with OneStep. Keep your rewards and activity together across your devices.'),
-              ],color:const Color(0xff6548a6)),
+                const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 42,
+                  color: Color(0xffc5baff),
+                ),
+                const Text(
+                  'Earn points with OneStep. Keep your rewards and activity together across your devices.',
+                ),
+              ], color: const Color(0xff6548a6)),
               panel('Your account', [
                 Text(
-                  creatingAccount ? 'Join with the invitation from your administrator.' : 'Welcome back. Sign in to your OneStep account.',
+                  creatingAccount
+                      ? 'Join with the invitation from your administrator.'
+                      : 'Welcome back. Sign in to your OneStep account.',
                 ),
                 TextField(
                   controller: email,
@@ -910,14 +917,15 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   obscureText: true,
                   autocorrect: false,
                 ),
-                if (creatingAccount) TextField(
-                  controller: betaKey,
-                  decoration: const InputDecoration(
-                    labelText: 'Single-use beta key (new accounts)',
+                if (creatingAccount)
+                  TextField(
+                    controller: betaKey,
+                    decoration: const InputDecoration(
+                      labelText: 'Single-use beta key (new accounts)',
+                    ),
+                    obscureText: true,
+                    autocorrect: false,
                   ),
-                  obscureText: true,
-                  autocorrect: false,
-                ),
                 if (creatingAccount && effectiveRole != 'kids')
                   TextField(
                     controller: username,
@@ -933,16 +941,33 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                           run(() async {
                             await client.configure(url.text, key.text);
                             if (creatingAccount) {
-                              await client.signUp(email.text,password.text,betaKey.text,username.text);
+                              await client.signUp(
+                                email.text,
+                                password.text,
+                                betaKey.text,
+                                username.text,
+                              );
                               betaKey.clear();
-                            } else { await client.signIn(email.text, password.text); }
+                            } else {
+                              await client.signIn(email.text, password.text);
+                            }
                             password.clear();
                             await refresh();
                           });
                         },
                   child: Text(creatingAccount ? 'Create account' : 'Sign in'),
                 ),
-                TextButton(onPressed:busy?null:()=>setState(()=>creatingAccount=!creatingAccount),child:Text(creatingAccount?'I already have an account':'Join with a beta key')),
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () =>
+                            setState(() => creatingAccount = !creatingAccount),
+                  child: Text(
+                    creatingAccount
+                        ? 'I already have an account'
+                        : 'Join with a beta key',
+                  ),
+                ),
                 const Text(
                   'Your private planner works without an account. Points are virtual and cannot be bought with real money.',
                 ),

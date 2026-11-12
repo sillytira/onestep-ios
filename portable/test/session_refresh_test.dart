@@ -55,7 +55,8 @@ void main() {
           );
           protectedRequests++;
           if (request.uri.path.endsWith('/switch')) {
-            client.session = Map<String,dynamic>.from(client.session!)..['user']={'id':'another-synthetic-user'};
+            client.session = Map<String, dynamic>.from(client.session!)
+              ..['user'] = {'id': 'another-synthetic-user'};
           }
           request.response.write('[]');
         }
@@ -75,7 +76,7 @@ void main() {
       expect(rotations, 1);
       expect(protectedRequests, 8);
       expect(client.signedIn, true);
-      await expectLater(client.list('switch'),throwsA(isA<FormatException>()));
+      await expectLater(client.list('switch'), throwsA(isA<FormatException>()));
     },
   );
 }

@@ -12,8 +12,11 @@ The user reported that the previous release broadly failed in use. This repair a
 - Parent policy edits survive background refresh until saved; child selection stays consistent. Task edits preserve existing reward enrollment when the account is unavailable. Empty task titles produce visible feedback.
 - Screen Time presents a clear unsupported-build state, selected app/category/website counts, authorization and blocking status, and reconnect guidance. Category selection now shields website categories too. Shield state is saved before stopping its monitor. Parent settings authorization is cleared when leaving the foreground.
 
+- App-level URL delivery is retained through startup and consumed by the root interface. Core route and native queued-route tests cover supported/invalid URLs. Account Keychain reads run asynchronously outside the UI thread.
+
 ## Primary references used
 
+- [Apple URL handling](https://developer.apple.com/documentation/swiftui/view/onopenurl(perform:)): scene-level delivery and a persistent startup route.
 - [Apple materials HIG](https://developer.apple.com/design/human-interface-guidelines/materials): glass belongs to navigation and controls, with readable content surfaces.
 - [Family Controls authorization](https://developer.apple.com/documentation/familycontrols/authorizationcenter/requestauthorization(for:)): individual and child/guardian authorization differ; app account roles do not replace Apple's family authorization.
 - [ManagedSettings ShieldSettings](https://developer.apple.com/documentation/managedsettings/shieldsettings): application, web-domain, and category shielding.

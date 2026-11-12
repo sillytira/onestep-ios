@@ -1,32 +1,40 @@
-# OneStep 0.6 — release verification
+# OneStep 0.7 — repair verification
 
-Verified November 12, 2026. Native iPhone 0.6.0 build 17; portable/companion 0.6.0 build 11. Twelve packages: ordinary main IPA, old-ID bridge IPA, optional Screen Time IPA, main APK, Windows ZIP/Tira-OneStep.exe, Linux AppImage, and Bank/Kids/Parent IPA+APK pairs. IPAs are unsigned and require suitable signing.
+This release follows the user's report that the 0.6 apps broadly failed in use. It fixes identifiable account/navigation/UI defects; it does not treat successful packaging as proof that every physical-device feature works.
 
-## Implementation
+## Delivered builds
 
-Personal enrollment chooses 0–100 points and binds to the signed-in account. Offline Done is immediate; service awards retry while open. Migration 005 enforces server age/spacing, normalized duplicate titles, daily 20-task/500-earned-point caps, and exactly-once credit. Weekly opt-in top-100 rankings offer task count or earned points, excluding children, admin grants, and spending. Self-reports remain self-reports, not proof of effort.
+Twelve packages: native main, old-ID bridge, and Screen Time IPAs version0.7.0 build23; main Android, Windows EXE bundle, Linux AppImage; six Bank/Kids/Parent phone companions version0.7.0 build12. IPAs remain unsigned. Android release certificates match delivered0.5/0.6.
 
-Native Screen Time uses Apple's FamilyControls authorization/picker, ManagedSettings shields, and DeviceActivityMonitor extension. Individual mode is user-revocable; child settings are parent-code gated and require Apple's family authorization. Point purchases show policy/cost, reject changed prices before debit, persist receipt IDs, and clear shields only after confirmation and an armed monitor. Parents load saved policies and keep child selection consistent across task/policy/PIN panels. An opt-in private App Group widget has titles hidden by default and stale-day checks. Ordinary and capability-dependent IPAs remain separate.
+## Concrete repairs
 
-## Tests and builds
+- Bank now has Home, Activity, Rankings, and Account destinations, clear sign-in/join modes, balance-first typography, original gradient virtual-points cards and real ledger activity. Native Bank is a main tab; More retains Notes/History/settings. Desktop has adaptive expanded/compact navigation and direct task/Bank actions.
+- One shared account client per process coalesces refresh-token rotation. Requests reject responses after switching accounts, and personal reward outbox registration/claims stay bound to the original principal. Obsolete manual connection values no longer override the main service. Same-account reconnection preserves family links. Native account vault reads run outside the UI thread. Optional rankings/policy failures do not hide the core account snapshot.
+- Personal statement queries filter by current user instead of relying on parent-visible RLS rows. Parent policy edits survive polling until saved. Editing a task without an available account preserves its existing reward binding. Empty task names show feedback.
+- Apple Screen Time exposes actual authorization/selection state, a clear unsupported-profile screen, website-category shields, and parent settings expiry when leaving the foreground. Shared shield state is written before stopping monitoring. App-level URL routes survive startup and reject unrelated URLs.
 
-- [Native tests and three IPAs](https://github.com/sillytira/onestep-ios/actions/runs/43219591626): 25 core +11 native simulator tests passed, all three device variants built with Xcode 26.6. Reward-binding transfer and pure lease-expiry tests supplement persistence/Live Activity tests.
-- [Portable tests and packages](https://github.com/sillytira/onestep-ios/actions/runs/43222123539): 14 tests, static analysis, Android/Windows/Linux builds and desktop launch checks.
-- [Six phone companions](https://github.com/sillytira/onestep-ios/actions/runs/43222123422): Bank/Kids/Parent iOS and Android with verification before packaging.
-- [SQL authorization tests](https://github.com/sillytira/onestep-ios/actions/runs/43219591679): migrations001–005 with synthetic users; age/duplicate filters, caps, child denials/private reads, denied direct writes, parent prices, changed-quote rejection without debit, and idempotent purchases.
+See UI-REPAIR.md for the full list and official Apple/Microsoft/Revolut references used. There are no new database permissions or migrations in this release; deployed001–005 remain unchanged.
 
-Total: **50 app tests**, plus SQL tests. Native/backend source: [80f4522](https://github.com/sillytira/onestep-ios/commit/80f452200a4661b2e5f8d1f5a345fc25c2b48a2a). Portable/companion selector correction: [b0b425b](https://github.com/sillytira/onestep-ios/commit/b0b425b5a6bb8083ca3831549596385576ecaab8). Later source retains CI formatting/lock and documentation.
+## Test evidence
 
-Migration005 was explicitly approved and deployed to the main instance through Edge, returning success. Live catalog inspection confirmed all three new tables have RLS enabled, anon SELECT denied, authenticated direct INSERT denied. Verification did not change real balances. An owner account was visibly present; no owner password was read/entered by Codex.
+- [Native tests and three IPAs](https://github.com/sillytira/onestep-ios/actions/runs/43237404155): **27 core +12 native simulator tests**, all three device builds passed. New coverage checks route parsing and retaining an incoming destination until the interface consumes it.
+- [Portable tests/builds](https://github.com/sillytira/onestep-ios/actions/runs/43237655845): **23 tests**, static analysis, Windows launch, Linux render/launch, Android packaging and Bank design capture passed.
+- [Six companions](https://github.com/sillytira/onestep-ios/actions/runs/43237655932): verification and all role/platform builds passed.
+- [Icon-correct Bank preview](https://github.com/sillytira/onestep-ios/actions/runs/43233951904): rendered the actual BankOverview component with clearly labeled synthetic data and loaded Material icons.
+- Existing [SQL tests](https://github.com/sillytira/onestep-ios/actions/runs/43219591679) cover unchanged server authorization, child privacy, caps, idempotency, and app-time policies.
 
-## Packages, signatures, and privacy
+Total **62 app tests**, plus the unchanged SQL suite and separate visual capture. New portable tests cover large text at320/1080 widths, cached account navigation during a simulated outage, eight concurrent requests rotating a session once against an actual loopback HTTP fixture, old configuration migration, desktop create/complete controls, and separate real disk save/complete/reopen persistence. A loopback fixture also rejects obsolete responses after an account switch. Guest sign-in hides beta-registration fields until explicitly selected.
 
-Artifact ZIP digests and original package manifests are checked before signing. Independent inspection verifies IDs, versions/builds, native arm64, Android ABIs, Windows x64 PE/name, Linux x86-64 type-2 AppImage, and extensions. Ordinary/bridge each have one extension; Screen Time has two and its enabling Info flag; companions have none.
+## Package inspection
 
-All four final APKs use the existing private RSA-3072 release key and verify with official apksigner v2/v3. Certificate SHA256 ad35a758e1304c98d1574b7849d25e2d040379bd7a1cfc391a2349f2436bf312 matches delivered0.5. Non-signature APK members match tested CI payloads. Final SHA256SUMS describes release-signed files. Keystore/password remain outside public source and archives.
+Artifact digests and original CI checksums are verified before signing. Independent parsing verifies IDs,0.7 versions/builds, arm64 IPAs, extension counts/identities, Android ABIs, Windows PE x64/name, and Linux x86-64 type2. Ordinary/bridge IPAs have one extension; Screen Time has two; companions have none. Final APKs verify with official apksigner v2/v3 and certificate SHA256 ad35a758e1304c98d1574b7849d25e2d040379bd7a1cfc391a2349f2436bf312. All95 non-signature APK members per package match tested CI payloads. Owner invitations, private signing files/passwords and privileged keys are excluded from inspected source/packages; only approved public connection defaults ship.
 
-Source/package scans exclude owner invitation plaintext, private signing material, privileged keys, and session JWTs. Only the user-approved main-instance publishable client configuration ships publicly. Source ZIP includes reproducible workflows and excludes private setup/signing files.
+Functional native source:2e5e999063b1db000fe3fc35da38a6e8d88a80b6. Functional portable/companion source:42c6c3a2fee250a9c9fc5329d3784603956bbd7e. Later source retains CI formatting, documentation and simulator-only preview setup; those preview flags do not alter physical-device code.
 
-## Device boundaries
+## Visual and device limits
 
-Unsigned compilation does not establish Family Controls provisioning, signed iPhone shield/expiry behavior, locked offline reminders, real phone-to-PC transfer, update retention, or parent-child device acceptance. Use ACCEPTANCE.md. Free Personal Team support for special Apple capabilities is not promised; ordinary planner installation remains available. No Critical Alerts, tamper-proof management, unrestricted SQL admin, executable hot updates, or signing-expiry bypass is claimed. See SCREEN-TIME.md, REWARDS.md, PENDING.md.
+The native Now screen, native Bank welcome/sign-in screen, and real Linux desktop screen were visually inspected. The [native Bank layout capture](https://github.com/sillytira/onestep-ios/actions/runs/43235113254) uses a simulator-only direct destination flag compiled out of physical-device builds. The Bank design preview uses sample data, not a real signed-in account. An initial external-link capture showed an iOS Open confirmation; it was not proof of a route failure. External-link confirmation/cold-start behavior remains a signed-device acceptance check. The deterministic native Bank preview opens the destination directly for layout review.
+
+Windows cloud smoke tests pass. A local restricted-runner launch exited; the same binary stayed running when launched outside that restriction. The Windows computer-use inspector exposed no targetable window, so manual Windows clicking is not claimed; control-flow tests and the shared desktop renderer provide the current UI evidence.
+
+Real email/password login across the user's devices, child/guardian setup, physical locked offline alerts, Live Activities, LAN transfer, update retention and actual shield/unlock expiry still require installed-device acceptance. Family Controls/App Group signing and Apple's authorization cannot be supplied by UI code or an ordinary free profile. No Critical Alerts, arbitrary native hot updates or profile-expiry bypass is promised. Follow ACCEPTANCE.md and SCREEN-TIME.md.

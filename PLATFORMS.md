@@ -1,4 +1,4 @@
-# OneStep 0.6 platform and service architecture
+# OneStep 0.7 platform and service architecture
 
 Main iOS: native SwiftUI, deployment iOS 26+, intended for iPhone 12, one WidgetKit Live Activity extension in the ordinary build. The optional Screen Time variant adds a DeviceActivity monitor and requires Family Controls/shared App Group provisioning. Main bundle ID meow.tira.onestep; extensions .liveactivity and, for that variant, .activitymonitor. Source models preserve schema 1 JSON compatibility. The historical old-ID bridge exists only for safe export/migration.
 

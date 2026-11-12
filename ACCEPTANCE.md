@@ -66,3 +66,13 @@ Automated build results are recorded in BUILD-VERIFICATION.md. These real-accoun
 - [ ] Lose a purchase response, recover the same receipt without a second debit, and verify expired receipts do not create free time. Test reboot/timezone changes and guardian/parent-code settings gates.
 - [ ] Enable private widget titles explicitly, verify next action/stale-day fallback, then disable sharing and confirm the widget no longer reveals a title.
 - [ ] Install delivered 0.6 over delivered 0.5 with matching Apple identity/Android certificate; retain tasks and history. Export a backup first.
+
+## Version 0.7 repair acceptance
+
+- [ ] Verify Add task, completion, snooze, routine history, restart retention, and reminders in the installed apps. Export first.
+- [ ] Open Bank from the iPhone tab/desktop sidebar. Switch Home/Activity/Rankings/Account; verify the statement contains only the current account, even for a parent.
+- [ ] Reconnect an expired session with the same account password, preserving family links and local tasks. Check that old manual server settings cannot redirect the app.
+- [ ] Edit a parent app-time policy, wait through a background refresh, then save. Verify the edit and selected child persist.
+- [ ] Follow onestep://bank and widget/Live Activity links with the app already open and after a cold start.
+- [ ] Use large text and a narrow desktop window; verify navigation, scrolling and actions remain reachable.
+- [ ] On a properly signed Screen Time variant, authorize Apple access, select apps/categories/websites, apply shields, purchase an unlock, and verify re-blocking. Ordinary builds must show the explicit setup requirement.

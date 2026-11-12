@@ -1,4 +1,4 @@
-# OneStep 0.6 beta limitations
+# OneStep 0.7 beta limitations
 
 - Physical installs, phone reminder delivery, retained data after updates/migration, actual phone-to-PC LAN transfer, and offline parent-code behavior on real devices still require acceptance checks. CI/simulator results are not those device results.
 - Core planner use is offline. Online enrollment, family linking, task submission/approval, profile/ranking changes, and admin adjustments need the hosted service. Account snapshots are labeled with last sync; a missing snapshot is shown as unknown, not zero. Portable service views poll about every 20 seconds while open; native Bank has manual refresh. No guaranteed instant background delivery.

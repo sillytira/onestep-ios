@@ -1,4 +1,4 @@
-# OneStep — 0.6 family beta
+# OneStep — 0.7 family beta
 
 An offline task/routine planner with a clear Now screen, microsteps, notes, recurring tasks, local reminders, focus timers, JSON backups, and encrypted private-Wi-Fi snapshot transfers. iOS remains native SwiftUI with Liquid Glass and a Live Activity; Android, Windows, and Linux use Material 3. Core planner use needs no account, internet connection, or server.
 
@@ -25,3 +25,7 @@ Main-instance connection is automatic. Content packs update inside installed app
 ## Version 0.6 additions
 
 Normal/parent accounts can enroll private tasks for 0–100 points each, with server anti-spam checks and daily caps of 20 counted tasks/500 earned points. Weekly rankings offer tasks or earned points and exclude children. See [REWARDS.md](REWARDS.md). The separate Screen Time IPA includes Apple FamilyControls, ManagedSettings, and DeviceActivity integration for individual or family authorization, point-funded unlocks, and an opt-in private widget. See [SCREEN-TIME.md](SCREEN-TIME.md). Migration 005 is deployed to the main instance after approval; fresh projects apply migrations 001–005 in order.
+
+## Version 0.7 repair
+
+Rebuilt Bank into Home/Activity/Rankings/Account, added a direct native Bank tab and adaptive desktop sidebar, repaired shared account refresh/legacy connection overrides, isolated personal statements from family ledger access, and preserved parent-policy edits. App-level URL routing queues links through startup; Keychain reads run off the UI thread. Screen Time now has actionable setup/selection status and website-category shields. See [UI-REPAIR.md](UI-REPAIR.md) for concrete repairs, primary Apple/Microsoft/Revolut references, and test limits.

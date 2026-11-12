@@ -1,5 +1,5 @@
 name: Capture simulator preview
-# Verify app-level URL routing and the 0.7 planner/Bank screens.
+# Capture native screens directly; external URL confirmation stays a device acceptance check.
 on:
   workflow_dispatch:
   push:

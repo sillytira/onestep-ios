@@ -18,7 +18,7 @@ struct DayActivityCard: View {
     private func card(compact: Bool) -> some View {
         VStack(alignment:.leading,spacing:5) {
             HStack(spacing:8) {
-                Label(compact ? "OneStep" : (isStale ? "OneStep · refresh" : "OneStep · \(dayLabel)"),systemImage:state.isRoutine ? "sunrise.fill" : "sparkle")
+                Label(compact ? "OneStep" : (isStale ? "OneStep Â· refresh" : "OneStep Â· \(dayLabel)"),systemImage:state.isRoutine ? "sunrise.fill" : "sparkle")
                     .font(.caption2.weight(.semibold)).foregroundStyle(palette.color).lineLimit(1)
                 Spacer(minLength:4)
                 LiveActivityTime(state:state).layoutPriority(1)
@@ -29,18 +29,20 @@ struct DayActivityCard: View {
             }
             if !compact { HStack(spacing:8) {
                 if let done=state.tasksDone, let left=state.tasksRemaining {
-                    Text("\(done) tasks done · \(left) left").lineLimit(1).minimumScaleFactor(0.8)
+                    Text("\(done) tasks done Â· \(left) left").lineLimit(1).minimumScaleFactor(0.8)
                 }
                 Spacer(minLength:0)
                 if state.totalSteps>0 {
-                    Text("Routine \(state.completedSteps)/\(state.totalSteps)\((state.skippedSteps ?? 0)>0 ? " · \(state.skippedSteps!) skipped" : "")")
+                    Text("Routine \(state.completedSteps)/\(state.totalSteps)\((state.skippedSteps ?? 0)>0 ? " Â· \(state.skippedSteps!) skipped" : "")")
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
             }.font(.caption2).foregroundStyle(.secondary) }
             HStack(spacing:10) {
                 if let id=state.actionID {
                     Button(intent:DayActionIntent(id)) { Text("Done").lineLimit(1).frame(minHeight:32) }.tint(ItemPalette.mint.color)
-                    Button(intent:DayActionIntent(id,snooze:true)) { Text("Snooze \(state.snoozeMinutes ?? 10)m").lineLimit(1).frame(minHeight:32) }.tint(ItemPalette.amber.color)
+                    Button(intent:DayActionIntent(id,snooze:true)) { Text(compact ? "Snooze" : "Snooze \(state.snoozeMinutes ?? 10)m").lineLimit(1).frame(minHeight:32) }
+                        .tint(ItemPalette.amber.color)
+                        .accessibilityLabel("Snooze \(state.snoozeMinutes ?? 10) minutes")
                 }
                 Spacer(minLength:0)
                 if !compact, state.totalSteps>0 {
@@ -73,3 +75,4 @@ struct LiveActivityTime: View {
         }.font(.caption.weight(.medium)).monospacedDigit().foregroundStyle(.secondary).lineLimit(1)
     }
 }
+

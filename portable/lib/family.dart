@@ -519,7 +519,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   String lastSync = '';
   Timer? poll;
   String get effectiveRole => client.signedIn
-      ? (client.accountKind == 'parent' ? 'parent' : client.accountKind == 'kids' ? 'kids' : 'bank')
+      ? (client.accountKind == 'parent' || (client.accountKind == 'owner' && widget.role == 'parent') ? 'parent' : client.accountKind == 'kids' ? 'kids' : 'bank')
       : widget.role;
   String get appName => effectiveRole == 'parent'
       ? 'OneStep Parent'

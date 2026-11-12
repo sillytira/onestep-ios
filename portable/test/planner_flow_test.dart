@@ -37,7 +37,7 @@ void main(){
     final planner=MemoryPlanner(initial,dir,Alerts());
     await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true),home:Home(initialPlanner:planner)));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton,'Add a task'));await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('desktop-add-task')));await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField,'One thing to remember'),'Walk outside');
     await tester.tap(find.descendant(of:find.byType(AppBar).last,matching:find.text('Save')));
     await tester.pumpAndSettle();

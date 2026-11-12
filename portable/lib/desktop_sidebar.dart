@@ -16,7 +16,7 @@ class DesktopSidebar extends StatelessWidget {
         Container(padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:const Color(0xffa49aff),borderRadius:BorderRadius.circular(12)),child:const Icon(Icons.auto_awesome_rounded,color:Color(0xff19142d))),
         if(expanded)...[const SizedBox(width:12),const Expanded(child:Text('OneStep',style:TextStyle(fontSize:23,fontWeight:FontWeight.w700,letterSpacing:-.6)))],
       ])),
-      Padding(padding:EdgeInsets.symmetric(horizontal:expanded?16:12),child:expanded?FilledButton.icon(onPressed:onAdd,icon:const Icon(Icons.add),label:const Text('Add a task'),style:FilledButton.styleFrom(minimumSize:const Size(double.infinity,48))):IconButton.filled(onPressed:onAdd,tooltip:'Add a task',icon:const Icon(Icons.add))),
+      Padding(padding:EdgeInsets.symmetric(horizontal:expanded?16:12),child:expanded?FilledButton.icon(key:const ValueKey("desktop-add-task"),onPressed:onAdd,icon:const Icon(Icons.add),label:const Text('Add a task'),style:FilledButton.styleFrom(minimumSize:const Size(double.infinity,48))):IconButton.filled(key:const ValueKey("desktop-add-task"),onPressed:onAdd,tooltip:'Add a task',icon:const Icon(Icons.add))),
       const SizedBox(height:26),
       for(var i=0;i<names.length;i++) _item(icons[i],names[i],()=>onSelect(i),selected==i),
       const Spacer(),

@@ -32,3 +32,17 @@ These device checks are deliberately unmarked until performed on your iPhone. A 
 - [ ] Start Show My Day and confirm current action, routine progress, and countdown on the iPhone 12 Lock Screen.
 - [ ] Tap the Live Activity to open Now; stop it from the app.
 - [ ] Keep the extension enabled in the signing tool and confirm Live Activity authorization. This has not been proven by the unsigned CI build alone.
+
+## Version 0.4 family acceptance
+
+Automated build results are recorded in BUILD-VERIFICATION.md. These real-account/device checks remain pending.
+
+- [ ] Export a backup before updating; retain existing tasks/history after installing the main app over the same identity. Use the migration bridge first if the old identity is still installed.
+- [ ] Enter the private service settings at runtime, enroll the owner once with its private key, and confirm meow and Application admin. Sign in on another client without reusing the enrollment key.
+- [ ] Generate email-bound Parent/Kids beta keys. Confirm reused, expired, or wrong-email keys are rejected.
+- [ ] Create a family, join with the separate short-lived invitation, assign a task, submit as child, and approve once as parent. Repeated approval must not award twice.
+- [ ] Confirm child identity is email-only and absent from rankings; normal/parent opt-in shows only public profile fields.
+- [ ] Configure an offline parent code, refresh Kids online, disconnect networking, and verify correct-code device sign-out and persisted failed-attempt lockout. Signing out must not unlink the family.
+- [ ] Confirm a child cannot unlink itself or join a second family; the parent can unlink while retaining history.
+- [ ] Reopen offline with the same account and inspect last-sync labels. Sign out/in as another account and confirm caches do not mix. Failed online actions must not silently award points.
+- [ ] Verify locked-phone alerts and Live Activities with the signed main iPhone app; companion apps have no Live Activity extension.

@@ -1,32 +1,19 @@
-# OneStep — 0.3 beta
+# OneStep — 0.4 family beta
 
-An offline task and routine planner with one next action, readable cards, and large controls. iOS uses SwiftUI and Liquid Glass. Android, Windows, and Linux use a shared Material 3 client. Core use needs no server or account.
+An offline task/routine planner with a clear Now screen, microsteps, notes, recurring tasks, local reminders, focus timers, JSON backups, and encrypted private-Wi-Fi snapshot transfers. iOS remains native SwiftUI with Liquid Glass and a Live Activity; Android, Windows, and Linux use Material 3. Core planner use needs no account, internet connection, or server.
 
-## This release
+Optional OneStep Bank, OneStep Kids, and OneStep Parent phone apps share the same hosted rewards account. The main app keeps its own Bank section. Parents assign fixed-reward family tasks and approve points once; children cannot self-credit or unlink their family. No real-money purchases or OS app-time shielding are active.
 
-- Tasks, notes, daily routine records, local reminders, focus timers, and item colors.
-- Versioned JSON backup/import with a preview and automatic recovery copies.
-- Encrypted manual snapshot transfer over private Wi-Fi, with expiring pairing codes.
-- User-written microsteps, daily/weekly tasks that advance after completion, search/list names/pin/archive, duration-timer pause/resume, and bounded reminder preferences.
-- Separate notes collection; native iOS Live Activity retained.
-- Optional configurable Supabase email-code identity. A hosted project and email-delivery configuration are required; planner data is not uploaded and cloud sync is not implemented.
+Read [FAMILY.md](FAMILY.md) for beta enrollment, private runtime setup, owner/admin access, reserved handles, child privacy, parent offline codes, and exact limitations. Kids accounts display email only and are excluded from public rankings. Normal/parent users can set a handle and opt in. Owner enrollment installs meow; tira remains reserved and unused.
 
-Read [PLATFORMS.md](PLATFORMS.md) for exact platform support, account setup, architecture, signing, and limitations. Native code updates still need a newly installed package.
+No real project keys, JWTs, private keys, or owner-enrollment plaintext belong in this repository, CI configuration, or source archives. Users enter connection settings at runtime; clients keep sessions/configuration in platform secure storage. Private setup/enrollment material must be delivered separately and never committed. Run node scripts/check-public-source.mjs before uploading source.
 
-## Important identity migration
+## Build
 
-The requested new Apple/Android ID is **meow.tira.onestep**. The old iOS app used tech.sillycat.onestep and cannot automatically share its sandbox with the new ID. The iOS workflow also builds an **old-ID migration bridge** with backup export. Install that bridge over your old app first, export your backup, then import into the new-ID app. **Do not delete your old app before exporting and verifying its data.** See [INSTALL.md](INSTALL.md).
+GitHub Actions builds the main IPA on macOS/Xcode 26.6, portable Android/Windows/Linux clients on their respective runners, and Bank/Kids/Parent iOS+Android variants using Flutter 3.38.5. Core/native/portable tests and static analysis precede packaging. PostgreSQL CI checks beta gating, reserved names, parent approval, role isolation, idempotency, and child unlink protections. A successful source upload alone is not binary delivery or physical-device verification.
 
-Windows displays **OneStep**, with **Tira-OneStep.exe** in the complete distribution folder. Linux ships an x86-64 AppImage. Source alone is not a compiled delivery; use successful workflow artifacts and the release verification report.
+Native: node scripts/generate-project.mjs, node scripts/generate-icon.mjs, node scripts/validate-source.mjs, swift test, then xcodebuild test for the shared OneStep scheme on an iPhone simulator. Build unsigned device IPA with BUILD_NUMBER=N bash scripts/build-ipa.sh. APP_BUNDLE_ID=tech.sillycat.onestep and IPA_SUFFIX=-migration-bridge produce the old-ID export bridge.
 
-## Build and verification
+Portable: node portable/tool/bootstrap.mjs, then flutter pub get/analyze/test and flutter build apk/windows/linux in portable. For a companion set ONESTEP_ROLE=bank, kids, or parent before generation and pass --dart-define=ONESTEP_ROLE=ROLE to Flutter. iOS companions use flutter build ios --release --no-codesign and package the generated Runner.app. Generated platform projects are reproducible; application source and dependency lock are retained.
 
-GitHub Actions builds iOS on macOS/Xcode 26.6, Android on Linux, Windows on Windows, and Linux on Ubuntu 22.04. Builds run from source changes on main and support manual dispatch. Every iOS build runs Swift core and native simulator tests before device packaging. The portable workflow runs analysis and behavior tests before platform builds. No Apple credentials are used.
-
-For iOS: run node scripts/generate-project.mjs, node scripts/generate-icon.mjs, node scripts/validate-source.mjs, swift test, and xcodebuild test with the shared OneStep scheme on an iPhone simulator. Build the IPA with BUILD_NUMBER=5 bash scripts/build-ipa.sh. Override APP_BUNDLE_ID=tech.sillycat.onestep and IPA_SUFFIX=-migration-bridge for the old-ID bridge.
-
-For other platforms: install Flutter 3.38.5 and Node 22, run node portable/tool/bootstrap.mjs from the repository root, then flutter pub get, flutter analyze, flutter test, and flutter build apk/windows/linux from portable. Native platform files are generated; application source and the dependency lock are retained. See portable/tool/appimage.sh for AppImage packaging. Android permanent private release signing is not configured automatically.
-
-## Planned, not active
-
-Spendable points, public rankings, parent PIN controls, iOS app shielding, online planner sync, custom full-database encryption, and a separate points banking companion are not active features. The progress count is not a points balance. Family Controls requires Apple authorization/entitlements and suitable signing. No third-party screenshots, personal data, signing keys, or account secrets belong in this repository.
+See [INSTALL.md](INSTALL.md), [PLATFORMS.md](PLATFORMS.md), [KNOWN-LIMITATIONS.md](KNOWN-LIMITATIONS.md), and the delivered verification report. Main Apple/Android ID stays meow.tira.onestep. Never delete your only planner copy to free a signing slot.

@@ -1,33 +1,33 @@
-# Install OneStep 0.3 beta
+# Install OneStep 0.4 beta
 
-## iPhone: migrate safely
+## Main iPhone app
 
-1. Download a successful Build iPhone beta artifact from https://github.com/sillytira/onestep-ios/actions . Check the IPA SHA-256 against the adjacent checksum file.
-2. If you already use the old tech.sillycat.onestep app, first sign/install the **migration-bridge** IPA over it, with the same Apple account and bundle-ID settings used for the existing installation. Keep its Live Activity extension. Do not uninstall first.
-3. Open Now → settings → Backups, Wi-Fi transfer, and accounts → Export backup. Save the JSON outside the app in Files. Verify it is accessible; an additional copy on your PC is recommended.
-4. Sign/install the normal IPA with the new **meow.tira.onestep** ID, then import that JSON. Review the preview and confirm. Check tasks, routines, notes, and history before removing the old app. Never delete your only copy to free a signing slot.
-5. Allow notifications in the new installation, because permissions belong to the new app identity. Test a task due two minutes ahead while locked and offline. Sign the Live Activity extension as well as the main app.
+If you already installed meow.tira.onestep 0.3, sign/install the new main IPA over it with the same Apple account and identifier settings. Export a backup first. Keep its Live Activity extension. Do not uninstall to update.
 
-Use your existing successful installer, AltStore or Sideloadly. Official guides: https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows and https://sideloadly.io/ . Do not strip the extension. Free-account app/App-ID limits and signing expiry still apply. Both bridge and normal app have an extension, which can affect available slots. Export before managing those slots. Signing/refreshing requires Apple connectivity; ordinary app use and queued reminders work offline. The app cannot refresh its own Apple provisioning profile.
+If your existing app is the older tech.sillycat.onestep identity, first sign/install the migration-bridge IPA over that app using its original signing settings. Export a JSON backup outside the app through Now → settings → Backups and Wi-Fi transfer. Verify the backup is accessible, then install the normal new-ID IPA and import it. New identity means new permissions and a separate sandbox. Never delete the old app before exporting and checking your data.
 
-After migration, future updates use the same new bundle ID and signing settings and install over the app. Uninstalling deletes local data. Export backups regularly.
+An unsigned IPA must be signed by your installer. Use your already working AltStore/Sideloadly flow and keep the extension. Official guides: https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows and https://sideloadly.io/ . Free Apple expiry and app/App-ID limits still apply. Install only the roles needed on each phone; the main planner, Bank, Kids, and Parent are distinct app identities. An iOS companion has no extensions; the main app and bridge each have a Live Activity extension. Native code updates still require a new signed installation.
 
-## Android
+## Bank / Kids / Parent companions
 
-Download OneStep-0.3.0-beta.apk from the successful Android artifact. Permit installation through your normal Android installer. Package ID is meow.tira.onestep. In Your space, enable notifications and precise alarms; without precise-alarm permission delivery falls back to inexact scheduling. Check an offline locked-device reminder.
+Install the appropriate companion IPA on iPhone (after signing) or APK on Android. IDs are meow.tira.onestep.bank, meow.tira.onestep.kids, and meow.tira.onestep.parent. Use the same hosted service across clients and the same app email/password when viewing the same account. Parent and child accounts must be different. Installing a different app does not change the server role of an account.
 
-This initial beta uses a CI beta signing key cached between builds. It is not yet a permanent privately managed release key, so seamless future in-place updates are not guaranteed if the cache expires. Export before updating; do not uninstall to resolve a signing mismatch until your data is safely backed up. See PLATFORMS.md for release-key configuration.
+Open the separately supplied PRIVATE connection instructions and enter the project URL and publishable key in each app at runtime. Never enter a database password or service-role/secret key. The owner must create the app account once with their private single-use enrollment key and configured owner email, choosing their own app password. The Supabase website account is separate. Later devices just sign in. The app owner is meow; tira is reserved. Do not put the private setup/key files into a source ZIP or public repository.
 
-## Windows
+The owner then opens Application admin to generate email-bound Parent/Kids beta keys. A parent creates a family and shares a separate ten-minute family invitation with the child. Parent assigns tasks/rewards; child requests approval; parent approves once. See FAMILY.md for offline parent-code setup, account linking, and privacy.
 
-Extract the complete Windows ZIP to a folder, then run **Tira-OneStep.exe**. Display name: **OneStep**. Keep its DLLs and data directory beside the executable. This is an unsigned portable distribution, not a Microsoft Store package. Local data is kept in the current Windows user's application-support directory. Notifications and timers require the app to stay running. Private Wi-Fi transfers may require allowing the app through the private-network firewall; no public-network or router port forwarding is needed.
+## Android main app
 
-## Linux
+Install the APK through your normal Android installer. Package is meow.tira.onestep. Enable notifications and precise alarms under Your space; inexact alarms are the fallback. The initial beta keys are CI-cached, not permanently managed private release keys, so future in-place compatibility is not guaranteed if caches expire. Export data before updating. Do not uninstall for a signing mismatch until your data is safe. Main and companion beta signing caches are separate.
 
-Use the x86-64 AppImage on a compatible GTK 3 desktop (built on Ubuntu 22.04). Make it executable, then launch. If FUSE is unavailable, use --appimage-extract-and-run. Timers and banners require the app to stay running and a desktop notification service. Keep backups outside the app's data directory.
+## Windows / Linux main app
 
-## Transfer without a server
+Windows: extract the complete ZIP, then run Tira-OneStep.exe. Display name OneStep. Keep its DLL/data folders together. Linux: use the x86-64 AppImage on a compatible GTK3 desktop, make it executable, and launch. --appimage-extract-and-run is an option without FUSE. Desktop notifications/timers require the app to remain running. Secure account sessions require the OS credential/keyring service. Bank/Parent/Kids service sections are inside the main desktop app; separate desktop companion packages are not provided.
 
-Both devices: join the same private IPv4 Wi-Fi network and keep OneStep open. Sender: open Data/devices, confirm its LAN address, create the 10-minute code, and share it privately with your receiver. Receiver: paste it, receive, inspect the snapshot preview, then confirm replacement. A recovery copy is saved first. Leaving/backgrounding the sender stops sharing. Transfer is encrypted; the code is its temporary key. Copy only between trusted devices. It is a one-way snapshot, not automatic merging; export both devices if they contain separate edits. The same JSON format supports transfer through Files/USB.
+## Local files and Wi-Fi
 
-An internet login is optional and independent of LAN pairing. See PLATFORMS.md for Supabase setup. Signing in does not upload planner contents or synchronize devices.
+Private planner transfers work without accounts or a server. Keep both devices open on the same private IPv4 Wi-Fi. Sender creates a ten-minute pairing code in Data/devices; receiver pastes it, previews the snapshot, and confirms replacement. A recovery backup is saved first. Export both devices before combining separate edits: this is a snapshot copy, not automatic conflict merging. JSON exports are readable private data. The same format can be copied through Files/USB. Online login and roles are not transferred by planner backups.
+
+## Verify on your devices
+
+Compare package SHA-256 with the delivered checksum manifest. Confirm restart persistence, migration/update retention, offline locked-device reminders, follow-up cancellation, next-day routine reset, timer pause/expiry, and Live Activity. For family services verify owner enrollment, parent-child linking, single approval credit, private Kids identity, parent-only unlink, and a previously synced parent code with the backend unreachable. Cloud builds do not establish those physical-device outcomes.

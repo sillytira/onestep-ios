@@ -12,6 +12,7 @@ Future<void> syncPersonalTasks(Json state) async {
   try {
     final client = FamilyClient.shared;
     await client.load();
+    await syncXP(state,client);
     if (!client.signedIn ||
         client.userID == null ||
         client.accountKind == 'kids')
@@ -90,5 +91,24 @@ Future<void> syncPersonalTasks(Json state) async {
         'Planner works offline. Account rewards are waiting for a connection: $e';
   } finally {
     _syncingPersonal = false;
+  }
+}
+
+Future<void> syncXP(Json state, FamilyClient client) async {
+  final user=client.userID;
+  if(!client.signedIn || user==null) return;
+  final key='xp.receipts.$user';
+  final raw=await FamilyClient.vault.read(key:key);
+  final saved=raw==null ? <String,dynamic>{} : jsonDecode(raw) as Json;
+  for(final event in rows(state,'xpCompletions').where((e)=>e['accountID']==user.toLowerCase())) {
+    if(client.userID!=user) break;
+    final id=event['eventKey'] as String;
+    if(saved[id]==-1 || (saved[id] as num? ?? 0)>DateTime.now().millisecondsSinceEpoch) continue;
+    try {
+      final result=await client.rpc('onestep_claim_xp',{'event_key':id,'event_kind':event['kind']}) as Map;
+      if(client.userID!=user) break;
+      saved[id]=result['status']=='pending' ? DateTime.now().millisecondsSinceEpoch+60000 : -1;
+      await FamilyClient.vault.write(key:key,value:jsonEncode(saved));
+    } catch(_) { personalRewardMessage.value='Planner saved. XP will retry when its service is available.';break; }
   }
 }

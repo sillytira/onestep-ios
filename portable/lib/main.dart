@@ -90,6 +90,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> with WidgetsBindingObserver {
+  Json completed(Json state, Json item, {bool skip=false}) => complete(state,item,skip:skip,accountID:FamilyClient.shared.userID);
   Planner? planner;
   String? fatal;
   int tab = 0;
@@ -513,7 +514,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     ? null
                     : () {
                         run(() async {
-                          await p.save(complete(p.state, item));
+                          await p.save(completed(p.state, item));
                           guided = guidedDay == dayKey(DateTime.now())
                               ? nextGuidedRoutine(p.state, DateTime.now())
                               : null;
@@ -543,7 +544,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 onPressed: busy
                     ? null
                     : () {
-                        run(() => p.save(complete(p.state, item, skip: true)));
+                        run(() => p.save(completed(p.state, item, skip: true)));
                       },
                 child: const Text('Skip today'),
               ),
@@ -745,7 +746,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   run(() async {
                     final next = clone(planner!.state);
                     if (choice == 'done') {
-                      await planner!.save(complete(next, action(t)));
+                      await planner!.save(completed(next, action(t)));
                       return;
                     }
                     final tasks = rows(next, 'tasks');
@@ -892,7 +893,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                         : () {
                             run(
                               () => planner!.save(
-                                complete(
+                                completed(
                                   planner!.state,
                                   action(step, day: now, state: state),
                                 ),
@@ -919,7 +920,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                         : () {
                             run(
                               () => planner!.save(
-                                complete(
+                                completed(
                                   planner!.state,
                                   action(step, day: now, state: state),
                                   skip: true,

@@ -3,7 +3,7 @@ import 'model.dart';
 
 bool bankSectionVisible(String title, int tab) {
   if (title == 'OneStep accounts' || title == 'Your account') return true;
-  if (title == 'Your points') return tab == 0;
+  if (title == 'Your points' || title == 'Your XP') return tab == 0;
   if (title == 'Transactions') return tab == 1;
   if (title == 'This week: opt-in rankings') return tab == 3;
   if (title == 'Public profile' ||

@@ -44,6 +44,10 @@ void validateState(Json state) {
   for (final key in ['tasks', 'routines', 'days']) {
     if (state[key] is! List) throw const FormatException('Invalid planner.');
   }
+  final xp=rows(state,'xpCompletions');
+  if(xp.length>10000 || xp.any((e)=> !Uuid.isValidUUID(fromString:e['accountID']?.toString()??'') || !['task','routine'].contains(e['kind']) || e['eventKey'] is! String || (e['eventKey'] as String).length>90)) {
+    throw const FormatException('Invalid XP outbox.');
+  }
   for (final key in ['tasks', 'routines']) {
     final items = rows(state, key);
     if (items.length > (key == 'tasks' ? 10000 : 1000) ||
@@ -156,7 +160,7 @@ Json? nextAction(Json state, DateTime now) {
   return items.isEmpty ? null : items.first;
 }
 
-Json complete(Json original, Json item, {bool skip = false, DateTime? at}) {
+Json complete(Json original, Json item, {bool skip = false, DateTime? at, String? accountID}) {
   final now = at ?? DateTime.now();
   final state = clone(original);
   if (state['focusSession']?['action']?['sourceID'] == item['sourceID'])
@@ -212,6 +216,15 @@ Json complete(Json original, Json item, {bool skip = false, DateTime? at}) {
       'updatedAt': stamp(now),
     });
     state['days'] = days;
+  }
+  if (!skip && accountID != null && Uuid.isValidUUID(fromString:accountID)) {
+    final kind=item['kind'] as String;
+    final key=kind + '.' + (item['sourceID'] as String).toLowerCase() + (kind=='routine' ? '.' + item['day'].toString() : '');
+    final events=rows(state,'xpCompletions');
+    if(events.length<10000 && !events.any((e)=>e['eventKey']==key && e['accountID']==accountID.toLowerCase())) {
+      events.add({'eventKey':key,'accountID':accountID.toLowerCase(),'kind':kind});
+      state['xpCompletions']=events;
+    }
   }
   return state;
 }

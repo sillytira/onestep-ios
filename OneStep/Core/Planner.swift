@@ -77,6 +77,7 @@ struct PlannerState: Codable, Equatable {
     var notes: [NoteEntry]?
     var preferences: ReminderPreferences?
     var contentPacks: [String]?
+    var xpCompletions: [XPCompletion]?
 }
 
 struct ActionItem: Identifiable, Codable, Equatable {

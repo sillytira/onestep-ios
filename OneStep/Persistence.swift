@@ -201,6 +201,7 @@ final class PlannerStore {
         } else {
             setRecord(item, state: &next, status: skip ? .skipped : .done, snooze: nil)
         }
+        if !skip { next = XPRules.recording(item, accountID: RewardsStore.shared.userID, in: next) }
         if commit(next) {
             feedback = skip ? "Skipped for today. Tomorrow stays the same." : "Done. One thing less to carry."
             if guidedRoutine, item.kind == .routine {

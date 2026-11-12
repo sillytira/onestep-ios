@@ -6,10 +6,26 @@ import Observation
     static let shared = PersonalRewards()
     var message = ""
     private var busy = false
+    private func syncXP(_ state: PlannerState, account: RewardsStore) async {
+        guard account.signedIn, let user = account.userID else { return }
+        let storage = "xp.receipts.\(user)"
+        var saved = RewardsVault.read(storage).flatMap { (try? JSONSerialization.jsonObject(with:$0)) as? [String:Double] } ?? [:]
+        for event in (state.xpCompletions ?? []).filter({ $0.accountID.lowercased() == user.lowercased() && $0.valid }) {
+            guard account.userID == user else { break }
+            if saved[event.eventKey] == -1 || (saved[event.eventKey] ?? 0) > Date().timeIntervalSince1970 { continue }
+            do {
+                let value = try await account.rpc("onestep_claim_xp",["event_key":event.eventKey,"event_kind":event.kind]) as? [String:Any]
+                guard account.userID == user else { break }
+                saved[event.eventKey] = value?["status"] as? String == "pending" ? Date().timeIntervalSince1970+60 : -1
+                try RewardsVault.write(storage,JSONSerialization.data(withJSONObject:saved))
+            } catch { message = "Planner saved. XP will retry when its service is available."; break }
+        }
+    }
     func sync(_ state: PlannerState) async {
         guard !busy else { return }; busy = true; defer { busy = false }
         let account = RewardsStore.shared
         await account.load()
+        await syncXP(state, account: account)
         guard account.signedIn, let user = account.userID, account.kind != "kids" else { return }
         let storage = "personal.receipts.\(user)"
         var receipts = RewardsVault.read(storage).flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: [String: Any]] } ?? [:]

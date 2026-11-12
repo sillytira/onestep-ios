@@ -74,13 +74,13 @@ jobs:
       - name: Package APK
         run: |
           mkdir -p release
-          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.7.0-beta.apk
-          sha256sum release/*.apk > release/OneStep-0.7.0-beta.apk.sha256
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.8.0-beta.apk
+          sha256sum release/*.apk > release/OneStep-0.8.0-beta.apk.sha256
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/aapt" dump badging release/*.apk | head -20
           cp portable/pubspec.lock release/
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.7.0-Android
+          name: OneStep-0.8.0-Android
           path: release/
   windows:
     needs: verify
@@ -111,12 +111,12 @@ jobs:
           Start-Sleep -Seconds 8
           if ($process.HasExited) { throw "OneStep exited during launch smoke test" }
           Stop-Process -Id $process.Id
-          Compress-Archive -Path "$bundle/*" -DestinationPath release/OneStep-0.7.0-Windows.zip
-          (Get-FileHash release/OneStep-0.7.0-Windows.zip -Algorithm SHA256).Hash.ToLower() + '  OneStep-0.7.0-Windows.zip' | Set-Content release/OneStep-0.7.0-Windows.zip.sha256
+          Compress-Archive -Path "$bundle/*" -DestinationPath release/OneStep-0.8.0-Windows.zip
+          (Get-FileHash release/OneStep-0.8.0-Windows.zip -Algorithm SHA256).Hash.ToLower() + '  OneStep-0.8.0-Windows.zip' | Set-Content release/OneStep-0.8.0-Windows.zip.sha256
           Copy-Item portable/pubspec.lock release/
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.7.0-Windows
+          name: OneStep-0.8.0-Windows
           path: release/
   linux:
     needs: verify
@@ -143,7 +143,7 @@ jobs:
       - run: cp portable/pubspec.lock release/
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.7.0-Linux
+          name: OneStep-0.8.0-Linux
           path: |
             release/*.AppImage
             release/*.sha256

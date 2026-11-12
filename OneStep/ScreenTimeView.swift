@@ -12,7 +12,9 @@ import Observation
     var picker = false
     var parentAuthorized = false
     var minuteCost = 1
-    var dailyMinutes = 120
+    var dailyMinutes = 1000
+    var minutesRemaining = 0
+    var chosenMinutes = 15
     var policyLoaded = false
     var unlockAllowed = false
     var supported: Bool { ScreenTimeShared.enabledBuild && ScreenTimeShared.container != nil }
@@ -24,15 +26,13 @@ import Observation
         policyLoaded = false
         do {
             try await account.reload()
-            if child {
-                let rows = try await account.request("/rest/v1/onestep_screen_time_policies?select=enabled,cost_per_minute,daily_minutes&user_id=eq.\(account.userID ?? "")&limit=1") as? [[String: Any]]
-                let policy = rows?.first
-                minuteCost = policy?["cost_per_minute"] as? Int ?? 1
-                dailyMinutes = policy?["daily_minutes"] as? Int ?? 120
-                unlockAllowed = policy?["enabled"] as? Bool ?? false
-            } else { minuteCost = 1; dailyMinutes = 120; unlockAllowed = true }
+            guard let status = try await account.rpc("onestep_economy_status") as? [String:Any], status["version"] as? Int == 6 else { throw NSError(domain:"OneStep",code:1,userInfo:[NSLocalizedDescriptionKey:"The 1-point/minute economy service needs migration 006 before redemption is available."]) }
+            minuteCost = 1
+            dailyMinutes = status["daily_minutes_limit"] as? Int ?? 0
+            minutesRemaining = status["minutes_remaining"] as? Int ?? 0
+            unlockAllowed = status["redemption_enabled"] as? Bool ?? false
             policyLoaded = true
-        } catch { message = error.localizedDescription }
+        } catch { message = "Could not load the economy upgrade: \(error.localizedDescription)" }
     }
     func configureAuthorization() async {
         await run {
@@ -79,6 +79,7 @@ import Observation
             else {
                 guard !recovering else { throw NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: "No pending purchase to recover."]) }
                 guard policyLoaded, unlockAllowed else { throw NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: "Refresh the unlock policy first. Child purchases need parent approval."]) }
+                guard (1...1000).contains(minutes), minutes <= minutesRemaining, minutes <= account.balance else { throw NSError(domain:"OneStep",code:1,userInfo:[NSLocalizedDescriptionKey:"Choose a duration within your balance and remaining daily allowance."]) }
                 let device = RewardsVault.read("screen.device").flatMap { String(data: $0, encoding: .utf8) } ?? UUID().uuidString
                 try RewardsVault.write("screen.device", Data(device.utf8))
                 pending = ["event": UUID().uuidString, "device": device, "duration": minutes, "expected_cost": minutes * minuteCost]
@@ -98,8 +99,11 @@ import Observation
             let fallback = ISO8601DateFormatter()
             guard let expiry = formatter.date(from: text) ?? fallback.date(from: text), expiry > Date() else { try RewardsVault.write(key, nil); throw ScreenTimeFailure.expired }
             try monitor(until: expiry)
+            guard account.userID == user, ScreenTimeShared.load().enabled, authorized else { throw ScreenTimeFailure.unavailable }
             try ScreenTimeShared.update { $0.unlockUntil = expiry; $0.leaseID = UUID(uuidString: pending["event"] as? String ?? "") }
             try RewardsVault.write(key, nil)
+            try? await account.reload()
+            await refreshPolicy()
             message = "Unlocked until \(expiry.formatted(date: .omitted, time: .shortened)). The system monitor will restore the shield."
         }
     }
@@ -148,11 +152,13 @@ struct ScreenTimeView: View {
             }
             Section("Spend earned points") {
                 Button("Refresh price and policy") { Task { await model.refreshPolicy() } }.disabled(model.busy)
-                if model.policyLoaded { Text("\(model.minuteCost) point(s) per minute · \(model.dailyMinutes) minutes/day. \(model.unlockAllowed ? "Purchases enabled" : "Parent has not enabled purchases")") }
+                if model.policyLoaded { Text("1 point = 1 minute · \(model.minutesRemaining) of \(model.dailyMinutes) minutes left today (UTC). \(model.unlockAllowed ? "Purchases enabled" : "Parent has not enabled purchases")") }
                 if !model.account.signedIn { Text("Sign in from Bank to use earned points. App blocking itself does not require a points purchase.").font(.footnote) }
-                ForEach([15,30,60], id: \.self) { minutes in Button("Unlock \(minutes) minutes · \(minutes * model.minuteCost) points") { Task { await model.purchase(minutes: minutes) } }.disabled(model.busy || !model.state.enabled || !model.supported || !model.authorized || !model.policyLoaded || !model.unlockAllowed) }
+                Stepper("Choose \(model.chosenMinutes) minutes · \(model.chosenMinutes) points", value:$fields.chosenMinutes, in:1...1000)
+                Button("Redeem \(model.chosenMinutes) points") { Task { await model.purchase(minutes:model.chosenMinutes) } }.disabled(model.busy || !model.state.enabled || !model.authorized || !model.policyLoaded || !model.unlockAllowed || model.chosenMinutes > model.minutesRemaining || model.chosenMinutes > model.account.balance)
+                ForEach([15,30,60], id: \.self) { minutes in Button("Unlock \(minutes) minutes · \(minutes * model.minuteCost) points") { Task { await model.purchase(minutes: minutes) } }.disabled(model.busy || !model.state.enabled || !model.supported || !model.authorized || !model.policyLoaded || !model.unlockAllowed || minutes > model.minutesRemaining || minutes > model.account.balance) }
                 Button("Recover pending purchase") { Task { await model.purchase(minutes: 15, recovering: true) } }.disabled(model.busy || !model.supported || !model.authorized || !model.state.enabled)
-                Text("Normal accounts: 1 point/minute, up to 120 minutes per UTC day. A child's linked parent sets its price and limit. Purchases require the service. Retrying a pending purchase reuses its receipt and never charges twice.").font(.footnote)
+                Text("1 point buys 1 minute. Earn and redeem up to 1,000 points per UTC day; a parent can set a lower child unlock limit. XP cannot be spent. Purchases require the service. Retrying a pending purchase reuses its receipt and never charges twice.").font(.footnote)
                 if let until = model.state.unlockUntil { Text("Last unlock expiry: \(until.formatted())") }
                 Text("A lost connection can leave a purchase pending. Retry to recover the same receipt. If it expired before activation, review it with the administrator; no automatic refund or free unlock is invented.").font(.footnote)
             }

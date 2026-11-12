@@ -44,6 +44,9 @@ enum RewardsVault {
     var message = ""
     var busy = false
     var kind: String?
+    var xpTotal = 0
+    var xpReady = false
+    var xpOptIn = false
     var balance = 0
     var admin = false
     var ledger: [[String: Any]] = []
@@ -68,6 +71,7 @@ enum RewardsVault {
             if let id = userID {
                 let data = await Task.detached { RewardsVault.read("snapshot.\(id)") }.value
                 if let data, let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            xpTotal = saved["xpTotal"] as? Int ?? 0; xpOptIn = saved["xpOptIn"] as? Bool ?? false;
             balance = saved["balance"] as? Int ?? 0; ledger = saved["ledger"] as? [[String: Any]] ?? []
             username = saved["handle"] as? String ?? ""; publicName = saved["name"] as? String ?? ""
             lastSync = saved["lastSync"] as? String ?? ""; snapshotLoaded = true
@@ -136,7 +140,7 @@ enum RewardsVault {
         try RewardsVault.write("session", JSONSerialization.data(withJSONObject: result))
         let nextID = (result["user"] as? [String: Any])?["id"] as? String
         if nextID != userID {
-            kind = nil; admin = false; balance = 0; ledger = []; rankings = []; users = []
+            kind = nil; admin = false; xpTotal = 0; xpReady = false; xpOptIn = false; balance = 0; ledger = []; rankings = []; users = []
             snapshotLoaded = false; lastSync = ""; publicName = ""; username = ""
             try RewardsVault.write("kind", nil)
         }
@@ -167,9 +171,16 @@ enum RewardsVault {
         username = profile?.first?["handle"] as? String ?? ""
         publicName = profile?.first?["display_name"] as? String ?? ""
         optIn = profile?.first?["leaderboard_opt_in"] as? Bool ?? false
+        xpReady = false
+        do {
+            if let economy = try await rpc("onestep_economy_status") as? [String:Any], economy["version"] as? Int == 6 {
+                xpTotal = (economy["xp_total"] as? NSNumber)?.intValue ?? 0
+                xpOptIn = economy["xp_opt_in"] as? Bool ?? false; xpReady = true
+            }
+        } catch { message = "Your points account is available. XP and the 1,000-point upgrade need service migration 006 or a connection." }
         if role != "kids" {
-            do { rankings = try await rpc("onestep_rankings", ["metric": rankingMetric]) as? [[String: Any]] ?? [] }
-            catch { message = "Your balance is available. Rankings could not refresh: \(error.localizedDescription)" }
+            do { rankings = try await rpc(rankingMetric == "xp" ? "onestep_xp_rankings" : "onestep_rankings", rankingMetric == "xp" ? [:] : ["metric": rankingMetric]) as? [[String: Any]] ?? [] }
+            catch { rankings = []; message = "Your balance is available. Rankings could not refresh: \(error.localizedDescription)" }
         }
         if admin {
             do { users = try await rpc("onestep_admin_users") as? [[String: Any]] ?? [] }
@@ -183,7 +194,7 @@ enum RewardsVault {
         }
         if let id = userID {
             lastSync = Date().formatted(date: .abbreviated, time: .shortened); snapshotLoaded = true
-            try RewardsVault.write("snapshot.\(id)", JSONSerialization.data(withJSONObject: ["balance": balance, "ledger": ledger, "handle": username, "name": publicName, "lastSync": lastSync]))
+            try RewardsVault.write("snapshot.\(id)", JSONSerialization.data(withJSONObject: ["xpTotal":xpTotal,"xpOptIn":xpOptIn,"balance": balance, "ledger": ledger, "handle": username, "name": publicName, "lastSync": lastSync]))
         }
     }
     func authorizeParentCode(_ parentCode: String, accountID: String? = nil) throws {
@@ -202,7 +213,7 @@ enum RewardsVault {
         if kind == "kids" || kind == nil { try authorizeParentCode(parentCode ?? "") }
         _ = try? await request("/auth/v1/logout", body: [:])
         try RewardsVault.write("session", nil); try RewardsVault.write("kind", nil)
-        session = nil; kind = nil; admin = false; ledger = []; users = []; balance = 0; username = ""; publicName = ""; rankings = []; snapshotLoaded = false; lastSync = ""
+        session = nil; kind = nil; admin = false; xpTotal = 0; xpReady = false; xpOptIn = false; ledger = []; users = []; balance = 0; username = ""; publicName = ""; rankings = []; snapshotLoaded = false; lastSync = ""
     }
     static func checkPin(_ pin: String, verifier: [String: Any]) -> Bool {
         guard pin.count == 10, pin.allSatisfy(\.isNumber), verifier["algorithm"] as? String == "pbkdf2-sha256", verifier["iterations"] as? Int == 120000,
@@ -290,6 +301,13 @@ struct RewardsView: View {
                     Text("Available points").foregroundStyle(.secondary)
                     Text(model.snapshotLoaded ? "Updated \(model.lastSync)" : "Connect to load your balance").font(.caption).foregroundStyle(.secondary)
                 }.frame(maxWidth:.infinity).padding(.vertical,12)
+                GroupBox("Your XP") {
+                    VStack(alignment:.leading,spacing:8) {
+                        Text("\(model.xpTotal) XP").font(.title2.bold()).foregroundStyle(ItemPalette.mint.color)
+                        Text("10 XP per completed task or routine step. XP records your progress and cannot be spent. Up to 1,000 XP per UTC day.").font(.footnote)
+                        if !model.xpReady { Text("Saved total · connect to the upgraded XP service to refresh.").font(.caption).foregroundStyle(.secondary) }
+                    }.frame(maxWidth:.infinity,alignment:.leading)
+                }
                 LazyVGrid(columns:[GridItem(.adaptive(minimum:96))],spacing:12) {
                     Button { section = 1 } label: { VStack { Image(systemName:"list.bullet.rectangle");Text("Activity") }.frame(maxWidth:.infinity) }
                     NavigationLink { ScreenTimeView() } label: { VStack { Image(systemName:"hourglass");Text("App time") }.frame(maxWidth:.infinity) }
@@ -328,14 +346,15 @@ struct RewardsView: View {
         @Bindable var fields = model
         return List {
             Section {
-                Picker("Rank by",selection:$fields.rankingMetric) { Text("Tasks done").tag("tasks");Text("Points earned").tag("points") }.pickerStyle(.segmented)
+                Picker("Rank by",selection:$fields.rankingMetric) { Text("Tasks").tag("tasks");Text("Points").tag("points");Text("XP").tag("xp") }.pickerStyle(.segmented)
                     .onChange(of:model.rankingMetric) { _,_ in Task { await model.action { try await model.reload() } } }
-                Text("This week · up to 20 counted tasks and 500 earned points per day.").font(.footnote).foregroundStyle(.secondary)
+                Text("This week · Points: 20 counted tasks / 1,000 earned points per UTC day. XP: its own 1,000/day limit and separate opt-in ranking.").font(.footnote).foregroundStyle(.secondary)
             }
+            Text(model.rankingMetric == "xp" ? "XP leaderboard" : "Task and points leaderboard").font(.headline)
             if model.rankings.isEmpty { ContentUnavailableView("A fresh start",systemImage:"trophy",description:Text("Public rankings are optional. Join from Account.")) }
             ForEach(BankRecord.rows(model.rankings,key:"handle")) { entry in
                 let index = entry.position; let row = entry.value
-                HStack { Text("#\(index+1)").foregroundStyle(.secondary);Text(row["display_name"] as? String ?? "Member");Spacer();Text("\((row[model.rankingMetric == "tasks" ? "completed_tasks" : "earned_points"] as? NSNumber)?.intValue ?? 0)").fontWeight(.semibold) }
+                HStack { Text("#\(index+1)").foregroundStyle(.secondary);Text(row["display_name"] as? String ?? "Member");Spacer();Text("\((row[model.rankingMetric == "tasks" ? "completed_tasks" : model.rankingMetric == "xp" ? "earned_xp" : "earned_points"] as? NSNumber)?.intValue ?? 0)").fontWeight(.semibold) }
             }
         }
     }
@@ -352,7 +371,9 @@ struct RewardsView: View {
                 Section("Public profile") {
                     TextField("Display name",text:$fields.publicName)
                     TextField("Handle",text:$fields.username).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Toggle("Join the leaderboard",isOn:$fields.optIn)
+                    Toggle("Join the points/task leaderboard",isOn:$fields.optIn)
+                    Toggle("Join the separate XP leaderboard",isOn:$fields.xpOptIn).disabled(!model.xpReady)
+                    Button("Save XP visibility") { Task { await model.action { _ = try await model.rpc("onestep_set_xp_public",["opt_in":model.xpOptIn]);try await model.reload() } } }.disabled(model.busy || !model.xpReady)
                     Button("Save profile") { Task { await model.action { _ = try await model.rpc("onestep_update_profile",["profile_name":model.publicName,"profile_handle":model.username,"opt_in":model.optIn]);try await model.reload() } } }.disabled(model.busy)
                 }
             }

@@ -15,6 +15,7 @@ import Observation
         var receipts = RewardsVault.read(storage).flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: [String: Any]] } ?? [:]
         let tasks = state.tasks.filter { $0.rewardAccountID?.lowercased() == user.lowercased() && $0.rewardPoints != nil && $0.archived != true }.sorted { $0.createdAt > $1.createdAt }.prefix(100)
         for task in tasks {
+            guard account.userID?.lowercased() == user.lowercased() else { break }
             let id = task.id.uuidString
             if receipts[id]?["done"] as? Bool == true { continue }
             if (receipts[id]?["retry"] as? Double ?? 0) > Date().timeIntervalSince1970 { continue }
@@ -25,6 +26,7 @@ import Observation
                     _ = try await account.rpc("onestep_register_personal_task", ["client": id, "task_title": task.title, "task_points": points])
                     receipts[id] = ["hash": hash]
                 }
+                guard account.userID?.lowercased() == user.lowercased() else { break }
                 if task.completedAt != nil, let result = try await account.rpc("onestep_complete_personal_task", ["client": id]) as? [String: Any] {
                     let pending = result["status"] as? String == "pending"
                     receipts[id]?["done"] = !pending

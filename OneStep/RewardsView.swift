@@ -94,6 +94,7 @@ enum RewardsVault {
     private func failure(_ text: String) -> NSError { NSError(domain: "OneStep", code: 1, userInfo: [NSLocalizedDescriptionKey: text]) }
     func request(_ path: String, body: [String: Any]? = nil, auth: Bool = true) async throws -> Any {
         await load()
+        let principal = userID
         if auth {
             guard signedIn else { throw failure("Sign in first.") }
             if (session?["expires_at"] as? Double ?? 0) <= Date().timeIntervalSince1970 + 60 {
@@ -110,6 +111,7 @@ enum RewardsVault {
                     try await task.value
                 }
             }
+            guard userID == principal else { throw failure("The account changed. Please retry.") }
         }
         guard let url = URL(string: project + path), url.scheme == "https", url.host?.hasSuffix(".supabase.co") == true else { throw failure("Configure your connection first.") }
         var request = URLRequest(url: url); request.timeoutInterval = 20
@@ -117,6 +119,7 @@ enum RewardsVault {
         if auth, let token = session?["access_token"] as? String { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let body { request.httpMethod = "POST"; request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await URLSession.shared.data(for: request)
+        guard !auth || userID == principal else { throw failure("The account changed. Please retry.") }
         guard data.count <= 1024 * 1024 else { throw failure("Service response too large.") }
         let value: Any
         if data.isEmpty { value = NSNull() } else { value = (try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])) ?? NSNull() }

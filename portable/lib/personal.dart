@@ -35,6 +35,7 @@ Future<void> syncPersonalTasks(Json state) async {
             (a, b) => (b['createdAt'] as num).compareTo(a['createdAt'] as num),
           );
     for (final task in tasks.take(100)) {
+      if (client.userID != user) break;
       final id = task['id'] as String, points = task['rewardPoints'] as int;
       final receipt = receipts[id] as Map?;
       if (receipt?['done'] == true ||
@@ -58,6 +59,7 @@ Future<void> syncPersonalTasks(Json state) async {
           });
           receipts[id] = {'hash': hash};
         }
+        if (client.userID != user) break;
         if (task['completedAt'] != null) {
           final result =
               await client.rpc('onestep_complete_personal_task', {'client': id})

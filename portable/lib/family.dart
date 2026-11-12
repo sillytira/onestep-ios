@@ -71,10 +71,13 @@ class FamilyClient {
   }) async {
     if (project.isEmpty || publicKey.isEmpty)
       throw const FormatException('Set up the connection first.');
+    final principal = userID;
     if (authenticated) {
       if (!signedIn) throw const FormatException('Sign in first.');
       await refreshSession();
+      if (userID != principal) throw const FormatException('The account changed. Please retry.');
     }
+    final accessToken = session?['access_token'];
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 15);
     try {
@@ -87,7 +90,7 @@ class FamilyClient {
       if (authenticated)
         request.headers.set(
           'Authorization',
-          'Bearer ${session!['access_token']}',
+          'Bearer $accessToken',
         );
       if (body != null) {
         request.headers.contentType = ContentType.json;
@@ -103,6 +106,7 @@ class FamilyClient {
           throw const FormatException('Service response too large.');
       }
       final text = utf8.decode(bytes);
+      if (authenticated && userID != principal) throw const FormatException('The account changed. Please retry.');
       if (response.statusCode < 200 || response.statusCode >= 300) {
         String message = 'Service request failed (${response.statusCode}).';
         try {

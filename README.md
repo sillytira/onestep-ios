@@ -33,3 +33,7 @@ Normal/parent accounts can enroll private tasks for 0–100 points each, with se
 ## Version 0.7 repair
 
 Rebuilt Bank into Home/Activity/Rankings/Account, added a direct native Bank tab and adaptive desktop sidebar, repaired shared account refresh/legacy connection overrides, isolated personal statements from family ledger access, and preserved parent-policy edits. App-level URL routing queues links through startup; Keychain reads run off the UI thread. Screen Time now has actionable setup/selection status and website-category shields. See [UI-REPAIR.md](UI-REPAIR.md) for concrete repairs, primary Apple/Microsoft/Revolut references, and test limits.
+
+## More detailed Live Activity
+
+The current native update adds today's tasks done/open, routine skipped/resolved progress, one current microstep or following action, paused-focus time, and the chosen snooze duration. The Lock Screen card has a compact fallback within Apple's 160-point limit. Activity payload text is bounded and new fields decode older snapshots. It updates with planner actions/app use; system countdowns render independently. Follow [SCREEN-TIME-SIGNING.md](SCREEN-TIME-SIGNING.md) for signing; iPhone 12 uses the Lock Screen rather than Dynamic Island.

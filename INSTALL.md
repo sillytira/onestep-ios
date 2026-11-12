@@ -47,3 +47,7 @@ Back up, then install over the same app identity and signing account. Bank is no
 ## Economy and XP activation
 
 The 0.8 clients require backend migration 006 for the new rate, limits and XP. It is not yet deployed from this CLI session. See ECONOMY.md. Install over the existing identity with the same signing settings; use the Screen Time variant for native Apple blocking with appropriate profiles. XP and points are separate, and public XP membership defaults off.
+
+## Screen Time signing guide
+
+Follow [SCREEN-TIME-SIGNING.md](SCREEN-TIME-SIGNING.md) for the exact app/extension capability matrix, Xcode generation, per-target provisioning, Windows signer limits, signature checks and on-phone acceptance. The same guide and a downloadable Markdown copy are in the OneStep Notion checklist's Screen Time signing subpage.

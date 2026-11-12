@@ -76,3 +76,10 @@ Automated build results are recorded in BUILD-VERIFICATION.md. These real-accoun
 - [ ] Follow onestep://bank and widget/Live Activity links with the app already open and after a cold start.
 - [ ] Use large text and a narrow desktop window; verify navigation, scrolling and actions remain reachable.
 - [ ] On a properly signed Screen Time variant, authorize Apple access, select apps/categories/websites, apply shields, purchase an unlock, and verify re-blocking. Ordinary builds must show the explicit setup requirement.
+
+## Detailed Live Activity acceptance
+
+- Start an activity on the signed iPhone and check current title, microstep/next hint, tasks done/open, routine Done/Skip progress, due/focus time, and selected snooze duration.
+- Pause/resume a duration focus timer, verify a static paused time, then test Done/Snooze from the Lock Screen against the exact task/day.
+- Check large text, stale snapshots, next-day ending and system lifetime limits. The rendered simulator card and payload tests do not prove delivery/interaction on the physical phone.
+- Confirm the three targets' profiles using SCREEN-TIME-SIGNING.md. Keep the old app/verified export until update retention is checked.

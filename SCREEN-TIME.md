@@ -15,3 +15,5 @@ Successful unsigned compilation does not establish Family Controls provisioning,
 ## 0.8 economy contract
 
 After migration 006, one point buys one minute, with 1–1,000-minute choices and an account-wide 1,000-minute daily redemption cap (UTC). Parent allowances may be lower; the exchange rate is fixed. The native screen checks service version 6, confirmed balance and remaining minutes, and rechecks authorization/account/blocking before applying a receipt. XP is separate and cannot be redeemed. Migration 006 is not live yet; see ECONOMY.md. Apple's authorization and monitoring APIs remain unchanged.
+
+For installation and profile troubleshooting use [SCREEN-TIME-SIGNING.md](SCREEN-TIME-SIGNING.md), including checks of the final signed app, both extensions and their embedded profiles.

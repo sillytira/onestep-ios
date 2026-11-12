@@ -12,7 +12,7 @@ do $$ declare i integer;c uuid;result jsonb;d uuid:=gen_random_uuid();e uuid:=ge
   insert into public.onestep_personal_tasks(user_id,client_id,title_hash,reward,eligible_at) values(auth.uid(),c,'v6-task-'||i,100,now()-interval '1 minute');
   update public.onestep_personal_tasks set completed_at=now()-interval '31 seconds' where user_id=auth.uid() and completed_at is not null;
   result:=public.onestep_complete_personal_task(c);
-  if (result->>'points')::integer<>case when i<=10 then 100 else 0 end then raise exception '1000-point earnings cap failed';end if;
+  if (result->>'points')::integer<>(case when i<=10 then 100 else 0 end) then raise exception '1000-point earnings cap failed';end if;
  end loop;
  if (public.onestep_economy_status()->>'earned_today')::integer<>1000 then raise exception 'Status disagrees with ledger';end if;
  if (select earned_points from public.onestep_rankings('points') where handle='member')<>1000 then raise exception 'Leaderboard cap failed';end if;
@@ -31,7 +31,7 @@ do $$ declare i integer;key text;v jsonb;b bigint:=public.onestep_my_balance();b
   update public.onestep_xp_events set created_at=now()-interval '6 seconds' where user_id=auth.uid();
   key:='task.'||gen_random_uuid()::text;
   v:=public.onestep_claim_xp(key,'task');
-  if (v->>'xp')::integer<>case when i<=100 then 10 else 0 end then raise exception 'XP daily cap failed';end if;
+  if (v->>'xp')::integer<>(case when i<=100 then 10 else 0 end) then raise exception 'XP daily cap failed';end if;
   if i=1 then
    v:=public.onestep_claim_xp(key,'task');if v->>'status'<>'recorded' then raise exception 'XP replay not idempotent';end if;
    v:=public.onestep_claim_xp('task.'||gen_random_uuid()::text,'task');if v->>'status'<>'pending' then raise exception 'XP rate filter failed';end if;

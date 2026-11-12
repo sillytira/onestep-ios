@@ -33,6 +33,7 @@ enum RewardsVault {
     var username = ""
     var publicName = ""
     var optIn = false
+    var rankingMetric = "tasks"
     var rankings: [[String: Any]] = []
     var snapshotLoaded = false
     var lastSync = ""
@@ -123,7 +124,7 @@ enum RewardsVault {
         username = profile?.first?["handle"] as? String ?? ""
         publicName = profile?.first?["display_name"] as? String ?? ""
         optIn = profile?.first?["leaderboard_opt_in"] as? Bool ?? false
-        if role != "kids" { rankings = try await request("/rest/v1/onestep_leaderboard?select=display_name,handle,points&limit=100") as? [[String: Any]] ?? [] }
+        if role != "kids" { rankings = try await rpc("onestep_rankings", ["metric": rankingMetric]) as? [[String: Any]] ?? [] }
         if admin { users = try await rpc("onestep_admin_users") as? [[String: Any]] ?? [] }
         if role == "kids", let userID {
             let rows = try await request("/rest/v1/onestep_children?select=offline_pin_verifier,active&child_id=eq.\(userID)&limit=1") as? [[String: Any]]
@@ -136,9 +137,8 @@ enum RewardsVault {
             try RewardsVault.write("snapshot.\(id)", JSONSerialization.data(withJSONObject: ["balance": balance, "ledger": ledger, "handle": username, "name": publicName, "lastSync": lastSync]))
         }
     }
-    func signOut(parentCode: String? = nil) async throws {
-        if kind == "kids" || kind == nil {
-            guard let parentCode, let id = userID, let data = RewardsVault.read("verifier.\(id)"),
+    func authorizeParentCode(_ parentCode: String, accountID: String? = nil) throws {
+            guard let id = accountID ?? userID, let data = RewardsVault.read("verifier.\(id)"),
                   let verifier = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw failure("A parent must configure and sync an offline code first.") }
             let now = Date().timeIntervalSince1970
             let lockData = RewardsVault.read("lock.\(id)")
@@ -148,7 +148,9 @@ enum RewardsVault {
             let failures = valid ? 0 : (lock["failures"] ?? 0) + 1
             try RewardsVault.write("lock.\(id)", JSONSerialization.data(withJSONObject: ["last": now, "failures": failures, "until": failures >= 5 ? now + 900 : 0]))
             guard valid else { throw failure("Incorrect parent code.") }
-        }
+    }
+    func signOut(parentCode: String? = nil) async throws {
+        if kind == "kids" || kind == nil { try authorizeParentCode(parentCode ?? "") }
         _ = try? await request("/auth/v1/logout", body: [:])
         try RewardsVault.write("session", nil); try RewardsVault.write("kind", nil)
         session = nil; kind = nil; admin = false; ledger = []; users = []; balance = 0; username = ""; publicName = ""; rankings = []; snapshotLoaded = false; lastSync = ""
@@ -198,7 +200,8 @@ struct RewardsView: View {
                     Label(model.snapshotLoaded ? "\(model.balance)" : "—", systemImage: "creditcard.fill").font(.largeTitle.bold()).foregroundStyle(ItemPalette.violet.color)
                     Text(model.snapshotLoaded ? "Last synced: \(model.lastSync). Saved account snapshot." : "Connect to load your account. No saved balance yet.").font(.footnote)
                     Text("Virtual points from approved tasks. No real-money purchases.")
-                    Text("App-time spending and Apple Screen Time shielding are not active yet.").font(.footnote)
+                    NavigationLink("Apple Screen Time blocking and points unlocks") { ScreenTimeView() }
+                    Text(PersonalRewards.shared.message).font(.footnote)
                     Button("Refresh") { Task { await model.action { try await model.reload() } } }.disabled(model.busy)
                 }
                 Section("Transactions") {
@@ -222,9 +225,12 @@ struct RewardsView: View {
                             try await model.reload()
                         } } }.disabled(model.busy)
                     }
-                    Section("Opt-in rankings") {
+                    Section("This week · opt-in rankings") {
+                        Picker("Rank by", selection: $fields.rankingMetric) { Text("Tasks done").tag("tasks"); Text("Points earned").tag("points") }.pickerStyle(.segmented)
+                        .onChange(of: model.rankingMetric) { _, _ in Task { await model.action { try await model.reload() } } }
+                        Text("Self-reported eligible tasks; 20 tasks / 500 points per UTC day, 0–100 per task. Admin credits and spending do not inflate earned-point rankings.").font(.footnote)
                         ForEach(Array(model.rankings.enumerated()), id: \.offset) { index, entry in
-                            HStack { Text("#\(index + 1) · \(entry["display_name"] as? String ?? "Member")"); Spacer(); Text("\((entry["points"] as? NSNumber)?.intValue ?? 0)") }
+                            HStack { Text("#\(index + 1) · \(entry["display_name"] as? String ?? "Member")"); Spacer(); Text("\((entry[model.rankingMetric == "tasks" ? "completed_tasks" : "earned_points"] as? NSNumber)?.intValue ?? 0)") }
                         }
                         Text("Kids accounts are excluded by the service.").font(.footnote)
                     }

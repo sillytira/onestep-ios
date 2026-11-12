@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'model.dart';
+import 'personal.dart';
 
 class Planner extends ChangeNotifier {
   Json state;
@@ -36,6 +37,7 @@ class Planner extends ChangeNotifier {
     } catch (e) {
       planner.warning = 'Planner loaded; notifications unavailable: $e';
     }
+    unawaited(syncPersonalTasks(planner.state));
     return planner;
   }
 
@@ -54,6 +56,7 @@ class Planner extends ChangeNotifier {
         }
         await temp.rename(file.path);
         state = clone(next);
+        unawaited(syncPersonalTasks(state));
         notifyListeners();
         result.complete();
         try {

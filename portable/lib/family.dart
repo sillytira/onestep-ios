@@ -474,6 +474,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   final betaKey = TextEditingController(), username = TextEditingController();
   final publicName = TextEditingController(), handle = TextEditingController();
   bool optIn = false;
+  String rankingMetric = "tasks";
+  bool screenUnlockAllowed = false;
+  int screenMinuteCost = 1, screenDailyMinutes = 120;
   List<Json> ledger = [],
       tasks = [],
       children = [],
@@ -631,9 +634,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
       );
     admin = await client.rpc('onestep_is_admin', {}) as bool;
     if (client.accountKind != 'kids')
-      rankings = await client.list(
-        'onestep_leaderboard?select=display_name,points,handle&limit=100',
-      );
+      rankings = (await client.rpc('onestep_rankings', {'metric':rankingMetric}) as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList();
     if (publicName.text.isEmpty) {
       final profile = await client.list(
         'onestep_profiles?select=display_name,handle,leaderboard_opt_in&limit=1',
@@ -1012,7 +1013,14 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     ),
                   ]),
                 if (children.isNotEmpty)
-                  panel('Offline parent authorization', [
+                  panel('Apple app-time policy', [
+                  const Text('Select the child above. This policy permits point purchases on the entitled native iPhone app; it does not grant Apple authorization or block Android apps.'),
+                  SwitchListTile(title:const Text('Allow points-funded unlocks'),value:screenUnlockAllowed,onChanged:(v)=>setState(()=>screenUnlockAllowed=v)),
+                  DropdownButtonFormField<int>(initialValue:screenMinuteCost,decoration:const InputDecoration(labelText:'Points per minute'),items:[for(var i=1;i<=10;i++)DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenMinuteCost=v??1)),
+                  DropdownButtonFormField<int>(initialValue:screenDailyMinutes,decoration:const InputDecoration(labelText:'Daily minutes limit'),items:[for(final i in [15,30,60,120])DropdownMenuItem(value:i,child:Text('$i'))],onChanged:(v)=>setState(()=>screenDailyMinutes=v??120)),
+                  FilledButton(onPressed:busy||selectedChild==null?null:(){run(()async{await client.rpc('onestep_set_screen_policy',{'child':selectedChild,'allow_unlock':screenUnlockAllowed,'minute_cost':screenMinuteCost,'day_minutes':screenDailyMinutes});setState(()=>message='Parent policy saved.');});},child:const Text('Save child policy')),
+                ]),
+                if (children.isNotEmpty) panel('Offline parent authorization', [
                     DropdownButtonFormField<String>(
                       initialValue: selectedChild,
                       decoration: const InputDecoration(
@@ -1315,7 +1323,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   ),
                 ]),
               if (client.accountKind != 'kids')
-                panel('Opt-in rankings', [
+                panel('This week: opt-in rankings', [
+                  SegmentedButton<String>(segments:const [ButtonSegment(value:'tasks',label:Text('Tasks done')),ButtonSegment(value:'points',label:Text('Points earned'))],selected:{rankingMetric},onSelectionChanged:(v){setState(()=>rankingMetric=v.first);run(refresh);}),
+                  const Text('Eligible self-reported tasks. Max20 tasks /500 earned points per UTC day; 0–100 per task. Duplicate-title, age and rate filters apply. Admin credits do not count.'),
                   if (rankings.isEmpty)
                     const Text(
                       'No public scores yet. Joining the leaderboard is optional.',
@@ -1325,7 +1335,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       leading: Text('#${index + 1}'),
                       title: Text(rankings[index]['display_name'] as String),
                       subtitle: Text('@${rankings[index]['handle'] ?? ''}'),
-                      trailing: Text('${rankings[index]['points']} points'),
+                      trailing: Text('${rankings[index][rankingMetric == 'tasks' ? 'completed_tasks' : 'earned_points']} ${rankingMetric == 'tasks' ? 'tasks' : 'points'}'),
                     ),
                   const Text(
                     'Kids accounts are excluded by the service, regardless of client settings.',

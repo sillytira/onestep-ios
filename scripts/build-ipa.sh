@@ -8,14 +8,15 @@ if ! [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
   echo 'BUILD_NUMBER must be a positive integer.' >&2
   exit 1
 fi
+DERIVED="build/DerivedData-${SCREEN_TIME_ENABLED:-0}-${APP_BUNDLE_ID}"
 node scripts/generate-project.mjs
 node scripts/generate-icon.mjs
 mkdir -p build release
 xcodebuild -project OneStep.xcodeproj -scheme OneStep -configuration Release \
-  -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
+  -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$DERIVED" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY='' build
-APP="build/DerivedData/Build/Products/Release-iphoneos/OneStep.app"
+APP="$DERIVED/Build/Products/Release-iphoneos/OneStep.app"
 test -f "$APP/OneStep"
 file "$APP/OneStep" | grep -q arm64
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist" | grep -qx "$APP_BUNDLE_ID"

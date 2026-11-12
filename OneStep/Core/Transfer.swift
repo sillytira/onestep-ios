@@ -13,6 +13,7 @@ struct TransferDocument: Codable {
         guard value.format == "OneStep", value.formatVersion == 1, value.state.schemaVersion == 1,
               value.state.tasks.count <= 10000, value.state.routines.count <= 1000,
               Set(value.state.tasks.map(\.id)).count == value.state.tasks.count,
+              value.state.tasks.allSatisfy({ ($0.rewardPoints == nil || (0...100).contains($0.rewardPoints!)) && ($0.rewardAccountID == nil || UUID(uuidString: $0.rewardAccountID!) != nil) }),
               Set(value.state.routines.map(\.id)).count == value.state.routines.count,
               value.state.routines.allSatisfy({ (0...23).contains($0.hour) && (0...59).contains($0.minute) }) else { throw TransferError.invalid }
         return value

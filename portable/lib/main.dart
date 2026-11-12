@@ -7,6 +7,7 @@ import 'model.dart';
 import 'services.dart';
 import 'family.dart';
 import 'content.dart';
+import 'personal.dart';
 
 const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
 
@@ -90,6 +91,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     load();
     ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
+      if (DateTime.now().second == 0 && planner != null) unawaited(syncPersonalTasks(planner!.state));
     });
   }
 
@@ -1032,10 +1034,16 @@ class _EntryEditorState extends State<EntryEditor> {
   late bool hasDate, remind;
   bool busy = false;
   String? error;
+  final rewardAccount = FamilyClient();
+  bool rewardEnabled = false;
+  int rewardPoints = 10;
   @override
   void initState() {
     super.initState();
     final t = widget.item;
+    rewardEnabled = widget.item?['rewardPoints'] != null;
+    rewardPoints = widget.item?['rewardPoints'] as int? ?? 10;
+    rewardAccount.load().then((_) { if(mounted)setState((){}); });
     title = TextEditingController(text: t?['title'] as String? ?? '');
     notes = TextEditingController(
       text: t?[widget.note ? 'body' : 'notes'] as String? ?? '',
@@ -1110,6 +1118,10 @@ class _EntryEditorState extends State<EntryEditor> {
           ? <String, dynamic>{'id': uuid.v4().toUpperCase()}
           : clone(widget.item!);
       t['title'] = title.text.trim();
+      if (!widget.note && !widget.routine && t['completedAt'] == null) {
+        if (rewardEnabled && rewardAccount.signedIn && rewardAccount.accountKind != 'kids') { t['rewardPoints']=rewardPoints; t['rewardAccountID']=t['rewardAccountID'] ?? rewardAccount.userID; }
+        else { t.remove('rewardPoints'); t.remove('rewardAccountID'); }
+      }
       if (widget.note) {
         t['body'] = notes.text;
         t['updatedAt'] = stamp();
@@ -1190,6 +1202,12 @@ class _EntryEditorState extends State<EntryEditor> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            if(!widget.note && !widget.routine && rewardAccount.signedIn && rewardAccount.accountKind!='kids') ...[
+              SwitchListTile(title:const Text('Enroll this task for account rewards'),value:rewardEnabled,onChanged:widget.item?['completedAt']!=null?null:(v)=>setState(()=>rewardEnabled=v)),
+              if(rewardEnabled) DropdownButtonFormField<int>(initialValue:rewardPoints,decoration:const InputDecoration(labelText:'Points for this task'),items:[for(var i=0;i<=100;i++)DropdownMenuItem(value:i,child:Text('$i'))],onChanged:widget.item?['completedAt']!=null?null:(v)=>setState(()=>rewardPoints=v??10)),
+              const Text('Self-reported: up to20 counted tasks and500 earned points per UTC day. The title is sent for duplicate checks; only a hash is stored. Done remains immediate/offline. Points wait for the server.'),
+            ],
+
             TextField(
               controller: title,
               decoration: const InputDecoration(
@@ -1766,7 +1784,7 @@ class _SettingsPageState extends State<SettingsPage>
               ]),
               section('About this beta', [
                 const Text(
-                  'OneStep · 0.5.0 beta\nApplication identity: meow.tira.onestep',
+                  'OneStep · 0.6.0 beta\nApplication identity: meow.tira.onestep',
                 ),
                 const Text(
                   'iOS keeps its native SwiftUI app and Live Activity. Android uses Material 3. Desktop clients require their bundled libraries; keep the Windows distribution folder together.',

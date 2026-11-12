@@ -9,7 +9,7 @@ const objects=[...project.matchAll(/^([A-F0-9]{24}) = \{/gm)].map(m=>m[1]);
 assert.equal(new Set(objects).size,objects.length,'Project contains duplicate object IDs');
 for(const match of project.matchAll(/\b[A-F0-9]{24}\b/g)) assert(objects.includes(match[0]),`Unresolved project ID ${match[0]}`);
 assert.equal((project.match(/productType = "com.apple.product-type.application"/g)||[]).length,1);
-assert.equal((project.match(/productType = "com.apple.product-type.app-extension"/g)||[]).length,1,'Exactly one Live Activity extension');
+assert.equal((project.match(/productType = "com.apple.product-type.app-extension"/g)||[]).length,process.env.SCREEN_TIME_ENABLED === '1' ? 2 : 1,'Exactly one Live Activity extension');
 assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = meow.tira.onestep.liveactivity;/g)||[]).length,2);
 assert.equal((project.match(/PRODUCT_BUNDLE_IDENTIFIER = meow.tira.onestep;/g)||[]).length,2);
 for(const file of ['Core/Planner.swift','Persistence.swift','Notifications.swift','Views.swift','OneStepApp.swift','FocusTimerSheet.swift','LiveActivities.swift','Shared/Palette.swift','Shared/DayActivityAttributes.swift']) {

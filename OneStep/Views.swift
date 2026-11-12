@@ -56,6 +56,7 @@ struct RootView: View {
                 }
             }
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
+            .task(id: Int(timeline.date.timeIntervalSince1970 / 60)) { await PersonalRewards.shared.sync(store.state) }
         }
         .tint(tabPalette.color)
         .preferredColorScheme(.dark)
@@ -372,6 +373,9 @@ private struct TaskEditor: View {
     @State private var repeatRule: String
     @State private var steps: String
     @State private var listName: String
+    @State private var rewardEnabled: Bool
+    @State private var rewardPoints: Int
+    @State private var rewardAccount = RewardsStore()
 
     init(task: TaskEntry?) {
         self.task = task
@@ -384,6 +388,8 @@ private struct TaskEditor: View {
         _repeatRule = State(initialValue: task?.repeatRule ?? "none")
         _steps = State(initialValue: (task?.microsteps ?? []).map(\.title).joined(separator: "\n"))
         _listName = State(initialValue: task?.listName ?? "")
+        _rewardEnabled = State(initialValue: task?.rewardPoints != nil)
+        _rewardPoints = State(initialValue: task?.rewardPoints ?? 10)
     }
 
     var body: some View {
@@ -397,6 +403,13 @@ private struct TaskEditor: View {
                     Text("Edit these into steps that fit your task. No AI service or internet is used.").font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Organization") { TextField("List name (optional)", text: $listName) }
+                Section("Personal task rewards") {
+                    if rewardAccount.signedIn && rewardAccount.kind != "kids" {
+                        Toggle("Enroll this task for account rewards", isOn: $rewardEnabled).disabled(task?.completedAt != nil)
+                        if rewardEnabled { Stepper("\(rewardPoints) points", value: $rewardPoints, in: 0...100).disabled(task?.completedAt != nil) }
+                        Text("Self-reported tasks: up to 20 counted tasks and 500 earned points per UTC day. The title is sent for duplicate checks; only a hash is stored. Done works offline; points wait for the server. Rewards are bound to this signed-in account.").font(.footnote)
+                    } else { Text("Sign in to a normal or parent account to set your own rewards. Child rewards require parent approval.").font(.footnote) }
+                }
                 Section("Optional") {
                     TextField("A little context", text: $notes, axis: .vertical).lineLimit(3...6)
                     Toggle("Set a due time", isOn: $hasDate)
@@ -414,7 +427,9 @@ private struct TaskEditor: View {
                 }
                 if let task {
                     Section {
-                        Button("Mark done") { store.complete(PlannerRules.taskAction(task)); dismiss() }
+                        Button("Mark done") {
+                            if store.saveTask(id: task.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName, rewardPoints: rewardEnabled ? rewardPoints : nil, rewardAccountID: rewardEnabled ? (task.rewardAccountID ?? rewardAccount.userID) : nil), let updated = store.state.tasks.first(where: { $0.id == task.id }) { store.complete(PlannerRules.taskAction(updated)); dismiss() }
+                        }
                     }
                 }
             }
@@ -424,7 +439,7 @@ private struct TaskEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName) { dismiss() }
+                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName, rewardPoints: rewardEnabled ? rewardPoints : nil, rewardAccountID: rewardEnabled ? (task?.rewardAccountID ?? rewardAccount.userID) : nil) { dismiss() }
                     }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -524,6 +539,7 @@ private struct ReminderSettingsView: View {
                     NavigationLink("Bank, rewards, and account") { RewardsView() }
                     NavigationLink("Backups and Wi-Fi transfer") { DataToolsView() }
                     NavigationLink("Content updates and routine packs") { ContentUpdatesView() }
+                    NavigationLink("Screen Time blocking") { ScreenTimeView() }
                 }
                 Section("Reminder preferences") {
                     Toggle("One follow-up after 10 minutes", isOn: preference(\.followup, fallback: true))

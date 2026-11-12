@@ -10,7 +10,7 @@ struct ContentCatalog: Codable, Equatable {
     var packs: [ContentPack]
     func validated() throws -> Self {
         let version = minAppVersion.split(separator: ".", omittingEmptySubsequences: false).compactMap { Int($0) }
-        let compatible = minAppVersion.range(of: #"^[0-9]+\.[0-9]+\.[0-9]+$"#, options: .regularExpression) != nil && version.count == 3 && version.allSatisfy { $0 >= 0 } && version.lexicographicallyPrecedes([0, 5, 1])
+        let compatible = minAppVersion.range(of: #"^[0-9]+\.[0-9]+\.[0-9]+$"#, options: .regularExpression) != nil && version.count == 3 && version.allSatisfy { $0 >= 0 } && version.lexicographicallyPrecedes([0, 6, 1])
         guard format == "OneStepContent", schema == 1, revision > 0,
               message.count <= 500, packs.count <= 50,
               Set(packs.map(\.id)).count == packs.count,

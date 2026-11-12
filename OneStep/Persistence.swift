@@ -82,8 +82,9 @@ final class PlannerStore {
             document.payload = try JSONEncoder().encode(next)
             try context.save()
             state = next
+            WidgetSnapshotStore.publish(state)
             focusedItem = nil
-            Task { await refresh() }
+            Task { await refresh(); await PersonalRewards.shared.sync(state) }
             return true
         } catch {
             context.rollback()
@@ -93,7 +94,7 @@ final class PlannerStore {
     }
 
     @discardableResult
-    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue", repeatRule: String? = nil, steps: [String]? = nil, listName: String? = nil) -> Bool {
+    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue", repeatRule: String? = nil, steps: [String]? = nil, listName: String? = nil, rewardPoints: Int? = nil, rewardAccountID: String? = nil) -> Bool {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return false }
         var next = state
@@ -111,6 +112,7 @@ final class PlannerStore {
         if let index = next.tasks.firstIndex(where: { id == nil ? $0.id == next.tasks.last?.id : $0.id == id }) {
             next.tasks[index].repeatRule = dueAt == nil ? nil : repeatRule
             next.tasks[index].listName = listName
+            if next.tasks[index].completedAt == nil { next.tasks[index].rewardPoints = rewardPoints; next.tasks[index].rewardAccountID = rewardAccountID }
             if let steps {
                 let old = next.tasks[index].microsteps ?? []
                 next.tasks[index].microsteps = steps.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.map { title in
@@ -322,6 +324,8 @@ final class PlannerStore {
 
     /// Serialize reconciliations so an older plan can never finish after a newer edit.
     func refresh() async {
+        WidgetSnapshotStore.publish(state)
+        if ScreenTimeShared.enabledBuild { ScreenTimeShared.reconcile() }
         refreshRequested = true
         guard !refreshRunning else { return }
         refreshRunning = true

@@ -31,7 +31,7 @@ jobs:
       - run: cp portable/pubspec.lock release/
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.5.0-Linux
+          name: OneStep-0.6.0-Linux
           path: |
             release/*.AppImage
             release/*.sha256

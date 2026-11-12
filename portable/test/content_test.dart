@@ -42,7 +42,7 @@ void main() {
       throwsFormatException,
     );
     expect(
-      () => decodeCatalog(jsonEncode(catalog()..['minAppVersion'] = '0.6.0')),
+      () => decodeCatalog(jsonEncode(catalog()..['minAppVersion'] = '0.7.0')),
       throwsFormatException,
     );
     final bad = catalog();

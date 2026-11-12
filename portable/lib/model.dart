@@ -53,6 +53,7 @@ void validateState(Json state) {
       if (!Uuid.isValidUUID(fromString: item['id']?.toString() ?? '') ||
           item['title'] is! String)
         throw const FormatException('Invalid entry.');
+      if(key == 'tasks' && ((item['rewardPoints'] != null && (item['rewardPoints'] is! int || item['rewardPoints']<0 || item['rewardPoints']>100)) || (item['rewardAccountID'] != null && !Uuid.isValidUUID(fromString:item['rewardAccountID'].toString())))) throw const FormatException('Invalid task reward.');
       if (key == 'routines' &&
           (item['hour'] is! int ||
               item['minute'] is! int ||

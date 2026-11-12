@@ -28,7 +28,7 @@ struct BootstrapView: View {
         }
         .task { if store == nil { load() }; await store?.refresh(); if UserDefaults.standard.object(forKey: "automaticContentUpdates") as? Bool != false { await ContentLibrary().refresh() } }
         .onChange(of: scenePhase) {
-            if scenePhase == .active { Task { await store?.refresh() } }
+            if scenePhase == .active { Task { await store?.refresh(); if ScreenTimeShared.enabledBuild { ScreenTimeShared.reconcile() }; if let store { WidgetSnapshotStore.publish(store.state) } } }
         }
     }
 

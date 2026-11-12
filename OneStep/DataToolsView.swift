@@ -25,6 +25,7 @@ struct DataToolsView: View {
     @State private var showPreview = false
     @State private var recovery: [URL] = []
     @State private var releaseMessage = ""
+    @AppStorage("shareWidgetTitles") private var shareWidgetTitles = false
 
     var body: some View {
         Form {
@@ -79,6 +80,11 @@ struct DataToolsView: View {
             Section("Optional online account") {
                 NavigationLink("Bank, rewards, and account") { RewardsView() }
                 Text("Beta enrollment and secure account sessions are separate from your local planner profile.").font(.footnote)
+            }
+            Section("Private next-action widget") {
+                Toggle("Show task titles in the widget", isOn: $shareWidgetTitles).disabled(!ScreenTimeShared.enabledBuild)
+                    .onChange(of: shareWidgetTitles) { _, _ in WidgetSnapshotStore.publish(store.state) }
+                Text("Requires the App Group-provisioned build. Off by default. The widget shows the last snapshot and asks you to reopen when stale.").font(.footnote)
             }
             Section("App updates") {
                 NavigationLink("Content updates without reinstalling") { ContentUpdatesView() }

@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 struct OneStepLiveBundle: WidgetBundle {
-    var body: some Widget { OneStepDayActivity(); OneStepShortcutsWidget() }
+    var body: some Widget { OneStepDayActivity(); OneStepShortcutsWidget(); OneStepNextActionWidget() }
 }
 
 struct OneStepDayActivity: Widget {
@@ -137,5 +137,23 @@ private struct ShortcutsWidgetView: View {
             }
         }.containerBackground(.fill.tertiary, for: .widget)
             .widgetURL(URL(string: "onestep://now"))
+    }
+}
+
+private struct NextProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ShortcutEntry { ShortcutEntry(date: .now) }
+    func getSnapshot(in context: Context, completion: @escaping (ShortcutEntry) -> Void) { completion(placeholder(in: context)) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ShortcutEntry>) -> Void) { completion(Timeline(entries: [placeholder(in: context)], policy: .after(Date().addingTimeInterval(900)))) }
+}
+private struct OneStepNextActionWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "OneStepNextAction", provider: NextProvider()) { _ in
+            VStack(alignment: .leading, spacing: 10) {
+                Label("OneStep", systemImage: "sparkle").font(.headline)
+                Text(WidgetSnapshotStore.read()?.title ?? "Open OneStep for your next action").font(.headline).privacySensitive()
+                if let snapshot = WidgetSnapshotStore.read() { Text("Updated \(snapshot.at, style: .relative) ago").font(.caption) }
+                else { Text("Open to refresh").font(.caption) }
+            }.containerBackground(.fill.tertiary, for: .widget).widgetURL(URL(string: "onestep://now"))
+        }.configurationDisplayName("Next action").description("An optional private snapshot, shared only by a provisioned OneStep app.").supportedFamilies([.systemSmall,.systemMedium])
     }
 }

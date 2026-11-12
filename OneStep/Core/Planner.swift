@@ -16,6 +16,8 @@ struct TaskEntry: Identifiable, Codable, Equatable {
     var listName: String?
     var pinned: Bool?
     var archived: Bool?
+    var rewardPoints: Int?
+    var rewardAccountID: String?
 }
 
 struct SmallStep: Identifiable, Codable, Equatable {

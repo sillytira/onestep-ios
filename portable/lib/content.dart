@@ -26,8 +26,8 @@ Json decodeCatalog(String text) {
   if (version.length != 3 ||
       version.any((v) => v == null || v < 0) ||
       version[0]! > 0 ||
-      (version[0] == 0 && version[1]! > 5) ||
-      (version[1] == 5 && version[2]! > 0))
+      (version[0] == 0 && version[1]! > 6) ||
+      (version[1] == 6 && version[2]! > 0))
     throw const FormatException('This content needs a newer app.');
   final ids = <String>{};
   for (final raw in value['packs'] as List) {

@@ -60,7 +60,9 @@ class OneStepApp extends StatelessWidget {
         style: OutlinedButton.styleFrom(minimumSize: const Size(48, 50)),
       ),
     ),
-    home: appRole == 'planner' ? const Home() : const RewardsPage(role: appRole),
+    home: appRole == 'planner'
+        ? const Home()
+        : const RewardsPage(role: appRole),
   );
 }
 
@@ -516,7 +518,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           const Text('Steps finished', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 12),
           const Text(
-            'Your progress, without a streak to maintain. Points and app-unlock rewards are planned; this count is not spendable currency.',
+            'Your progress, without a streak to maintain. This private step count is not spendable points. Bank shows your parent-approved family rewards.',
             style: TextStyle(color: Colors.white60),
           ),
         ], color: accents['violet']),
@@ -1370,12 +1372,33 @@ class _SettingsPageState extends State<SettingsPage>
             padding: const EdgeInsets.all(20),
             children: [
               section('Rewards and family', [
-                for (final role in ['bank','kids','parent']) OutlinedButton.icon(
-                  icon: Icon(role == 'bank' ? Icons.credit_card : role == 'kids' ? Icons.child_care : Icons.family_restroom),
-                  label: Text(role == 'bank' ? 'Bank and rewards' : role == 'kids' ? 'Kids account' : 'Parent controls'),
-                  onPressed: () { Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RewardsPage(role: role))); },
+                for (final role in ['bank', 'kids', 'parent'])
+                  OutlinedButton.icon(
+                    icon: Icon(
+                      role == 'bank'
+                          ? Icons.credit_card
+                          : role == 'kids'
+                          ? Icons.child_care
+                          : Icons.family_restroom,
+                    ),
+                    label: Text(
+                      role == 'bank'
+                          ? 'Bank and rewards'
+                          : role == 'kids'
+                          ? 'Kids account'
+                          : 'Parent controls',
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => RewardsPage(role: role),
+                        ),
+                      );
+                    },
+                  ),
+                const Text(
+                  'Optional services. Your offline planner continues to work without signing in.',
                 ),
-                const Text('Optional services. Your offline planner continues to work without signing in.'),
               ]),
               section('Profile', [
                 TextField(
@@ -1632,11 +1655,13 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
               ]),
               section('Optional online account', [
-                const Text('Use Bank and rewards above for beta enrollment and securely stored account sessions. Your local planner profile works independently.'),
+                const Text(
+                  'Use Bank and rewards above for beta enrollment and securely stored account sessions. Your local planner profile works independently.',
+                ),
               ]),
               section('About this beta', [
                 const Text(
-                  'OneStep · 0.3.0 beta\nApplication identity: meow.tira.onestep',
+                  'OneStep · 0.4.0 beta\nApplication identity: meow.tira.onestep',
                 ),
                 const Text(
                   'iOS keeps its native SwiftUI app and Live Activity. Android uses Material 3. Desktop clients require their bundled libraries; keep the Windows distribution folder together.',
@@ -1645,7 +1670,7 @@ class _SettingsPageState extends State<SettingsPage>
                   'Builds: https://github.com/sillytira/onestep-ios/actions',
                 ),
                 const Text(
-                  'Points, rankings, parent controls, and app-unlock rewards are not active in this beta. Native code updates require installing a new package; iOS signing still applies.',
+                  'Optional family services include approved rewards, private Kids accounts, rankings, and parent codes. OS app-time blocking is not enabled. Native updates require a new package; iOS signing still applies.',
                 ),
               ]),
               if (busy) const LinearProgressIndicator(),

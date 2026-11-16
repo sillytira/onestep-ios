@@ -250,7 +250,10 @@ class FamilyClient {
 class RewardsPage extends StatefulWidget {
   final String role;
   final FamilyClient? client;
-  const RewardsPage({super.key, this.role = 'bank', this.client});
+  final bool embedded;
+  final int initialTab;
+  final String initialMetric;
+  const RewardsPage({super.key, this.role = 'bank', this.client, this.embedded=false, this.initialTab=0, this.initialMetric='tasks'});
   @override
   State<RewardsPage> createState() => _RewardsPageState();
 }
@@ -333,6 +336,12 @@ class _AdminPageState extends State<AdminPage> {
               'Only an enrolled owner/admin can use these actions. Database passwords and service-role keys are never available in the app. Points are virtual and cannot be sold.',
             ),
             const SizedBox(height: 24),
+            if (widget.embedded && client.signedIn)
+              SingleChildScrollView(scrollDirection:Axis.horizontal, child: Row(children:[
+                for(final entry in <int,String>{0:'Overview',1:'Activity',if(effectiveRole!='bank')2:'Family',if(client.accountKind!='kids')3:'Rankings',4:'Account'}.entries)
+                  Padding(padding:const EdgeInsets.only(right:8),child:ChoiceChip(label:Text(entry.value),selected:bankTab==entry.key,onSelected:(_)=>setState(()=>bankTab=entry.key))),
+                IconButton(tooltip:'Refresh account',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),
+              ])),
             if (busy) const LinearProgressIndicator(),
             if (message.isNotEmpty)
               Padding(
@@ -488,7 +497,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   final betaKey = TextEditingController(), username = TextEditingController();
   final publicName = TextEditingController(), handle = TextEditingController();
   bool optIn = false;
-  String rankingMetric = "tasks";
+  late String rankingMetric = widget.initialMetric;
   bool screenUnlockAllowed = false;
   int screenMinuteCost = 1, screenDailyMinutes = 120;
   List<Json> screenPolicies = [];
@@ -517,7 +526,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
   String? selectedChild;
   bool busy = true;
   bool externalBank = false;
-  int bankTab = 0;
+  late int bankTab = widget.initialTab;
   bool creatingAccount = false;
   bool policyDirty = false;
   bool ready = false;
@@ -841,7 +850,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: widget.embedded ? null : AppBar(
       title: Text(appName),
       actions: [
         if (client.signedIn)
@@ -856,7 +865,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
           ),
       ],
     ),
-    bottomNavigationBar: !client.signedIn
+    bottomNavigationBar: widget.embedded || !client.signedIn
         ? null
         : NavigationBar(
             selectedIndex: [
@@ -1028,7 +1037,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   label: const Text('Application admin console'),
                 ),
               if (bankTab == 0)
-                panel('Your XP', [
+                panel('Your XP · Beta', [
                   Text(
                     '$xpTotal XP',
                     style: Theme.of(context).textTheme.headlineMedium,

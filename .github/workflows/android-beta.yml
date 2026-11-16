@@ -1,0 +1,91 @@
+name: Android beta
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['portable/**', '.github/workflows/android-beta.yml']
+permissions:
+  contents: read
+concurrency:
+  group: android-beta-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: portable
+      - run: dart format lib test tool/render_android_preview_test.dart
+        working-directory: portable
+      - run: flutter analyze --no-fatal-infos
+        working-directory: portable
+      - run: flutter test
+        working-directory: portable
+      - run: flutter test tool/render_android_preview_test.dart
+        working-directory: portable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-Android-Beta-previews
+          path: release/*preview.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: OneStep-Android-Beta-formatted
+          path: |
+            portable/lib/
+            portable/test/
+            portable/pubspec.lock
+  apk:
+    needs: verify
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: node portable/tool/bootstrap.mjs
+      - run: flutter pub get
+        working-directory: portable
+      - run: flutter build apk --release
+        working-directory: portable
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Test the actual release APK notification on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: python3 portable/tool/android_beta_smoke.py
+      - name: Package
+        run: |
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.9.0-beta-14.apk
+          sha256sum release/*.apk > release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-Android-0.9.0-beta-14
+          path: release/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: OneStep-Android-diagnostics
+          path: release/

@@ -17,11 +17,13 @@ manifest=manifest.replace('<application',`<uses-permission android:name="android
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <application android:usesCleartextTraffic="true" android:allowBackup="false"`)
-  .replace('android:label="onestep"',`android:label="${displayName}"`)
+  .replace('android:label="onestep"',`android:label="${displayName} Beta"`)
   .replace('</application>',`<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
     <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
     </application>`);
 fs.writeFileSync(`${root}/android/app/src/main/AndroidManifest.xml`,manifest);
+fs.mkdirSync(`${root}/android/app/src/main/res/raw`,{recursive:true});
+fs.writeFileSync(`${root}/android/app/src/main/res/raw/keep.xml`,'<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@drawable/ic_notification" />');
 let gradle=fs.readFileSync(`${root}/android/app/build.gradle.kts`,'utf8').replace('applicationId = "meow.tira.onestep"',`applicationId = "${bundleID}"`);
 gradle=gradle.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true');
 gradle+='\ndependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") }\n';

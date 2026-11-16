@@ -9,6 +9,8 @@ import 'family.dart';
 import 'content.dart';
 import 'personal.dart';
 import 'desktop_sidebar.dart';
+import 'android_experience.dart';
+import 'package:flutter/foundation.dart';
 
 const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
 
@@ -33,10 +35,16 @@ class OneStepApp extends StatelessWidget {
   const OneStepApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'OneStep',
+    title: 'OneStep Beta',
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+        TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+      }),
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
         seedColor: accents['blue']!,
@@ -83,7 +91,8 @@ class OneStepApp extends StatelessWidget {
 }
 
 class Home extends StatefulWidget {
-  const Home({super.key, this.initialPlanner});
+  const Home({super.key, this.initialPlanner, this.androidLayout});
+  final bool? androidLayout;
   final Planner? initialPlanner;
   @override
   State<Home> createState() => _HomeState();
@@ -95,6 +104,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   Planner? planner;
   String? fatal;
   int tab = 0;
+  bool get androidLayout => widget.androidLayout ?? defaultTargetPlatform == TargetPlatform.android;
   bool busy = false;
   String search = '';
   bool archived = false;
@@ -151,7 +161,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && planner != null)
       planner!.alerts.apply(planner!.state).catchError((Object e) {
-        planner!.warning = '$e';
+        planner!.warning = 'Reminders need attention. Open More → Reminders and settings.';
+        changed();
       });
   }
 
@@ -214,18 +225,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     final p = planner!;
     final state = p.state;
     final now = DateTime.now();
-    final names = ['Now', 'Tasks', 'Routines', 'Notes', 'History'];
+    final names = androidLayout ? ['Now', 'Tasks', 'Routines', 'Bank', 'More'] : ['Now', 'Tasks', 'Routines', 'Notes', 'History'];
     final icons = [
       Icons.auto_awesome_outlined,
       Icons.checklist_rounded,
       Icons.wb_twilight,
-      Icons.notes_rounded,
-      Icons.history_rounded,
+      androidLayout ? Icons.account_balance_wallet_outlined : Icons.notes_rounded,
+      androidLayout ? Icons.grid_view_rounded : Icons.history_rounded,
     ];
     final wide = MediaQuery.sizeOf(context).width > 800;
     return Scaffold(
       appBar: AppBar(
-        title: Text(names[tab]),
+        title: Row(mainAxisSize: MainAxisSize.min, children: [Text(names[tab]), if (androidLayout) ...[const SizedBox(width: 12), const BetaBadge()]]),
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
@@ -294,13 +305,23 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                         ],
                       ),
                     Expanded(
-                      child: switch (tab) {
+                      child: PageMotion(identity: tab, child: switch (tab) {
                         0 => nowPage(state, now),
                         1 => tasksPage(state),
                         2 => routinesPage(state, now),
-                        3 => notesPage(state),
-                        _ => historyPage(state),
-                      },
+                        3 => androidLayout ? const RewardsPage(role: 'bank', embedded: true) : notesPage(state),
+                        _ => androidLayout ? AndroidMore(
+                          notes: () => openCollection('Notes', () => notesPage(p.state), note: true),
+                          history: () => openCollection('History', () => historyPage(p.state)),
+                          library: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ContentPage(planner:p))),
+                          settings: () => openSettings('Reminders'),
+                          backups: () => openSettings('Backup and restore'),
+                          wifi: () => openSettings('Local Wi-Fi transfer'),
+                          family: () => openSettings('Rewards and family'),
+                          xp: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => XPBetaPage(planner:p,
+                            account: () => openBank(initialTab:4), rankings: () => openBank(initialTab:3, metric:'xp')))),
+                        ) : historyPage(state),
+                      }),
                     ),
                   ],
                 ),
@@ -324,7 +345,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 ),
               ),
             ),
-      floatingActionButton: tab == 1 || tab == 2 || tab == 3
+      floatingActionButton: tab == 1 || tab == 2 || (tab == 3 && !androidLayout)
           ? FloatingActionButton(
               tooltip: tab == 2
                   ? 'Add routine step'
@@ -338,6 +359,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             )
           : null,
     );
+  }
+
+  void openSettings(String section) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(planner:planner!, initialSection:section)));
+  Future<void> openBank({int initialTab=0, String metric='tasks'}) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RewardsPage(role:'bank', initialTab:initialTab, initialMetric:metric)));
+  void openCollection(String title, Widget Function() content, {bool note=false}) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Scaffold(
+      appBar:AppBar(title:Text(title),actions:[if(note) IconButton(tooltip:'Add note', onPressed:()=>edit(note:true), icon:const Icon(Icons.add))]),
+      body:AnimatedBuilder(animation:planner!,builder:(_, __)=>content()))));
   }
 
   Widget box(List<Widget> children, {Color? color}) => Card(
@@ -1402,7 +1431,8 @@ class _EntryEditorState extends State<EntryEditor> {
 
 class SettingsPage extends StatefulWidget {
   final Planner planner;
-  const SettingsPage({super.key, required this.planner});
+  const SettingsPage({super.key, required this.planner, this.initialSection});
+  final String? initialSection;
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
@@ -1410,6 +1440,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage>
     with WidgetsBindingObserver {
   final lan = LanTransfer();
+  final sectionKey = GlobalKey();
   final name = TextEditingController(),
       host = TextEditingController(),
       code = TextEditingController(),
@@ -1423,6 +1454,10 @@ class _SettingsPageState extends State<SettingsPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = sectionKey.currentContext;
+      if (target != null) Scrollable.ensureVisible(target, duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 250));
+    });
     name.text =
         widget.planner.state['profile']?['name'] as String? ?? 'My space';
     LanTransfer.addresses().then((v) {
@@ -1525,7 +1560,8 @@ class _SettingsPageState extends State<SettingsPage>
       });
   }
 
-  Widget section(String title, List<Widget> children) => Card(
+  Widget section(String title, List<Widget> children) => widget.initialSection != null && widget.initialSection != title ? const SizedBox.shrink() : Card(
+    key: title == widget.initialSection ? sectionKey : null,
     child: Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -1546,7 +1582,7 @@ class _SettingsPageState extends State<SettingsPage>
     final p = widget.planner;
     final prefs = p.state['preferences'] as Map? ?? {};
     return Scaffold(
-      appBar: AppBar(title: const Text('Your space')),
+      appBar: AppBar(title: Text(widget.initialSection ?? 'Your space'), actions: [if(widget.initialSection != null) IconButton(tooltip:'All settings',onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SettingsPage(planner:widget.planner))), icon:const Icon(Icons.settings_outlined))]),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
@@ -1625,6 +1661,11 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
               ]),
               section('Reminders', [
+                if (Platform.isAndroid) ...[
+                  Text(p.alerts.issue ?? (p.alerts.exactEnabled == true ? 'Precise reminders enabled.' : 'Standard reminders enabled when notification access is allowed. Android may delay them.')),
+                  OutlinedButton(onPressed: busy ? null : () => run(p.alerts.precisionPermission), child: const Text('Optional: allow precise timing')),
+                  OutlinedButton.icon(onPressed: busy ? null : () => run(() async { await p.alerts.testReminder(); if(mounted) setState(() {message='Test sent. If no banner appears, check the OneStep reminders channel in Android notification settings.';}); }), icon:const Icon(Icons.notification_add_outlined), label:const Text('Send test reminder')),
+                ],
                 Text(reminderCoverage(p.state, DateTime.now())),
                 if (Platform.isAndroid)
                   FilledButton(
@@ -1634,7 +1675,7 @@ class _SettingsPageState extends State<SettingsPage>
                             run(p.alerts.permissions);
                           },
                     child: const Text(
-                      'Enable notifications and precise alarms',
+                      'Allow notifications',
                     ),
                   ),
                 SwitchListTile(

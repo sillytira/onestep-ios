@@ -12,6 +12,7 @@ import 'package:onestep/services.dart';
 
 void main(){
   testWidgets('Render Android Now and More at phone and large text sizes',(tester)async{
+    // ignore: invalid_use_of_visible_for_testing_member
     FlutterSecureStorage.setMockInitialValues({});
     tester.view.physicalSize=const Size(430,960); tester.view.devicePixelRatio=1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);

@@ -336,12 +336,6 @@ class _AdminPageState extends State<AdminPage> {
               'Only an enrolled owner/admin can use these actions. Database passwords and service-role keys are never available in the app. Points are virtual and cannot be sold.',
             ),
             const SizedBox(height: 24),
-            if (widget.embedded && client.signedIn)
-              SingleChildScrollView(scrollDirection:Axis.horizontal, child: Row(children:[
-                for(final entry in <int,String>{0:'Overview',1:'Activity',if(effectiveRole!='bank')2:'Family',if(client.accountKind!='kids')3:'Rankings',4:'Account'}.entries)
-                  Padding(padding:const EdgeInsets.only(right:8),child:ChoiceChip(label:Text(entry.value),selected:bankTab==entry.key,onSelected:(_)=>setState(()=>bankTab=entry.key))),
-                IconButton(tooltip:'Refresh account',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),
-              ])),
             if (busy) const LinearProgressIndicator(),
             if (message.isNotEmpty)
               Padding(
@@ -916,6 +910,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            if (widget.embedded && client.signedIn)
+              SingleChildScrollView(scrollDirection:Axis.horizontal, child: Row(children:[
+                for(final entry in <int,String>{0:'Overview',1:'Activity',if(effectiveRole!='bank')2:'Family',if(client.accountKind!='kids')3:'Rankings',4:'Account'}.entries)
+                  Padding(padding:const EdgeInsets.only(right:8),child:ChoiceChip(label:Text(entry.value),selected:bankTab==entry.key,onSelected:(_)=>setState(()=>bankTab=entry.key))),
+                IconButton(tooltip:'Refresh account',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),
+              ])),
             if (busy) const LinearProgressIndicator(),
             if (message.isNotEmpty)
               Padding(

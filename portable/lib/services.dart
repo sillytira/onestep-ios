@@ -182,7 +182,10 @@ class Alerts {
   Future<void> permissions() async {
     if (!ready) await initialize();
     if (!android) return;
-    final native = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final native = plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await native?.requestNotificationsPermission();
     await apply(_state);
   }
@@ -190,43 +193,67 @@ class Alerts {
   Future<void> precisionPermission() async {
     if (!ready) await initialize();
     if (!android) return;
-    final native = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final native = plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await native?.requestExactAlarmsPermission();
     await apply(_state);
   }
 
-  static const details = NotificationDetails(android: AndroidNotificationDetails(
-    'onestep_reminders', 'OneStep reminders',
-    channelDescription: 'Tasks, daily routines, and focus timers',
-    icon: 'ic_notification', importance: Importance.high, priority: Priority.high));
+  static const details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'onestep_reminders',
+      'OneStep reminders',
+      channelDescription: 'Tasks, daily routines, and focus timers',
+      icon: 'ic_notification',
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+  );
 
   Future<void> testReminder() async {
     if (!ready) await initialize();
     if (!android) return;
-    final native = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final native = plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (await native?.areNotificationsEnabled() == false) {
-      throw const FormatException('Notifications are off. Allow notifications for OneStep in Android settings first.');
+      throw const FormatException(
+        'Notifications are off. Allow notifications for OneStep in Android settings first.',
+      );
     }
-    await plugin.show(2147483646, 'OneStep test reminder', 'You are all set. One small step at a time.', details);
+    await plugin.show(
+      2147483646,
+      'OneStep test reminder',
+      'You are all set. One small step at a time.',
+      details,
+    );
   }
 
   Future<void> apply(Json state) {
     _state = clone(state);
     final snapshot = clone(state);
     // Saves, resume and permission callbacks must never cancel each other's queues.
-    final next = _scheduling.catchError((Object _) {}).then((_) => _apply(snapshot));
+    final next = _scheduling
+        .catchError((Object _) {})
+        .then((_) => _apply(snapshot));
     _scheduling = next;
     return next;
   }
 
   Future<void> _apply(Json state) async {
     if (!ready || !android) return;
-    final native = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final native = plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     notificationsEnabled = await native?.areNotificationsEnabled() ?? true;
     exactEnabled = await native?.canScheduleExactNotifications() ?? false;
     issue = notificationsEnabled == false
-      ? 'Notifications are off. Your planner is saved. Open More → Reminders and settings to allow them.'
-      : null;
+        ? 'Notifications are off. Your planner is saved. Open More → Reminders and settings to allow them.'
+        : null;
     scheduledCount = 0;
     if (notificationsEnabled == false) return;
     final plan = reminders(state, DateTime.now());
@@ -234,16 +261,27 @@ class Alerts {
     for (final alert in plan) {
       if (!alert.at.isAfter(DateTime.now())) continue;
       Future<void> schedule(AndroidScheduleMode mode) => plugin.zonedSchedule(
-        idOf(alert.key), alert.title,
-        alert.timer ? 'Your focus time is up.' : 'One thing at a time. Open OneStep when ready.',
-        tz.TZDateTime.from(alert.at.toUtc(), tz.UTC), details, androidScheduleMode: mode);
+        idOf(alert.key),
+        alert.title,
+        alert.timer
+            ? 'Your focus time is up.'
+            : 'One thing at a time. Open OneStep when ready.',
+        tz.TZDateTime.from(alert.at.toUtc(), tz.UTC),
+        details,
+        androidScheduleMode: mode,
+      );
       try {
-        await schedule(exactEnabled == true ? AndroidScheduleMode.exactAllowWhileIdle : AndroidScheduleMode.inexactAllowWhileIdle);
+        await schedule(
+          exactEnabled == true
+              ? AndroidScheduleMode.exactAllowWhileIdle
+              : AndroidScheduleMode.inexactAllowWhileIdle,
+        );
       } on PlatformException catch (error) {
         if (error.code != 'exact_alarms_not_permitted') rethrow;
         // Access can be revoked between checking it and submitting the alarm.
         exactEnabled = false;
-        if (alert.at.isAfter(DateTime.now())) await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
+        if (alert.at.isAfter(DateTime.now()))
+          await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
       } on ArgumentError {
         if (alert.at.isAfter(DateTime.now())) rethrow;
       }

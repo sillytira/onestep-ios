@@ -253,7 +253,14 @@ class RewardsPage extends StatefulWidget {
   final bool embedded;
   final int initialTab;
   final String initialMetric;
-  const RewardsPage({super.key, this.role = 'bank', this.client, this.embedded=false, this.initialTab=0, this.initialMetric='tasks'});
+  const RewardsPage({
+    super.key,
+    this.role = 'bank',
+    this.client,
+    this.embedded = false,
+    this.initialTab = 0,
+    this.initialMetric = 'tasks',
+  });
   @override
   State<RewardsPage> createState() => _RewardsPageState();
 }
@@ -567,7 +574,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         tasks = rows(saved, 'tasks');
         children = rows(saved, 'children');
         families = rows(saved, 'families');
-        rankings = saved['rankingMetric'] == rankingMetric ? rows(saved, 'rankings') : [];
+        rankings = saved['rankingMetric'] == rankingMetric
+            ? rows(saved, 'rankings')
+            : [];
         publicName.text = saved['publicName'] as String? ?? '';
         handle.text = saved['handle'] as String? ?? '';
         optIn = saved['optIn'] == true;
@@ -845,21 +854,23 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: widget.embedded ? null : AppBar(
-      title: Text(appName),
-      actions: [
-        if (client.signedIn)
-          IconButton(
-            tooltip: 'Refresh account',
-            onPressed: busy
-                ? null
-                : () {
-                    run(refresh);
-                  },
-            icon: const Icon(Icons.refresh),
+    appBar: widget.embedded
+        ? null
+        : AppBar(
+            title: Text(appName),
+            actions: [
+              if (client.signedIn)
+                IconButton(
+                  tooltip: 'Refresh account',
+                  onPressed: busy
+                      ? null
+                      : () {
+                          run(refresh);
+                        },
+                  icon: const Icon(Icons.refresh),
+                ),
+            ],
           ),
-      ],
-    ),
     bottomNavigationBar: widget.embedded || !client.signedIn
         ? null
         : NavigationBar(
@@ -912,11 +923,34 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
           padding: const EdgeInsets.all(20),
           children: [
             if (widget.embedded && client.signedIn)
-              SingleChildScrollView(scrollDirection:Axis.horizontal, child: Row(children:[
-                for(final entry in <int,String>{0:'Overview',1:'Activity',if(effectiveRole!='bank')2:'Family',if(client.accountKind!='kids')3:'Rankings',4:'Account'}.entries)
-                  Padding(padding:const EdgeInsets.only(right:8),child:ChoiceChip(label:Text(entry.value),selected:bankTab==entry.key,onSelected:(_)=>setState(()=>bankTab=entry.key))),
-                IconButton(tooltip:'Refresh account',onPressed:busy?null:()=>run(refresh),icon:const Icon(Icons.refresh)),
-              ])),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final entry in <int, String>{
+                      0: 'Overview',
+                      1: 'Activity',
+                      if (effectiveRole != 'bank') 2: 'Family',
+                      if (client.accountKind != 'kids') 3: 'Rankings',
+                      4: 'Account',
+                    }.entries)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(entry.value),
+                          selected: bankTab == entry.key,
+                          onSelected: (_) =>
+                              setState(() => bankTab = entry.key),
+                        ),
+                      ),
+                    IconButton(
+                      tooltip: 'Refresh account',
+                      onPressed: busy ? null : () => run(refresh),
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                ),
+              ),
             if (busy) const LinearProgressIndicator(),
             if (message.isNotEmpty)
               Padding(
@@ -1564,7 +1598,10 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     ],
                     selected: {rankingMetric},
                     onSelectionChanged: (v) {
-                      setState(() { rankingMetric = v.first; rankings = []; });
+                      setState(() {
+                        rankingMetric = v.first;
+                        rankings = [];
+                      });
                       run(refresh);
                     },
                   ),

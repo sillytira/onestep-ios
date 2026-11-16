@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:onestep/model.dart';
 import 'package:onestep/services.dart';
 
@@ -15,6 +16,7 @@ void main() {
   }];
   setUp(() {
     debugDefaultTargetPlatformOverride=TargetPlatform.android;
+    FlutterLocalNotificationsPlatform.instance=AndroidFlutterLocalNotificationsPlugin();
     calls=[]; allowed=true; exact=false; revoke=false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel,(call) async {
       calls.add(call);

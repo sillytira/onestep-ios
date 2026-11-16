@@ -567,7 +567,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         tasks = rows(saved, 'tasks');
         children = rows(saved, 'children');
         families = rows(saved, 'families');
-        rankings = rows(saved, 'rankings');
+        rankings = saved['rankingMetric'] == rankingMetric ? rows(saved, 'rankings') : [];
         publicName.text = saved['publicName'] as String? ?? '';
         handle.text = saved['handle'] as String? ?? '';
         optIn = saved['optIn'] == true;
@@ -752,6 +752,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         'children': children,
         'families': families,
         'rankings': rankings,
+        'rankingMetric': rankingMetric,
         'publicName': publicName.text,
         'handle': handle.text,
         'optIn': optIn,
@@ -1563,7 +1564,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     ],
                     selected: {rankingMetric},
                     onSelectionChanged: (v) {
-                      setState(() => rankingMetric = v.first);
+                      setState(() { rankingMetric = v.first; rankings = []; });
                       run(refresh);
                     },
                   ),

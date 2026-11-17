@@ -3,8 +3,10 @@ import SwiftUI
 struct XPBetaView: View {
     @Environment(PlannerStore.self) private var store
     @State private var account = RewardsStore.shared
-    @State private var total: Int?, today: Int?
-    @State private var waiting = 0, busy = false
+    @State private var total: Int?
+    @State private var today: Int?
+    @State private var waiting = 0
+    @State private var busy = false
     @State private var status = ""
     var body: some View {
         List {
@@ -43,13 +45,23 @@ struct XPBetaView: View {
 
 struct ModerationView: View {
     @State private var model = RewardsStore.shared
-    @State private var owner = false, busy = false
+    @State private var owner = false
+    @State private var busy = false
     @State private var capabilities: [String] = []
-    @State private var users: [[String:Any]] = [], audit: [[String:Any]] = []
-    @State private var target = "", reason = "", email = "", kind = "normal", message = "", invitation = ""
-    @State private var grant: Set<String> = [], amount = 10, days = 7
+    @State private var users: [[String:Any]] = []
+    @State private var audit: [[String:Any]] = []
+    @State private var target = ""
+    @State private var reason = ""
+    @State private var email = ""
+    @State private var kind = "normal"
+    @State private var message = ""
+    @State private var invitation = ""
+    @State private var grant: Set<String> = []
+    @State private var amount = 10
+    @State private var days = 7
     @State private var confirmation: String?
-    @State private var adjustmentID: UUID?, adjustmentFingerprint = ""
+    @State private var adjustmentID: UUID?
+    @State private var adjustmentFingerprint = ""
     private let known = ["accounts.read","accounts.ban","points.adjust","invites.issue"]
     private func allowed(_ cap: String) -> Bool { owner || capabilities.contains(cap) }
     var body: some View {

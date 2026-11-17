@@ -3,12 +3,15 @@ import Observation
 
 @MainActor @Observable final class CloudPlannerSync {
     static let shared = CloudPlannerSync()
-    var busy = false, enabled = false
+    var busy = false
+    var enabled = false
     var status = "Sync is off. Your planner stays on this device."
     var pending: PlannerMergeResult?
     var generation = UUID()
-    private var base: [String:Any]?, snapshot: [String:Any]?
-    private var accountID: String?, revision = 0
+    private var base: [String:Any]?
+    private var snapshot: [String:Any]?
+    private var accountID: String?
+    private var revision = 0
     private let account = RewardsStore.shared
     private func file(_ user: String) throws -> URL { try FileManager.default.url(for:.applicationSupportDirectory,in:.userDomainMask,appropriateFor:nil,create:true).appendingPathComponent("sync-\(user).encrypted") }
     private func json(_ state: PlannerState) throws -> [String:Any] { PlannerMerge.shared(try JSONSerialization.jsonObject(with:JSONEncoder().encode(state)) as! [String:Any]) }

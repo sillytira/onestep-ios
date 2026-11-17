@@ -269,7 +269,7 @@ struct RewardsView: View {
         .toolbar {
             if model.signedIn { ToolbarItem(placement:.primaryAction) { Button("Refresh account",systemImage:"arrow.clockwise") { Task { await model.action { try await model.reload() } } }.disabled(model.busy) } }
         }
-        .task { await model.load(); if let initialMetric { model.rankingMetric = initialMetric }; if model.signedIn { await model.action { try await model.reload() } } }
+        .task { await model.load(); if let initialMetric { model.rankings = []; model.rankingMetric = initialMetric }; if model.signedIn { await model.action { try await model.reload() } } }
     }
     private var login: some View {
         @Bindable var fields = model
@@ -349,7 +349,7 @@ struct RewardsView: View {
         return List {
             Section {
                 Picker("Rank by",selection:$fields.rankingMetric) { Text("Tasks").tag("tasks");Text("Points").tag("points");Text("XP").tag("xp") }.pickerStyle(.segmented)
-                    .onChange(of:model.rankingMetric) { _,_ in Task { await model.action { try await model.reload() } } }
+                    .onChange(of:model.rankingMetric) { _,_ in model.rankings = []; Task { await model.action { try await model.reload() } } }
                 Text("This week · Points: 20 counted tasks / 1,000 earned points per UTC day. XP: its own 1,000/day limit and separate opt-in ranking.").font(.footnote).foregroundStyle(.secondary)
             }
             Text(model.rankingMetric == "xp" ? "XP leaderboard" : "Task and points leaderboard").font(.headline)

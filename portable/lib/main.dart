@@ -40,65 +40,75 @@ String clock(DateTime value) =>
 class OneStepApp extends StatelessWidget {
   const OneStepApp({super.key});
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<Locale?>(valueListenable:AppLanguage.locale,builder:(context,locale,_)=>MaterialApp(
-    locale:locale,
-    supportedLocales:const [Locale("en"),Locale("de"),Locale("uk"),Locale("ru"),Locale("pl"),Locale("bg")],
-    localizationsDelegates:GlobalMaterialLocalizations.delegates,
-    title: 'OneStep Beta',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
-        },
-      ),
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: accents['blue']!,
+  Widget build(BuildContext context) => ValueListenableBuilder<Locale?>(
+    valueListenable: AppLanguage.locale,
+    builder: (context, locale, _) => MaterialApp(
+      locale: locale,
+      supportedLocales: const [
+        Locale("en"),
+        Locale("de"),
+        Locale("uk"),
+        Locale("ru"),
+        Locale("pl"),
+        Locale("bg"),
+      ],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      title: 'OneStep Beta',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+            TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+          },
+        ),
         brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xff090a0c),
-      cardTheme: const CardThemeData(
-        color: Color(0xff1c1d21),
-        elevation: 0,
-        margin: EdgeInsets.symmetric(vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(28)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: accents['blue']!,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xff090a0c),
+        cardTheme: const CardThemeData(
+          color: Color(0xff1c1d21),
+          elevation: 0,
+          margin: EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(28)),
+          ),
+        ),
+        dividerTheme: const DividerThemeData(
+          color: Color(0xff2a2c37),
+          thickness: 1,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xff0e1016),
+          surfaceTintColor: Colors.transparent,
+          centerTitle: false,
+        ),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: Color(0xff14161e),
+          indicatorColor: Color(0xff37314f),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(minimumSize: const Size(48, 52)),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(minimumSize: const Size(48, 50)),
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: Color(0xff2a2c37),
-        thickness: 1,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xff0e1016),
-        surfaceTintColor: Colors.transparent,
-        centerTitle: false,
-      ),
-      navigationBarTheme: const NavigationBarThemeData(
-        backgroundColor: Color(0xff14161e),
-        indicatorColor: Color(0xff37314f),
-      ),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(minimumSize: const Size(48, 52)),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(minimumSize: const Size(48, 50)),
-      ),
+      home: appRole == 'planner'
+          ? const Home()
+          : const RewardsPage(role: appRole),
     ),
-    home: appRole == 'planner'
-        ? const Home()
-        : const RewardsPage(role: appRole),
-  ));
+  );
 }
 
 class Home extends StatefulWidget {
@@ -174,11 +184,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && planner != null)
-      planner!.alerts.apply(planner!.state).then((_) { planner!.warning = planner!.alerts.issue; changed(); unawaited(planner!.cloudSync.tick()); }).catchError((Object e) {
-        planner!.warning =
-            'Reminders need attention. Open More → Reminders and settings.';
-        changed();
-      });
+      planner!.alerts
+          .apply(planner!.state)
+          .then((_) {
+            planner!.warning = planner!.alerts.issue;
+            changed();
+            unawaited(planner!.cloudSync.tick());
+          })
+          .catchError((Object e) {
+            planner!.warning =
+                'Reminders need attention. Open More → Reminders and settings.';
+            changed();
+          });
   }
 
   Future<void> run(Future<void> Function() action) async {
@@ -241,9 +258,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     final state = p.state;
     final now = DateTime.now();
     final interfaceLanguage = Localizations.localeOf(context).languageCode;
-    final names = (androidLayout
-        ? ['Now', 'Tasks', 'Routines', 'Bank', 'More']
-        : ['Now', 'Tasks', 'Routines', 'Notes', 'History']).map((name)=>translate(name,language:interfaceLanguage)).toList();
+    final names =
+        (androidLayout
+                ? ['Now', 'Tasks', 'Routines', 'Bank', 'More']
+                : ['Now', 'Tasks', 'Routines', 'Notes', 'History'])
+            .map((name) => translate(name, language: interfaceLanguage))
+            .toList();
     final icons = [
       Icons.auto_awesome_outlined,
       Icons.checklist_rounded,
@@ -268,7 +288,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
         backgroundColor: Colors.transparent,
         actions: [
-          IconButton(tooltip:'Planner',onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>CalendarPage(planner:p,edit:(task)=>edit(item:task)))),icon:const Icon(Icons.calendar_month_outlined)),
+          IconButton(
+            tooltip: 'Planner',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CalendarPage(
+                  planner: p,
+                  edit: (task) => edit(item: task),
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.calendar_month_outlined),
+          ),
           IconButton(
             tooltip: 'OneStep Bank',
             icon: const Icon(Icons.account_balance_wallet_outlined),
@@ -351,8 +382,19 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                           _ =>
                             androidLayout
                                 ? AndroidMore(
-                                    calendar: () => Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>CalendarPage(planner:p,edit:(t)=>edit(item:t)))),
-                                    sync: () => Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SyncPage(planner:p))),
+                                    calendar: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => CalendarPage(
+                                          planner: p,
+                                          edit: (t) => edit(item: t),
+                                        ),
+                                      ),
+                                    ),
+                                    sync: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => SyncPage(planner: p),
+                                      ),
+                                    ),
                                     notes: () => openCollection(
                                       'Notes',
                                       () => notesPage(p.state),
@@ -710,7 +752,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               }),
               child: const LText('Leave guided routine'),
             ),
-          const LText('Steps finished', style: TextStyle(color: Colors.white70)),
+          const LText(
+            'Steps finished',
+            style: TextStyle(color: Colors.white70),
+          ),
           const SizedBox(height: 12),
           const LText(
             'Your progress, without a streak to maintain. This private step count is not spendable points. Bank shows your parent-approved family rewards.',
@@ -870,6 +915,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     '${dayKey(d)} · ${clock(d)}',
                   if ((t['listName'] as String? ?? '').isNotEmpty)
                     t['listName'] as String,
+                  if (t['rewardPoints'] != null)
+                    '${t['rewardPoints']} points',
                 ].join('\n'),
               ),
               onTap: () {
@@ -1208,7 +1255,7 @@ class _EntryEditorState extends State<EntryEditor> {
   int rewardPoints = 10;
   int repeatEvery = 1;
   int repeatMonthDay = 1;
-  Set<int> repeatWeekdays = {1,2,3,4,5};
+  Set<int> repeatWeekdays = {1, 2, 3, 4, 5};
   @override
   void initState() {
     super.initState();
@@ -1231,7 +1278,8 @@ class _EntryEditorState extends State<EntryEditor> {
     color = t?['colorName'] as String? ?? (widget.routine ? 'violet' : 'blue');
     repeat = t?['repeatRule'] as String? ?? 'none';
     repeatEvery = t?['repeatEvery'] as int? ?? 1;
-    repeatWeekdays = (t?['repeatWeekdays'] as List?)?.cast<int>().toSet() ?? {1,2,3,4,5};
+    repeatWeekdays =
+        (t?['repeatWeekdays'] as List?)?.cast<int>().toSet() ?? {1, 2, 3, 4, 5};
     due = widget.routine
         ? DateTime(
             DateTime.now().year,
@@ -1302,7 +1350,8 @@ class _EntryEditorState extends State<EntryEditor> {
       if (!widget.note && !widget.routine && t['completedAt'] == null) {
         if (rewardEnabled && rewardAccount.accountKind != 'kids') {
           t['rewardPoints'] = rewardPoints;
-          if (rewardAccount.signedIn) t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
+          if (rewardAccount.signedIn)
+            t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
         } else if ((!rewardEnabled || rewardAccount.signedIn) &&
             (t['rewardAccountID'] == null ||
                 t['rewardAccountID'] == rewardAccount.userID)) {
@@ -1333,7 +1382,9 @@ class _EntryEditorState extends State<EntryEditor> {
             t['repeatRule'] = repeat;
             t['repeatEvery'] = repeatEvery;
             t['repeatWeekdays'] = repeatWeekdays.toList()..sort();
-            if(t['repeatAnchor']==null || widget.item?['dueAt']!=stamp(due))t['repeatAnchor'] = stamp(due);
+            if (t['repeatAnchor'] == null ||
+                widget.item?['dueAt'] != stamp(due))
+              t['repeatAnchor'] = stamp(due);
             t['repeatMonthDay'] = repeatMonthDay;
           } else {
             t.remove('repeatRule');
@@ -1425,9 +1476,7 @@ class _EntryEditorState extends State<EntryEditor> {
 
             TextField(
               controller: title,
-              decoration: const LDecoration(
-                labelText: 'One thing to remember',
-              ),
+              decoration: const LDecoration(labelText: 'One thing to remember'),
               textCapitalization: TextCapitalization.sentences,
               maxLines: null,
             ),
@@ -1494,16 +1543,81 @@ class _EntryEditorState extends State<EntryEditor> {
                       DropdownMenuItem(value: 'none', child: LText('Never')),
                       DropdownMenuItem(value: 'daily', child: LText('Daily')),
                       DropdownMenuItem(value: 'weekly', child: LText('Weekly')),
-                      DropdownMenuItem(value: 'monthly', child: LText('Monthly')),
-                      DropdownMenuItem(value: 'weekdays', child: LText('Selected weekdays')),
+                      DropdownMenuItem(
+                        value: 'monthly',
+                        child: LText('Monthly'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'weekdays',
+                        child: LText('Selected weekdays'),
+                      ),
                     ],
                     onChanged: (v) => setState(() {
                       repeat = v ?? 'none';
                     }),
                   ),
-                  if(repeat != 'none') DropdownButtonFormField<int>(initialValue:repeatEvery, decoration:const LDecoration(labelText:'Repeat every'),items:[for(final n in ({1,2,3,4,6,7,12,14,30,repeatEvery}.toList()..sort()))DropdownMenuItem(value:n,child:Text('$n ${repeat == 'monthly' ? 'month(s)' : repeat == 'daily' ? 'day(s)' : 'week(s)'}'))],onChanged:(v)=>setState(()=>repeatEvery=v??1)),
-                  if(repeat == 'monthly') DropdownButtonFormField<int>(initialValue:repeatMonthDay,decoration:const LDecoration(labelText:'Day of month'),items:[for(var d=1;d<=31;d++)DropdownMenuItem(value:d,child:Text('$d'))],onChanged:(v)=>setState(()=>repeatMonthDay=v??1)),
-                  if(repeat == 'weekdays') Wrap(spacing:6,children:[for(var d=1;d<=7;d++)FilterChip(label:Text(MaterialLocalizations.of(context).narrowWeekdays[d%7]),selected:repeatWeekdays.contains(d),onSelected:(v)=>setState((){if(v){repeatWeekdays.add(d);}else if(repeatWeekdays.length>1){repeatWeekdays.remove(d);}}))]),
+                  if (repeat != 'none')
+                    DropdownButtonFormField<int>(
+                      initialValue: repeatEvery,
+                      decoration: const LDecoration(labelText: 'Repeat every'),
+                      items: [
+                        for (final n in ({
+                          1,
+                          2,
+                          3,
+                          4,
+                          6,
+                          7,
+                          12,
+                          14,
+                          30,
+                          repeatEvery,
+                        }.toList()..sort()))
+                          DropdownMenuItem(
+                            value: n,
+                            child: Text(
+                              '$n ${repeat == 'monthly'
+                                  ? 'month(s)'
+                                  : repeat == 'daily'
+                                  ? 'day(s)'
+                                  : 'week(s)'}',
+                            ),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => repeatEvery = v ?? 1),
+                    ),
+                  if (repeat == 'monthly')
+                    DropdownButtonFormField<int>(
+                      initialValue: repeatMonthDay,
+                      decoration: const LDecoration(labelText: 'Day of month'),
+                      items: [
+                        for (var d = 1; d <= 31; d++)
+                          DropdownMenuItem(value: d, child: Text('$d')),
+                      ],
+                      onChanged: (v) => setState(() => repeatMonthDay = v ?? 1),
+                    ),
+                  if (repeat == 'weekdays')
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        for (var d = 1; d <= 7; d++)
+                          FilterChip(
+                            label: Text(
+                              MaterialLocalizations.of(
+                                context,
+                              ).narrowWeekdays[d % 7],
+                            ),
+                            selected: repeatWeekdays.contains(d),
+                            onSelected: (v) => setState(() {
+                              if (v) {
+                                repeatWeekdays.add(d);
+                              } else if (repeatWeekdays.length > 1) {
+                                repeatWeekdays.remove(d);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
                 ],
                 const SizedBox(height: 18),
                 TextField(
@@ -1663,8 +1777,12 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> export() async {
-    final password = await askPassphrase(context,confirm:true);if(password==null)return;
-    final text = await BackupCrypto.seal(encodeTransfer(widget.planner.state),password);
+    final password = await askPassphrase(context, confirm: true);
+    if (password == null) return;
+    final text = await BackupCrypto.seal(
+      encodeTransfer(widget.planner.state),
+      password,
+    );
     if (Platform.isAndroid) {
       await const MethodChannel(
         'meow.tira.onestep/files',
@@ -1731,8 +1849,28 @@ class _SettingsPageState extends State<SettingsPage>
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              section('Language', [FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const LanguagePage())),icon:const Icon(Icons.language),label:const LText('Language'))]),
-              section('Private planner sync', [FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SyncPage(planner:p))),icon:const Icon(Icons.sync_lock),label:const LText('Encrypted automatic sync'))]),
+              section('Language', [
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LanguagePage(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.language),
+                  label: const LText('Language'),
+                ),
+              ]),
+              section('Private planner sync', [
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => SyncPage(planner: p),
+                    ),
+                  ),
+                  icon: const Icon(Icons.sync_lock),
+                  label: const LText('Encrypted automatic sync'),
+                ),
+              ]),
               section('Content updates', [
                 FilledButton.icon(
                   onPressed: () {
@@ -1942,10 +2080,14 @@ class _SettingsPageState extends State<SettingsPage>
                             if (await file.length() > 12 * 1024 * 1024)
                               throw const FormatException('Backup too large.');
                             final text = await file.readAsString();
-                            if(!mounted)return;
-                            final password = BackupCrypto.encrypted(text) ? await askPassphrase(context) : '';
-                            if(password==null)return;
-                            await preview(await BackupCrypto.decode(text,password));
+                            if (!mounted) return;
+                            final password = BackupCrypto.encrypted(text)
+                                ? await askPassphrase(context)
+                                : '';
+                            if (password == null) return;
+                            await preview(
+                              await BackupCrypto.decode(text, password),
+                            );
                           });
                         },
                   child: const LText('Import and preview'),

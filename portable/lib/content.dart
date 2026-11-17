@@ -258,7 +258,9 @@ class _ContentPageState extends State<ContentPage> {
                               final confirmed = await showDialog<bool>(
                                 context: context,
                                 builder: (c) => AlertDialog(
-                                  title: const LText('Add these routine steps?'),
+                                  title: const LText(
+                                    'Add these routine steps?',
+                                  ),
                                   content: const LText(
                                     'Adds new steps. Existing routines and history stay in place. Edit the new times in Routines.',
                                   ),

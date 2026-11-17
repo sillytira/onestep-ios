@@ -40,7 +40,8 @@ Json decodeTransfer(String text) {
 }
 
 void validateState(Json state) {
-  if (rows(state,'tasks').any((t)=>!validRecurrence(t))) throw const FormatException('Invalid recurrence rule.');
+  if (rows(state, 'tasks').any((t) => !validRecurrence(t)))
+    throw const FormatException('Invalid recurrence rule.');
   if (state['schemaVersion'] != 1)
     throw const FormatException('Unsupported data version.');
   for (final key in ['tasks', 'routines', 'days']) {
@@ -187,13 +188,14 @@ Json complete(
     final t = tasks[index];
     t['completedAt'] = stamp(now);
     t.remove('snoozedUntil');
-    final due = nextRepeat(t,now);
+    final due = nextRepeat(t, now);
     if (due != null) {
       final next = clone(t)
         ..['id'] = uuid.v4().toUpperCase()
         ..['repeatParentID'] = t['id']
         ..['repeatAnchor'] = t['repeatAnchor'] ?? t['dueAt']
-        ..['repeatMonthDay'] = t['repeatMonthDay'] ?? dateOf(t['repeatAnchor']??t['dueAt'])!.day
+        ..['repeatMonthDay'] =
+            t['repeatMonthDay'] ?? dateOf(t['repeatAnchor'] ?? t['dueAt'])!.day
         ..['createdAt'] = stamp(now)
         ..['dueAt'] = stamp(due)
         ..remove('completedAt');

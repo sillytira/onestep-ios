@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:onestep/main.dart';
 import 'package:onestep/model.dart';
 import 'package:onestep/services.dart';
+import 'package:onestep/calendar_page.dart';
 
 void main(){
   testWidgets('Render Android Now and More at phone and large text sizes',(tester)async{
@@ -29,6 +30,8 @@ void main(){
     await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true).copyWith(textTheme:ThemeData.dark().textTheme.apply(fontFamily:'Preview')),home:RepaintBoundary(key:const ValueKey('preview'),child:Home(initialPlanner:p,androidLayout:true))));
     await tester.pumpAndSettle(); await capture('Android-Now');
     await tester.tap(find.byType(NavigationDestination).last); await tester.pumpAndSettle(); await capture('Android-More');
+    await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true).copyWith(textTheme:ThemeData.dark().textTheme.apply(fontFamily:'Preview')),home:RepaintBoundary(key:const ValueKey('preview'),child:CalendarPage(planner:p,edit:(_){ }))));
+    await tester.pumpAndSettle(); await capture('Android-Calendar');
     await tester.pumpWidget(const SizedBox()); await tester.pump();
   });
 }

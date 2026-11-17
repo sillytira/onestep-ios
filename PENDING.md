@@ -1,3 +1,5 @@
+Current service update: migrations001–007 are live after explicit approval. See [SERVICE-STATUS.md](SERVICE-STATUS.md). Android/Windows0.10.1 removes the duplicate top Save; native0.10/build33 is unchanged. Older pending-deployment statements below describe the earlier release state.
+
 # OneStep 0.10 — remaining prerequisites
 
 The owner approved both Android and Apple, confirmed basic tasks/reminders/routines/updating work, and approved owner-controlled moderation. Calendar, advanced recurrence, encrypted exports/cloud merge, Apple More/XP Beta and five core UI languages are implemented; see CONFIRMED-BETA.md. Live001–005 remain the baseline. Both006 and007 are staged/tested but NOTdeployed; the owner will restore Edge access later after Windows denied automation. Apply only missing migrations in order, never synthetic testSQL. Online feature acceptance follows deployment.

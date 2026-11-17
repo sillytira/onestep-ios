@@ -29,6 +29,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => Scaffold(body: FilledButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EntryEditor(planner: planner))), child: const Text('Open editor'))))));
     await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.widgetWithText(FilledButton, 'Save'), 400, scrollable: find.byType(Scrollable).first);
     expect(find.text('Save'), findsOneWidget);
     expect(find.descendant(of: find.byType(AppBar), matching: find.text('Save')), findsNothing);
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
@@ -36,9 +37,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Give this step a name before saving.'), findsOneWidget);
     expect(rows(planner.state, 'tasks'), isEmpty);
-    await tester.ensureVisible(find.widgetWithText(TextField, 'One thing to remember'));
+    await tester.scrollUntilVisible(find.widgetWithText(TextField, 'One thing to remember'), -400, scrollable: find.byType(Scrollable).first);
     await tester.enterText(find.widgetWithText(TextField, 'One thing to remember'), 'One saved step');
-    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
+    await tester.scrollUntilVisible(find.widgetWithText(FilledButton, 'Save'), 400, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
     expect(rows(planner.state, 'tasks').single['title'], 'One saved step');
@@ -95,6 +96,7 @@ void main() {
       find.widgetWithText(TextField, 'One thing to remember'),
       'Walk outside',
     );
+    await tester.scrollUntilVisible(find.widgetWithText(FilledButton, 'Save'), 400, scrollable: find.byType(Scrollable).first);
     expect(find.text('Save'), findsOneWidget);
     expect(find.descendant(of: find.byType(AppBar).last, matching: find.text('Save')), findsNothing);
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));

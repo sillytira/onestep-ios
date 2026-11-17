@@ -32,6 +32,8 @@ void main(){
     await tester.tap(find.byType(NavigationDestination).last); await tester.pumpAndSettle(); await capture('Android-More');
     await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true).copyWith(textTheme:ThemeData.dark().textTheme.apply(fontFamily:'Preview')),home:RepaintBoundary(key:const ValueKey('preview'),child:CalendarPage(planner:p,edit:(_){ }))));
     await tester.pumpAndSettle(); await capture('Android-Calendar');
+    await tester.pumpWidget(MaterialApp(theme:ThemeData.dark(useMaterial3:true).copyWith(textTheme:ThemeData.dark().textTheme.apply(fontFamily:'Preview')),home:RepaintBoundary(key:const ValueKey('preview'),child:EntryEditor(planner:p,item:rows(state,'tasks').first))));
+    await tester.pumpAndSettle(); await capture('Android-Editor');
     await tester.pumpWidget(const SizedBox()); await tester.pump();
   });
 }

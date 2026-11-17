@@ -1,3 +1,9 @@
+# OneStep0.10.1 Android/Windows patch
+
+Removed the duplicate editor Save action; the form retains one bottom Save button. Native iPhone0.10/build33 is unchanged. Online migrations001–007 are now deployed. See [SERVICE-STATUS.md](SERVICE-STATUS.md) for live verification and remaining account/device checks.
+
+Earlier0.10 feature/release context:
+
 # OneStep 0.10 Beta
 
 Calendar, advanced recurrence, encrypted backup/sync, Apple More/XP Beta, owner-controlled moderation and five core UI languages are added to the main Android/iPhone clients. See [CONFIRMED-BETA.md](CONFIRMED-BETA.md) for features, recovery, service setup and limits. Live migrations006/007 are pending; online features require that upgrade. The prior Windows/Linux and companion binaries are unchanged.

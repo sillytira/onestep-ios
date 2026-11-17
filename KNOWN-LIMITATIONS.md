@@ -1,3 +1,5 @@
+Current service update: migrations001–007 are live after explicit approval. See [SERVICE-STATUS.md](SERVICE-STATUS.md). Android/Windows0.10.1 removes the duplicate top Save; native0.10/build33 is unchanged. Older pending-deployment statements below describe the earlier release state.
+
 # OneStep 0.10 Beta limitations
 
 New features and exact service prerequisites are described in [CONFIRMED-BETA.md](CONFIRMED-BETA.md). The owner confirmed basic tasks, reminders, routines and updating work. This does not establish signed Screen Time/family/moderation acceptance. Migrations006/007 remain pending because authenticated Edge control is unavailable; the owner will restore access later. Language support covers core copy; detailed service messages fall back to English. New main Android/iPhone packages replace0.9/0.8 respectively; desktop/companions remain unchanged.

@@ -1,3 +1,5 @@
+Current service update: migrations001–007 are live after explicit approval. See [SERVICE-STATUS.md](SERVICE-STATUS.md). Android/Windows0.10.1 removes the duplicate top Save; native0.10/build33 is unchanged. Older pending-deployment statements below describe the earlier release state.
+
 # OneStep 0.10 Beta — confirmed updates
 
 Main Android 0.10.0-beta build 15 and native iPhone 0.10.0 build 33. Install over the same app identity with the same signing settings after making a verified backup. Keep the old app until you have checked your saved tasks. Windows/Linux and optional companion binaries remain the previous release.

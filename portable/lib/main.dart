@@ -10,6 +10,9 @@ import 'content.dart';
 import 'personal.dart';
 import 'desktop_sidebar.dart';
 import 'android_experience.dart';
+import 'calendar_page.dart';
+import 'cloud_sync.dart';
+import 'backup_crypto.dart';
 import 'package:flutter/foundation.dart';
 
 const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
@@ -135,6 +138,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         fatal = null;
       });
       loaded.addListener(changed);
+      unawaited(loaded.cloudSync.start());
       if (loaded.state['contentAutoUpdate'] != false) {
         unawaited(ContentCache(loaded.directory).refreshQuietly());
       }
@@ -156,6 +160,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     ticker?.cancel();
     planner?.removeListener(changed);
     planner?.alerts.dispose();
+    planner?.cloudSync.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -163,7 +168,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && planner != null)
-      planner!.alerts.apply(planner!.state).catchError((Object e) {
+      planner!.alerts.apply(planner!.state).then((_) { planner!.warning = planner!.alerts.issue; changed(); unawaited(planner!.cloudSync.tick()); }).catchError((Object e) {
         planner!.warning =
             'Reminders need attention. Open More → Reminders and settings.';
         changed();
@@ -256,6 +261,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(tooltip:'Planner',onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>CalendarPage(planner:p,edit:(task)=>edit(item:task)))),icon:const Icon(Icons.calendar_month_outlined)),
           IconButton(
             tooltip: 'OneStep Bank',
             icon: const Icon(Icons.account_balance_wallet_outlined),
@@ -338,6 +344,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                           _ =>
                             androidLayout
                                 ? AndroidMore(
+                                    calendar: () => Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>CalendarPage(planner:p,edit:(t)=>edit(item:t)))),
+                                    sync: () => Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SyncPage(planner:p))),
                                     notes: () => openCollection(
                                       'Notes',
                                       () => notesPage(p.state),
@@ -1191,6 +1199,8 @@ class _EntryEditorState extends State<EntryEditor> {
   final rewardAccount = FamilyClient.shared;
   bool rewardEnabled = false;
   int rewardPoints = 10;
+  int repeatEvery = 1;
+  Set<int> repeatWeekdays = {1,2,3,4,5};
   @override
   void initState() {
     super.initState();
@@ -1212,6 +1222,8 @@ class _EntryEditorState extends State<EntryEditor> {
     list = TextEditingController(text: t?['listName'] as String? ?? '');
     color = t?['colorName'] as String? ?? (widget.routine ? 'violet' : 'blue');
     repeat = t?['repeatRule'] as String? ?? 'none';
+    repeatEvery = t?['repeatEvery'] as int? ?? 1;
+    repeatWeekdays = (t?['repeatWeekdays'] as List?)?.cast<int>().toSet() ?? {1,2,3,4,5};
     due = widget.routine
         ? DateTime(
             DateTime.now().year,
@@ -1279,11 +1291,9 @@ class _EntryEditorState extends State<EntryEditor> {
           : clone(widget.item!);
       t['title'] = title.text.trim();
       if (!widget.note && !widget.routine && t['completedAt'] == null) {
-        if (rewardEnabled &&
-            rewardAccount.signedIn &&
-            rewardAccount.accountKind != 'kids') {
+        if (rewardEnabled && rewardAccount.accountKind != 'kids') {
           t['rewardPoints'] = rewardPoints;
-          t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
+          if (rewardAccount.signedIn) t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
         } else if (rewardAccount.signedIn &&
             rewardAccount.accountKind != null &&
             (t['rewardAccountID'] == null ||
@@ -1313,6 +1323,10 @@ class _EntryEditorState extends State<EntryEditor> {
           }
           if (hasDate && repeat != 'none') {
             t['repeatRule'] = repeat;
+            t['repeatEvery'] = repeatEvery;
+            t['repeatWeekdays'] = repeatWeekdays.toList()..sort();
+            t['repeatAnchor'] = stamp(due);
+            t['repeatMonthDay'] = due.day;
           } else {
             t.remove('repeatRule');
           }
@@ -1374,10 +1388,9 @@ class _EntryEditorState extends State<EntryEditor> {
           children: [
             if (!widget.note &&
                 !widget.routine &&
-                rewardAccount.signedIn &&
                 rewardAccount.accountKind != 'kids') ...[
               SwitchListTile(
-                title: const Text('Enroll this task for account rewards'),
+                title: const Text('Points for this task'),
                 value: rewardEnabled,
                 onChanged: widget.item?['completedAt'] != null
                     ? null
@@ -1398,7 +1411,7 @@ class _EntryEditorState extends State<EntryEditor> {
                       : (v) => setState(() => rewardPoints = v ?? 10),
                 ),
               const Text(
-                'Self-reported: up to20 counted tasks and500 earned points per UTC day. The title is sent for duplicate checks; only a hash is stored. Done remains immediate/offline. Points wait for the server.',
+                'Choose 0–100 points per task. Sign in and save to connect a draft reward to your account. Up to 20 counted tasks and 1,000 earned points per UTC day after migration 006. The title is sent for duplicate checks; only a hash is stored. Done remains immediate/offline. Points wait for the server.',
               ),
             ],
 
@@ -1473,11 +1486,15 @@ class _EntryEditorState extends State<EntryEditor> {
                       DropdownMenuItem(value: 'none', child: Text('Never')),
                       DropdownMenuItem(value: 'daily', child: Text('Daily')),
                       DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                      DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                      DropdownMenuItem(value: 'weekdays', child: Text('Selected weekdays')),
                     ],
                     onChanged: (v) => setState(() {
                       repeat = v ?? 'none';
                     }),
                   ),
+                  if(repeat != 'none') DropdownButtonFormField<int>(initialValue:repeatEvery, decoration:const InputDecoration(labelText:'Repeat every'),items:[for(final n in ({1,2,3,4,6,7,12,14,30,repeatEvery}.toList()..sort()))DropdownMenuItem(value:n,child:Text('$n ${repeat == 'monthly' ? 'month(s)' : repeat == 'daily' ? 'day(s)' : 'week(s)'}'))],onChanged:(v)=>setState(()=>repeatEvery=v??1)),
+                  if(repeat == 'weekdays') Wrap(spacing:6,children:[for(var d=1;d<=7;d++)FilterChip(label:Text(MaterialLocalizations.of(context).narrowWeekdays[d%7]),selected:repeatWeekdays.contains(d),onSelected:(v)=>setState((){if(v){repeatWeekdays.add(d);}else if(repeatWeekdays.length>1){repeatWeekdays.remove(d);}}))]),
                 ],
                 const SizedBox(height: 18),
                 TextField(
@@ -1637,7 +1654,8 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> export() async {
-    final text = encodeTransfer(widget.planner.state);
+    final password = await askPassphrase(context,confirm:true);if(password==null)return;
+    final text = await BackupCrypto.seal(encodeTransfer(widget.planner.state),password);
     if (Platform.isAndroid) {
       await const MethodChannel(
         'meow.tira.onestep/files',
@@ -1704,6 +1722,7 @@ class _SettingsPageState extends State<SettingsPage>
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              section('Private planner sync', [FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SyncPage(planner:p))),icon:const Icon(Icons.sync_lock),label:const Text('Encrypted automatic sync'))]),
               section('Content updates', [
                 FilledButton.icon(
                   onPressed: () {
@@ -1893,7 +1912,7 @@ class _SettingsPageState extends State<SettingsPage>
                       : () {
                           run(export);
                         },
-                  child: const Text('Export JSON backup'),
+                  child: const Text('Export encrypted backup'),
                 ),
                 OutlinedButton(
                   onPressed: busy
@@ -1910,11 +1929,13 @@ class _SettingsPageState extends State<SettingsPage>
                               ],
                             );
                             if (file == null) return;
-                            if (await file.length() > 8 * 1024 * 1024)
+                            if (await file.length() > 12 * 1024 * 1024)
                               throw const FormatException('Backup too large.');
-                            await preview(
-                              decodeTransfer(await file.readAsString()),
-                            );
+                            final text = await file.readAsString();
+                            if(!mounted)return;
+                            final password = BackupCrypto.encrypted(text) ? await askPassphrase(context) : '';
+                            if(password==null)return;
+                            await preview(await BackupCrypto.decode(text,password));
                           });
                         },
                   child: const Text('Import and preview'),
@@ -1962,7 +1983,7 @@ class _SettingsPageState extends State<SettingsPage>
                   child: const Text('Restore a recovery copy'),
                 ),
                 const Text(
-                  'JSON exports are readable personal data. Keep them private. A USB file copy uses the same format as Wi-Fi transfers.',
+                  'New exports are password-encrypted. Keep your passphrase safe; it cannot be recovered. Older readable JSON backups can still be imported. Planner storage and recovery copies on this device are not additionally password-encrypted.',
                 ),
               ]),
               section('Local Wi-Fi transfer', [

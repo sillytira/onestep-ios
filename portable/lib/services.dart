@@ -11,9 +11,11 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'model.dart';
 import 'personal.dart';
+import 'cloud_sync.dart';
 
 class Planner extends ChangeNotifier {
   Json state;
+  late final cloudSync = CloudPlannerSync(this);
   final Directory directory;
   final Alerts alerts;
   Future<void> _writes = Future.value();
@@ -43,10 +45,12 @@ class Planner extends ChangeNotifier {
     return planner;
   }
 
-  Future<void> save(Json next) {
+  Future<void> save(Json next) => transact((_) => next);
+  Future<void> transact(Json Function(Json) transform) {
     final result = Completer<void>();
     _writes = _writes.then((_) async {
       try {
+        final next = transform(clone(state));
         validateState(next);
         final file = File('${directory.path}/planner.json');
         final temp = File('${directory.path}/planner.pending.json');

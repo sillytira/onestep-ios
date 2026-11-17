@@ -5,7 +5,7 @@ import 'model.dart';
 import 'services.dart';
 import 'personal.dart';
 
-const betaVersion = '0.9.0 Beta';
+const betaVersion = '0.10.0 Beta';
 
 class BetaBadge extends StatelessWidget {
   const BetaBadge({super.key});
@@ -66,6 +66,7 @@ class PageMotion extends StatelessWidget {
 }
 
 class AndroidMore extends StatelessWidget {
+  final VoidCallback? calendar, sync;
   final VoidCallback notes,
       history,
       library,
@@ -76,6 +77,7 @@ class AndroidMore extends StatelessWidget {
       family;
   const AndroidMore({
     super.key,
+    this.calendar, this.sync,
     required this.notes,
     required this.history,
     required this.library,
@@ -127,6 +129,8 @@ class AndroidMore extends StatelessWidget {
       const SizedBox(height: 8),
       const Text('The extras, without crowding your next step.'),
       const SizedBox(height: 16),
+      if(calendar!=null) entry('Planner','Day, week and month overview',Icons.calendar_month_rounded,const Color(0xff89b8ff),calendar!),
+      if(sync!=null) entry('Private planner sync','Automatic encrypted sync with conflict review',Icons.sync_lock_rounded,const Color(0xff77e0d6),sync!),
       entry(
         'XP Beta',
         'Your progress, pending awards and separate rankings',
@@ -341,7 +345,7 @@ class _XPBetaPageState extends State<XPBetaPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Text('XP celebrates progress. Points buy app time.'),
+              const Text('XP celebrates progress. Points buy app time. Beta earnings stay in the beta leaderboard cohort.'),
               if (today != null) ...[
                 const SizedBox(height: 20),
                 Text('$today / 1,000 XP today'),

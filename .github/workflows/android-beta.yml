@@ -43,6 +43,7 @@ jobs:
             portable/test/
             portable/pubspec.lock
   apk:
+    if: ${{ !contains(github.event.head_commit.message, '[verify-only]') }}
     needs: verify
     runs-on: ubuntu-22.04
     timeout-minutes: 40
@@ -78,11 +79,11 @@ jobs:
           script: python3 portable/tool/android_beta_smoke.py
       - name: Package
         run: |
-          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.9.0-beta-14.apk
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.10.0-beta-15.apk
           sha256sum release/*.apk > release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-Android-0.9.0-beta-14
+          name: OneStep-Android-0.10.0-beta-15
           path: release/
       - uses: actions/upload-artifact@v4
         if: failure()

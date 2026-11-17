@@ -8,6 +8,7 @@ import 'model.dart';
 import 'parent_pin.dart';
 import 'connection.dart';
 import 'bank_ui.dart';
+import 'moderation.dart';
 
 /// Public connection defaults ship with the app; user sessions remain in secure storage.
 class FamilyClient {
@@ -100,7 +101,7 @@ class FamilyClient {
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 20))) {
         bytes.addAll(chunk);
-        if (bytes.length > 1024 * 1024)
+        if (bytes.length > (path.contains("onestep_sync_") ? 16 : 1) * 1024 * 1024)
           throw const FormatException('Service response too large.');
       }
       final text = utf8.decode(bytes);
@@ -1638,7 +1639,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     'Kids accounts are excluded by the service, regardless of client settings.',
                   ),
                 ]),
-              if (bankTab == 4)
+              if (bankTab == 4) OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const ModerationPage())),icon:const Icon(Icons.manage_accounts_outlined),label:const Text('My service permissions and administration')),
+            if (bankTab == 4)
                 panel('Reconnect this account', [
                   const Text(
                     'If your session expired, enter this account’s password. Your family link and planner stay in place.',

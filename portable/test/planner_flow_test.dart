@@ -17,6 +17,35 @@ class MemoryPlanner extends Planner {
 }
 
 void main() {
+  testWidgets('Phone editor keeps one Save and saves after blank-title validation', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    tester.view.physicalSize = const Size(430, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final dir = Directory.systemTemp.createTempSync('onestep-phone-save-');
+    addTearDown(() => dir.delete(recursive: true));
+    final planner = MemoryPlanner(emptyState(), dir, Alerts());
+    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => Scaffold(body: FilledButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EntryEditor(planner: planner))), child: const Text('Open editor'))))));
+    await tester.tap(find.text('Open editor'));
+    await tester.pumpAndSettle();
+    expect(find.text('Save'), findsOneWidget);
+    expect(find.descendant(of: find.byType(AppBar), matching: find.text('Save')), findsNothing);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Give this step a name before saving.'), findsOneWidget);
+    expect(rows(planner.state, 'tasks'), isEmpty);
+    await tester.ensureVisible(find.widgetWithText(TextField, 'One thing to remember'));
+    await tester.enterText(find.widgetWithText(TextField, 'One thing to remember'), 'One saved step');
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(rows(planner.state, 'tasks').single['title'], 'One saved step');
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
   test('Real planner writes and completion survive reopening', () async {
     FlutterSecureStorage.setMockInitialValues({});
     final dir = await Directory.systemTemp.createTemp('onestep-persistence-');
@@ -66,12 +95,10 @@ void main() {
       find.widgetWithText(TextField, 'One thing to remember'),
       'Walk outside',
     );
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AppBar).last,
-        matching: find.text('Save'),
-      ),
-    );
+    expect(find.text('Save'), findsOneWidget);
+    expect(find.descendant(of: find.byType(AppBar).last, matching: find.text('Save')), findsNothing);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
     expect(
       rows(planner.state, 'tasks'),

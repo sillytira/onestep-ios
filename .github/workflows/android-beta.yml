@@ -79,14 +79,51 @@ jobs:
           script: python3 portable/tool/android_beta_smoke.py
       - name: Package
         run: |
-          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.10.0-beta-15.apk
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.10.1-beta-16.apk
           sha256sum release/*.apk > release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-Android-0.10.0-beta-15
+          name: OneStep-Android-0.10.1-beta-16
           path: release/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: OneStep-Android-diagnostics
+          path: release/
+
+  windows:
+    if: ${{ contains(github.event.head_commit.message, '[windows]') }}
+    needs: verify
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.5'
+          channel: stable
+          cache: true
+      - run: node portable/tool/bootstrap.mjs
+      - run: flutter pub get
+        working-directory: portable
+      - run: flutter build windows --release
+        working-directory: portable
+      - name: Package and smoke-test Windows app
+        shell: pwsh
+        run: |
+          New-Item release -ItemType Directory -Force
+          $bundle = Resolve-Path portable/build/windows/x64/runner/Release
+          Copy-Item "$env:WINDIR/System32/msvcp140.dll","$env:WINDIR/System32/vcruntime140.dll","$env:WINDIR/System32/vcruntime140_1.dll" -Destination $bundle
+          $process = Start-Process -FilePath "$bundle/Tira-OneStep.exe" -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 8
+          if ($process.HasExited) { throw 'OneStep exited during launch smoke test' }
+          Stop-Process -Id $process.Id
+          Compress-Archive -Path "$bundle/*" -DestinationPath release/OneStep-0.10.1-Windows.zip
+          (Get-FileHash release/OneStep-0.10.1-Windows.zip -Algorithm SHA256).Hash.ToLower() + '  OneStep-0.10.1-Windows.zip' | Set-Content release/OneStep-0.10.1-Windows.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneStep-0.10.1-Windows
           path: release/

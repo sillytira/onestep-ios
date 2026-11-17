@@ -1434,9 +1434,6 @@ class _EntryEditorState extends State<EntryEditor> {
             ? 'Daily step'
             : 'Add a task',
       ),
-      actions: [
-        TextButton(onPressed: busy ? null : save, child: const LText('Save')),
-      ],
     ),
     body: Center(
       child: ConstrainedBox(

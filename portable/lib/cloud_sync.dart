@@ -1,3 +1,4 @@
+import 'localization.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -46,9 +47,9 @@ class CloudPlannerSync extends ChangeNotifier {
       final response=await client.rpc('onestep_sync_read',{}) as Map;
       if(client.userID!=user)return;
       final revision=(response['revision'] as num).toInt();
-      final remote=response['envelope']==null?emptyState():decodeTransfer(await BackupCrypto.open(response['envelope'] as String,password));
+      final remote=response['envelope']==null?emptySyncPlanner():decodeTransfer(await BackupCrypto.open(response['envelope'] as String,password));
       if(client.userID!=user)return;
-      final merge=mergePlanner(_base??emptyState(),local,remote);
+      final merge=mergePlanner(_base??emptySyncPlanner(),local,remote);
       if(merge.conflicts.isNotEmpty){pending=merge;_localAtConflict=local;_revision=revision;status='Concurrent edits need your choice. Neither version was discarded.';return;}
       if(canonical(merge.state)==canonical(sharedPlanner(remote))&&canonical(merge.state)==canonical(local)){
         _base=merge.state;if(response['envelope'] is String)await baseFile(user!).writeAsString(response['envelope'] as String,flush:true);status='Up to date. Automatic sync runs while OneStep is open.';return;
@@ -92,9 +93,9 @@ Future<String?> askPassphrase(BuildContext context,{bool confirm=false})async{
   final password=TextEditingController(),again=TextEditingController();String? error;
   final value=await showDialog<String>(context:context,builder:(context)=>StatefulBuilder(builder:(context,setState)=>AlertDialog(
     title:Text(confirm?'Choose a backup passphrase':'Enter backup passphrase'),
-    content:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Keep it somewhere safe. A lost passphrase cannot be recovered.'),TextField(controller:password,obscureText:true,decoration:const InputDecoration(labelText:'Passphrase')),
-      if(confirm)TextField(controller:again,obscureText:true,decoration:const InputDecoration(labelText:'Confirm passphrase')),if(error!=null)Text(error!)]),
-    actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancel')),FilledButton(onPressed:(){if(confirm&&(password.text.length<12||password.text!=again.text)){setState(()=>error='Use at least 12 characters and match both entries.');return;}Navigator.pop(context,password.text);},child:const Text('Continue'))],
+    content:Column(mainAxisSize:MainAxisSize.min,children:[const LText('Keep it somewhere safe. A lost passphrase cannot be recovered.'),TextField(controller:password,obscureText:true,decoration:const LDecoration(labelText:'Passphrase')),
+      if(confirm)TextField(controller:again,obscureText:true,decoration:const LDecoration(labelText:'Confirm passphrase')),if(error!=null)Text(error!)]),
+    actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const LText('Cancel')),FilledButton(onPressed:(){if(confirm&&(password.text.length<12||password.text!=again.text)){setState(()=>error='Use at least 12 characters and match both entries.');return;}Navigator.pop(context,password.text);},child:const LText('Continue'))],
   )));
   // Dialog teardown completes before controllers are released.
   await Future<void>.delayed(const Duration(milliseconds:300));password.dispose();again.dispose();return value;
@@ -107,22 +108,22 @@ class _SyncPageState extends State<SyncPage>{
   final password=TextEditingController();final choices=<int,bool>{};
   @override void dispose(){password.dispose();super.dispose();}
   @override Widget build(BuildContext context){final sync=widget.planner.cloudSync;
-    return Scaffold(appBar:AppBar(title:const Text('Private planner sync')),body:AnimatedBuilder(animation:sync,builder:(context,_)=>ListView(padding:const EdgeInsets.all(22),children:[
-      const Text('Automatic sync, with your permission',style:TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
-      const SizedBox(height:12),const Text('Uses your signed-in account and an encrypted cloud copy. Use the same passphrase on each device. Your local planner is device-wide: check that it is the data you want in this account before enabling. Back up first.'),
-      TextField(controller:password,obscureText:true,decoration:const InputDecoration(labelText:'Sync passphrase (12+ characters)')),
-      FilledButton(onPressed:sync.busy?null:()async{try{await sync.enable(password.text);password.clear();}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Enable encrypted sync')),
+    return Scaffold(appBar:AppBar(title:const LText('Private planner sync')),body:AnimatedBuilder(animation:sync,builder:(context,_)=>ListView(padding:const EdgeInsets.all(22),children:[
+      const LText('Automatic sync, with your permission',style:TextStyle(fontSize:24,fontWeight:FontWeight.bold)),
+      const SizedBox(height:12),const LText('Uses your signed-in account and an encrypted cloud copy. Use the same passphrase on each device. Your local planner is device-wide: check that it is the data you want in this account before enabling. Back up first.'),
+      TextField(controller:password,obscureText:true,decoration:const LDecoration(labelText:'Sync passphrase (12+ characters)')),
+      FilledButton(onPressed:sync.busy?null:()async{try{await sync.enable(password.text);password.clear();}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}},child:const LText('Enable encrypted sync')),
       Text(sync.status),if(sync.busy)const LinearProgressIndicator(),
-      Row(children:[TextButton(onPressed:sync.busy?null:sync.tick,child:const Text('Sync now')),TextButton(onPressed:sync.busy?null:sync.disable,child:const Text('Pause sync'))]),
+      Row(children:[TextButton(onPressed:sync.busy?null:sync.tick,child:const LText('Sync now')),TextButton(onPressed:sync.busy?null:sync.disable,child:const LText('Pause sync'))]),
       if(sync.pending!=null)...[
-        const Text('Resolve conflicting edits',style:TextStyle(fontSize:22,fontWeight:FontWeight.bold)),
+        const LText('Resolve conflicting edits',style:TextStyle(fontSize:22,fontWeight:FontWeight.bold)),
         for(var i=0;i<sync.pending!.conflicts.length;i++)Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(sync.pending!.conflicts[i].label),Text('This device: ${sync.pending!.conflicts[i].local==null?'Deleted':jsonEncode(sync.pending!.conflicts[i].local)}'),Text('Cloud: ${sync.pending!.conflicts[i].remote==null?'Deleted':jsonEncode(sync.pending!.conflicts[i].remote)}'),
-          Wrap(spacing:8,children:[ChoiceChip(label:const Text('Use this device'),selected:choices[i]==false,onSelected:(_)=>setState(()=>choices[i]=false)),ChoiceChip(label:const Text('Use cloud'),selected:choices[i]==true,onSelected:(_)=>setState(()=>choices[i]=true))]),
+          Wrap(spacing:8,children:[ChoiceChip(label:const LText('Use this device'),selected:choices[i]==false,onSelected:(_)=>setState(()=>choices[i]=false)),ChoiceChip(label:const LText('Use cloud'),selected:choices[i]==true,onSelected:(_)=>setState(()=>choices[i]=true))]),
         ]))),
-        FilledButton(onPressed:sync.busy||choices.length!=sync.pending!.conflicts.length?null:()async{await sync.resolve(choices);if(mounted)setState(choices.clear);},child:const Text('Apply choices')),
+        FilledButton(onPressed:sync.busy||choices.length!=sync.pending!.conflicts.length?null:()async{await sync.resolve(choices);if(mounted)setState(choices.clear);},child:const LText('Apply choices')),
       ],
-      const Text('Automatic while open and on resume; mobile operating systems do not guarantee background sync. Offline changes stay local until reconnected. Service migration 007 is required. Your passphrase is stored only in device secure storage, not sent to the service.'),
+      const LText('Automatic while open and on resume; mobile operating systems do not guarantee background sync. Offline changes stay local until reconnected. Service migration 007 is required. Your passphrase is stored only in device secure storage, not sent to the service.'),
     ])));
   }
 }

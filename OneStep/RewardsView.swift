@@ -124,7 +124,7 @@ enum RewardsVault {
         if let body { request.httpMethod = "POST"; request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await URLSession.shared.data(for: request)
         guard !auth || userID == principal else { throw failure("The account changed. Please retry.") }
-        guard data.count <= 1024 * 1024 else { throw failure("Service response too large.") }
+        guard data.count <= (path.contains("onestep_sync_") ? 16 : 1) * 1024 * 1024 else { throw failure("Service response too large.") }
         let value: Any
         if data.isEmpty { value = NSNull() } else { value = (try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])) ?? NSNull() }
         guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode) else {
@@ -241,6 +241,8 @@ private struct BankRecord: Identifiable {
 struct RewardsView: View {
     @State private var model = RewardsStore.shared
     @State private var section = 0
+    private let initialMetric: String?
+    init(initialSection: Int = 0,initialMetric: String? = nil) { _section = State(initialValue:initialSection);self.initialMetric = initialMetric }
     @State private var creating = false
     @State private var parentCode = ""
     var body: some View {
@@ -267,7 +269,7 @@ struct RewardsView: View {
         .toolbar {
             if model.signedIn { ToolbarItem(placement:.primaryAction) { Button("Refresh account",systemImage:"arrow.clockwise") { Task { await model.action { try await model.reload() } } }.disabled(model.busy) } }
         }
-        .task { await model.load(); if model.signedIn { await model.action { try await model.reload() } } }
+        .task { await model.load(); if let initialMetric { model.rankingMetric = initialMetric }; if model.signedIn { await model.action { try await model.reload() } } }
     }
     private var login: some View {
         @Bindable var fields = model
@@ -301,7 +303,7 @@ struct RewardsView: View {
                     Text("Available points").foregroundStyle(.secondary)
                     Text(model.snapshotLoaded ? "Updated \(model.lastSync)" : "Connect to load your balance").font(.caption).foregroundStyle(.secondary)
                 }.frame(maxWidth:.infinity).padding(.vertical,12)
-                GroupBox("Your XP") {
+                GroupBox("Your XP · Beta") {
                     VStack(alignment:.leading,spacing:8) {
                         Text("\(model.xpTotal) XP").font(.title2.bold()).foregroundStyle(ItemPalette.mint.color)
                         Text("10 XP per completed task or routine step. XP records your progress and cannot be spent. Up to 1,000 XP per UTC day.").font(.footnote)
@@ -364,6 +366,7 @@ struct RewardsView: View {
             Section("Your account") {
                 Text(model.accountEmail).textSelection(.enabled)
                 Text(model.kind == "kids" ? "Private child account" : "@\(model.username)").foregroundStyle(.secondary)
+                NavigationLink("Service administration") { ModerationView() }
                 NavigationLink("Apple Screen Time") { ScreenTimeView() }
                 Text("Family invitations and approvals are available in OneStep Parent and Kids.").font(.footnote)
             }

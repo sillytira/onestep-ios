@@ -11,6 +11,10 @@ struct TaskEntry: Identifiable, Codable, Equatable {
     var snoozedUntil: Date?
     var colorName: String?
     var repeatRule: String?
+    var repeatEvery: Int?
+    var repeatWeekdays: [Int]?
+    var repeatMonthDay: Int?
+    var repeatAnchor: Date?
     var repeatParentID: UUID?
     var microsteps: [SmallStep]?
     var listName: String?

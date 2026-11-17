@@ -1,4 +1,6 @@
+import 'localization.dart';
 import 'dart:async';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,7 @@ const appRole = String.fromEnvironment('ONESTEP_ROLE', defaultValue: 'planner');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(AppLanguage.load());
   runApp(const OneStepApp());
 }
 
@@ -37,7 +40,10 @@ String clock(DateTime value) =>
 class OneStepApp extends StatelessWidget {
   const OneStepApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => ValueListenableBuilder<Locale?>(valueListenable:AppLanguage.locale,builder:(context,locale,_)=>MaterialApp(
+    locale:locale,
+    supportedLocales:const [Locale("en"),Locale("de"),Locale("uk"),Locale("ru"),Locale("pl"),Locale("bg")],
+    localizationsDelegates:GlobalMaterialLocalizations.delegates,
     title: 'OneStep Beta',
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
@@ -92,7 +98,7 @@ class OneStepApp extends StatelessWidget {
     home: appRole == 'planner'
         ? const Home()
         : const RewardsPage(role: appRole),
-  );
+  ));
 }
 
 class Home extends StatefulWidget {
@@ -225,7 +231,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(fatal!),
-                      TextButton(onPressed: load, child: const Text('Retry')),
+                      TextButton(onPressed: load, child: const LText('Retry')),
                     ],
                   ),
                 ),
@@ -234,9 +240,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     final p = planner!;
     final state = p.state;
     final now = DateTime.now();
-    final names = androidLayout
+    final interfaceLanguage = Localizations.localeOf(context).languageCode;
+    final names = (androidLayout
         ? ['Now', 'Tasks', 'Routines', 'Bank', 'More']
-        : ['Now', 'Tasks', 'Routines', 'Notes', 'History'];
+        : ['Now', 'Tasks', 'Routines', 'Notes', 'History']).map((name)=>translate(name,language:interfaceLanguage)).toList();
     final icons = [
       Icons.auto_awesome_outlined,
       Icons.checklist_rounded,
@@ -323,7 +330,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                                 p.warning = null;
                               });
                             },
-                            child: const Text('Dismiss'),
+                            child: const LText('Dismiss'),
                           ),
                         ],
                       ),
@@ -516,7 +523,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           style: TextStyle(color: accents['amber']),
         ),
         const SizedBox(height: 12),
-        const Text(
+        const LText(
           'One thing at a time.',
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
         ),
@@ -614,7 +621,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                               ),
                             );
                           },
-                    child: const Text('Stop timer'),
+                    child: const LText('Stop timer'),
                   ),
                 ],
               ),
@@ -626,7 +633,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                         focus(item);
                       },
                 icon: const Icon(Icons.timer_outlined),
-                label: const Text('Start a timer'),
+                label: const LText('Start a timer'),
               ),
             ...smallSteps(state, item),
             const SizedBox(height: 12),
@@ -649,7 +656,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                         });
                       },
                 icon: const Icon(Icons.check),
-                label: const Text('Done'),
+                label: const LText('Done'),
               ),
             ),
             const SizedBox(height: 10),
@@ -673,18 +680,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     : () {
                         run(() => p.save(completed(p.state, item, skip: true)));
                       },
-                child: const Text('Skip today'),
+                child: const LText('Skip today'),
               ),
           ], color: accent(item))
         else
           box([
             const Icon(Icons.spa_outlined, size: 36),
             const SizedBox(height: 12),
-            const Text(
+            const LText(
               'A little breathing room',
               style: TextStyle(fontSize: 24),
             ),
-            const Text(
+            const LText(
               'Nothing needs your attention right now. Snoozed steps return when ready.',
             ),
           ]),
@@ -701,11 +708,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 guidedDay = null;
                 guided = null;
               }),
-              child: const Text('Leave guided routine'),
+              child: const LText('Leave guided routine'),
             ),
-          const Text('Steps finished', style: TextStyle(color: Colors.white70)),
+          const LText('Steps finished', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 12),
-          const Text(
+          const LText(
             'Your progress, without a streak to maintain. This private step count is not spendable points. Bank shows your parent-approved family rewards.',
             style: TextStyle(color: Colors.white60),
           ),
@@ -716,7 +723,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             edit();
           },
           icon: const Icon(Icons.add),
-          label: const Text('Add a task'),
+          label: const LText('Add a task'),
         ),
       ],
     );
@@ -760,7 +767,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     final selected = await showDialog<int>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('A little focus time'),
+        title: const LText('A little focus time'),
         children: [
           for (final minutes in [5, 10, 15, 25, 45, 60])
             SimpleDialogOption(
@@ -778,15 +785,15 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       final replace = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          title: const Text('Replace current timer?'),
+          title: const LText('Replace current timer?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(c, false),
-              child: const Text('Keep current'),
+              child: const LText('Keep current'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(c, true),
-              child: const Text('Replace'),
+              child: const LText('Replace'),
             ),
           ],
         ),
@@ -828,7 +835,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 90),
       children: [
         TextField(
-          decoration: const InputDecoration(
+          decoration: const LDecoration(
             labelText: 'Search tasks, notes, and lists',
             prefixIcon: Icon(Icons.search),
           ),
@@ -837,7 +844,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           }),
         ),
         SwitchListTile(
-          title: const Text('Show archived'),
+          title: const LText('Show archived'),
           value: archived,
           onChanged: (v) => setState(() {
             archived = v;
@@ -846,7 +853,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         if (tasks.isEmpty)
           const Padding(
             padding: EdgeInsets.all(28),
-            child: Text('Room for a fresh start. Tap + to add a task.'),
+            child: LText('Room for a fresh start. Tap + to add a task.'),
           ),
         for (final t in tasks)
           Card(
@@ -891,7 +898,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   });
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'done', child: Text('Done')),
+                  const PopupMenuItem(value: 'done', child: LText('Done')),
                   PopupMenuItem(
                     value: 'pin',
                     child: Text(t['pinned'] == true ? 'Unpin' : 'Pin'),
@@ -900,7 +907,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     value: 'archive',
                     child: Text(archived ? 'Unarchive' : 'Archive'),
                   ),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  const PopupMenuItem(value: 'delete', child: LText('Delete')),
                 ],
               ),
             ),
@@ -936,7 +943,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 90),
       children: [
-        const Text(
+        const LText(
           'The same gentle structure, every day. Done and Skip only affect today.',
         ),
         TextButton.icon(
@@ -952,7 +959,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               });
           },
           icon: const Icon(Icons.play_arrow),
-          label: const Text('Start a guided routine'),
+          label: const LText('Start a guided routine'),
         ),
         for (final step in routines)
           box([
@@ -998,7 +1005,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                           ),
                         );
                       },
-                child: const Text('Undo today'),
+                child: const LText('Undo today'),
               ),
             if (record(state, step, now)?['status'] == null)
               TextButton(
@@ -1007,7 +1014,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     : () {
                         todayTime(step);
                       },
-                child: const Text('Change today’s time'),
+                child: const LText('Change today’s time'),
               ),
             if (record(state, step, now)?['status'] == null)
               Wrap(
@@ -1027,7 +1034,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                               ),
                             );
                           },
-                    child: const Text('Done'),
+                    child: const LText('Done'),
                   ),
                   OutlinedButton(
                     onPressed: busy
@@ -1039,7 +1046,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                               ),
                             );
                           },
-                    child: const Text('Snooze'),
+                    child: const LText('Snooze'),
                   ),
                   TextButton(
                     onPressed: busy
@@ -1055,7 +1062,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                               ),
                             );
                           },
-                    child: const Text('Skip today'),
+                    child: const LText('Skip today'),
                   ),
                 ],
               ),
@@ -1101,7 +1108,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   Widget historyPage(Json state) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
-      const Text(
+      const LText(
         'Completed tasks',
         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
       ),
@@ -1130,12 +1137,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   await planner!.save(next);
                 });
               },
-              child: const Text('Undo'),
+              child: const LText('Undo'),
             ),
           ),
         ),
       const SizedBox(height: 20),
-      const Text(
+      const LText(
         'Routine history',
         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
       ),
@@ -1165,7 +1172,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                         ),
                       );
                     },
-                    child: const Text('Undo today'),
+                    child: const LText('Undo today'),
                   )
                 : null,
           ),
@@ -1200,6 +1207,7 @@ class _EntryEditorState extends State<EntryEditor> {
   bool rewardEnabled = false;
   int rewardPoints = 10;
   int repeatEvery = 1;
+  int repeatMonthDay = 1;
   Set<int> repeatWeekdays = {1,2,3,4,5};
   @override
   void initState() {
@@ -1233,6 +1241,7 @@ class _EntryEditorState extends State<EntryEditor> {
             t?['minute'] as int? ?? 0,
           )
         : dateOf(t?['dueAt']) ?? DateTime.now().add(const Duration(hours: 1));
+    repeatMonthDay = t?['repeatMonthDay'] as int? ?? due.day;
     hasDate = t?['dueAt'] != null;
     remind = t?['reminderEnabled'] as bool? ?? true;
   }
@@ -1294,8 +1303,7 @@ class _EntryEditorState extends State<EntryEditor> {
         if (rewardEnabled && rewardAccount.accountKind != 'kids') {
           t['rewardPoints'] = rewardPoints;
           if (rewardAccount.signedIn) t['rewardAccountID'] = t['rewardAccountID'] ?? rewardAccount.userID;
-        } else if (rewardAccount.signedIn &&
-            rewardAccount.accountKind != null &&
+        } else if ((!rewardEnabled || rewardAccount.signedIn) &&
             (t['rewardAccountID'] == null ||
                 t['rewardAccountID'] == rewardAccount.userID)) {
           t.remove('rewardPoints');
@@ -1325,8 +1333,8 @@ class _EntryEditorState extends State<EntryEditor> {
             t['repeatRule'] = repeat;
             t['repeatEvery'] = repeatEvery;
             t['repeatWeekdays'] = repeatWeekdays.toList()..sort();
-            t['repeatAnchor'] = stamp(due);
-            t['repeatMonthDay'] = due.day;
+            if(t['repeatAnchor']==null || widget.item?['dueAt']!=stamp(due))t['repeatAnchor'] = stamp(due);
+            t['repeatMonthDay'] = repeatMonthDay;
           } else {
             t.remove('repeatRule');
           }
@@ -1377,7 +1385,7 @@ class _EntryEditorState extends State<EntryEditor> {
             : 'Add a task',
       ),
       actions: [
-        TextButton(onPressed: busy ? null : save, child: const Text('Save')),
+        TextButton(onPressed: busy ? null : save, child: const LText('Save')),
       ],
     ),
     body: Center(
@@ -1390,7 +1398,7 @@ class _EntryEditorState extends State<EntryEditor> {
                 !widget.routine &&
                 rewardAccount.accountKind != 'kids') ...[
               SwitchListTile(
-                title: const Text('Points for this task'),
+                title: const LText('Points for this task'),
                 value: rewardEnabled,
                 onChanged: widget.item?['completedAt'] != null
                     ? null
@@ -1399,7 +1407,7 @@ class _EntryEditorState extends State<EntryEditor> {
               if (rewardEnabled)
                 DropdownButtonFormField<int>(
                   initialValue: rewardPoints,
-                  decoration: const InputDecoration(
+                  decoration: const LDecoration(
                     labelText: 'Points for this task',
                   ),
                   items: [
@@ -1410,14 +1418,14 @@ class _EntryEditorState extends State<EntryEditor> {
                       ? null
                       : (v) => setState(() => rewardPoints = v ?? 10),
                 ),
-              const Text(
+              const LText(
                 'Choose 0–100 points per task. Sign in and save to connect a draft reward to your account. Up to 20 counted tasks and 1,000 earned points per UTC day after migration 006. The title is sent for duplicate checks; only a hash is stored. Done remains immediate/offline. Points wait for the server.',
               ),
             ],
 
             TextField(
               controller: title,
-              decoration: const InputDecoration(
+              decoration: const LDecoration(
                 labelText: 'One thing to remember',
               ),
               textCapitalization: TextCapitalization.sentences,
@@ -1427,7 +1435,7 @@ class _EntryEditorState extends State<EntryEditor> {
             if (!widget.routine)
               TextField(
                 controller: notes,
-                decoration: InputDecoration(
+                decoration: LDecoration(
                   labelText: widget.note ? 'Note' : 'A little context',
                 ),
                 minLines: 3,
@@ -1459,7 +1467,7 @@ class _EntryEditorState extends State<EntryEditor> {
                 )
               else ...[
                 SwitchListTile(
-                  title: const Text('Set a due time'),
+                  title: const LText('Set a due time'),
                   value: hasDate,
                   onChanged: (v) => setState(() {
                     hasDate = v;
@@ -1471,7 +1479,7 @@ class _EntryEditorState extends State<EntryEditor> {
                     child: Text('${dayKey(due)} · ${clock(due)}'),
                   ),
                   SwitchListTile(
-                    title: const Text('Remind me'),
+                    title: const LText('Remind me'),
                     value: remind,
                     onChanged: (v) => setState(() {
                       remind = v;
@@ -1479,27 +1487,28 @@ class _EntryEditorState extends State<EntryEditor> {
                   ),
                   DropdownButtonFormField<String>(
                     initialValue: repeat,
-                    decoration: const InputDecoration(
+                    decoration: const LDecoration(
                       labelText: 'Repeat after completion',
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'none', child: Text('Never')),
-                      DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                      DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-                      DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                      DropdownMenuItem(value: 'weekdays', child: Text('Selected weekdays')),
+                      DropdownMenuItem(value: 'none', child: LText('Never')),
+                      DropdownMenuItem(value: 'daily', child: LText('Daily')),
+                      DropdownMenuItem(value: 'weekly', child: LText('Weekly')),
+                      DropdownMenuItem(value: 'monthly', child: LText('Monthly')),
+                      DropdownMenuItem(value: 'weekdays', child: LText('Selected weekdays')),
                     ],
                     onChanged: (v) => setState(() {
                       repeat = v ?? 'none';
                     }),
                   ),
-                  if(repeat != 'none') DropdownButtonFormField<int>(initialValue:repeatEvery, decoration:const InputDecoration(labelText:'Repeat every'),items:[for(final n in ({1,2,3,4,6,7,12,14,30,repeatEvery}.toList()..sort()))DropdownMenuItem(value:n,child:Text('$n ${repeat == 'monthly' ? 'month(s)' : repeat == 'daily' ? 'day(s)' : 'week(s)'}'))],onChanged:(v)=>setState(()=>repeatEvery=v??1)),
+                  if(repeat != 'none') DropdownButtonFormField<int>(initialValue:repeatEvery, decoration:const LDecoration(labelText:'Repeat every'),items:[for(final n in ({1,2,3,4,6,7,12,14,30,repeatEvery}.toList()..sort()))DropdownMenuItem(value:n,child:Text('$n ${repeat == 'monthly' ? 'month(s)' : repeat == 'daily' ? 'day(s)' : 'week(s)'}'))],onChanged:(v)=>setState(()=>repeatEvery=v??1)),
+                  if(repeat == 'monthly') DropdownButtonFormField<int>(initialValue:repeatMonthDay,decoration:const LDecoration(labelText:'Day of month'),items:[for(var d=1;d<=31;d++)DropdownMenuItem(value:d,child:Text('$d'))],onChanged:(v)=>setState(()=>repeatMonthDay=v??1)),
                   if(repeat == 'weekdays') Wrap(spacing:6,children:[for(var d=1;d<=7;d++)FilterChip(label:Text(MaterialLocalizations.of(context).narrowWeekdays[d%7]),selected:repeatWeekdays.contains(d),onSelected:(v)=>setState((){if(v){repeatWeekdays.add(d);}else if(repeatWeekdays.length>1){repeatWeekdays.remove(d);}}))]),
                 ],
                 const SizedBox(height: 18),
                 TextField(
                   controller: steps,
-                  decoration: const InputDecoration(
+                  decoration: const LDecoration(
                     labelText: 'Small steps · one per line',
                   ),
                   minLines: 3,
@@ -1511,11 +1520,11 @@ class _EntryEditorState extends State<EntryEditor> {
                       steps.text =
                           'Get what I need\nDo just the first two minutes\nChoose the next small step';
                   },
-                  child: const Text('Make it smaller'),
+                  child: const LText('Make it smaller'),
                 ),
                 TextField(
                   controller: list,
-                  decoration: const InputDecoration(
+                  decoration: const LDecoration(
                     labelText: 'List name (optional)',
                   ),
                 ),
@@ -1627,18 +1636,18 @@ class _SettingsPageState extends State<SettingsPage>
     final accepted = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Replace this device’s planner?'),
+        title: const LText('Replace this device’s planner?'),
         content: Text(
           '${incoming['profile']?['name'] ?? 'Unnamed space'}\n${rows(incoming, 'tasks').length} tasks · ${rows(incoming, 'routines').length} routine steps · ${rows(incoming, 'days').length} history records · ${rows(incoming, 'notes').length} notes\n\nA recovery copy is saved before replacement. Export both devices first if they have different edits. Active timers are not transferred.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
+            child: const LText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Import snapshot'),
+            child: const LText('Import snapshot'),
           ),
         ],
       ),
@@ -1722,7 +1731,8 @@ class _SettingsPageState extends State<SettingsPage>
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              section('Private planner sync', [FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SyncPage(planner:p))),icon:const Icon(Icons.sync_lock),label:const Text('Encrypted automatic sync'))]),
+              section('Language', [FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const LanguagePage())),icon:const Icon(Icons.language),label:const LText('Language'))]),
+              section('Private planner sync', [FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>SyncPage(planner:p))),icon:const Icon(Icons.sync_lock),label:const LText('Encrypted automatic sync'))]),
               section('Content updates', [
                 FilledButton.icon(
                   onPressed: () {
@@ -1733,9 +1743,9 @@ class _SettingsPageState extends State<SettingsPage>
                     );
                   },
                   icon: const Icon(Icons.system_update_alt),
-                  label: const Text('Content updates and routine packs'),
+                  label: const LText('Content updates and routine packs'),
                 ),
-                const Text(
+                const LText(
                   'Refresh routine packs inside the installed app. Native code changes still require an app update.',
                 ),
               ]),
@@ -1764,14 +1774,14 @@ class _SettingsPageState extends State<SettingsPage>
                       );
                     },
                   ),
-                const Text(
+                const LText(
                   'Optional services. Your offline planner continues to work without signing in.',
                 ),
               ]),
               section('Profile', [
                 TextField(
                   controller: name,
-                  decoration: const InputDecoration(labelText: 'Display name'),
+                  decoration: const LDecoration(labelText: 'Display name'),
                 ),
                 FilledButton(
                   onPressed: busy
@@ -1788,9 +1798,9 @@ class _SettingsPageState extends State<SettingsPage>
                             });
                           });
                         },
-                  child: const Text('Save local profile'),
+                  child: const LText('Save local profile'),
                 ),
-                const Text(
+                const LText(
                   'Works offline. Pairing copies a profile; it does not verify online account ownership.',
                 ),
               ]),
@@ -1806,7 +1816,7 @@ class _SettingsPageState extends State<SettingsPage>
                     onPressed: busy
                         ? null
                         : () => run(p.alerts.precisionPermission),
-                    child: const Text('Optional: allow precise timing'),
+                    child: const LText('Optional: allow precise timing'),
                   ),
                   OutlinedButton.icon(
                     onPressed: busy
@@ -1820,7 +1830,7 @@ class _SettingsPageState extends State<SettingsPage>
                               });
                           }),
                     icon: const Icon(Icons.notification_add_outlined),
-                    label: const Text('Send test reminder'),
+                    label: const LText('Send test reminder'),
                   ),
                 ],
                 Text(reminderCoverage(p.state, DateTime.now())),
@@ -1831,11 +1841,11 @@ class _SettingsPageState extends State<SettingsPage>
                         : () {
                             run(p.alerts.permissions);
                           },
-                    child: const Text('Allow notifications'),
+                    child: const LText('Allow notifications'),
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('One follow-up after 10 minutes'),
+                  title: const LText('One follow-up after 10 minutes'),
                   value: prefs['followup'] != false,
                   onChanged: busy
                       ? null
@@ -1853,7 +1863,7 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
                 DropdownButtonFormField<int>(
                   initialValue: prefs['snoozeMinutes'] as int? ?? 10,
-                  decoration: const InputDecoration(labelText: 'Snooze length'),
+                  decoration: const LDecoration(labelText: 'Snooze length'),
                   items: [
                     for (final m in [5, 10, 20, 30, 60])
                       DropdownMenuItem(value: m, child: Text('$m minutes')),
@@ -1874,7 +1884,7 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Quiet hours · 22:00–08:00'),
+                  title: const LText('Quiet hours · 22:00–08:00'),
                   value: prefs['quietStart'] != null,
                   onChanged: busy
                       ? null
@@ -1901,7 +1911,7 @@ class _SettingsPageState extends State<SettingsPage>
                       ? 'Android reminders use system alarms, with inexact delivery until precise-alarm access is allowed. Up to 60 alerts over 14 days; reopen to refill.'
                       : 'Desktop reminder banners require OneStep to stay running and a supported notification service. They do not fire after exit. Keep the app open for timers.',
                 ),
-                const Text(
+                const LText(
                   'Quiet hours omit task/routine alerts, never create a catch-up backlog, and do not silence a focus timer you start.',
                 ),
               ]),
@@ -1912,7 +1922,7 @@ class _SettingsPageState extends State<SettingsPage>
                       : () {
                           run(export);
                         },
-                  child: const Text('Export encrypted backup'),
+                  child: const LText('Export encrypted backup'),
                 ),
                 OutlinedButton(
                   onPressed: busy
@@ -1938,7 +1948,7 @@ class _SettingsPageState extends State<SettingsPage>
                             await preview(await BackupCrypto.decode(text,password));
                           });
                         },
-                  child: const Text('Import and preview'),
+                  child: const LText('Import and preview'),
                 ),
                 OutlinedButton(
                   onPressed: busy
@@ -1962,7 +1972,7 @@ class _SettingsPageState extends State<SettingsPage>
                             final selected = await showDialog<String>(
                               context: context,
                               builder: (c) => SimpleDialog(
-                                title: const Text('Recovery copies'),
+                                title: const LText('Recovery copies'),
                                 children: [
                                   for (final f in files)
                                     SimpleDialogOption(
@@ -1980,16 +1990,16 @@ class _SettingsPageState extends State<SettingsPage>
                               );
                           });
                         },
-                  child: const Text('Restore a recovery copy'),
+                  child: const LText('Restore a recovery copy'),
                 ),
-                const Text(
+                const LText(
                   'New exports are password-encrypted. Keep your passphrase safe; it cannot be recovered. Older readable JSON backups can still be imported. Planner storage and recovery copies on this device are not additionally password-encrypted.',
                 ),
               ]),
               section('Local Wi-Fi transfer', [
                 TextField(
                   controller: host,
-                  decoration: const InputDecoration(
+                  decoration: const LDecoration(
                     labelText: 'This device’s private IPv4 address',
                   ),
                 ),
@@ -2009,7 +2019,7 @@ class _SettingsPageState extends State<SettingsPage>
                             });
                           });
                         },
-                  child: const Text('Create pairing code'),
+                  child: const LText('Create pairing code'),
                 ),
                 if (invitation.isNotEmpty) ...[
                   SelectableText(invitation),
@@ -2017,7 +2027,7 @@ class _SettingsPageState extends State<SettingsPage>
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: invitation));
                     },
-                    child: const Text('Copy pairing code'),
+                    child: const LText('Copy pairing code'),
                   ),
                   TextButton(
                     onPressed: () {
@@ -2026,12 +2036,12 @@ class _SettingsPageState extends State<SettingsPage>
                         invitation = '';
                       });
                     },
-                    child: const Text('Stop sharing'),
+                    child: const LText('Stop sharing'),
                   ),
                 ],
                 TextField(
                   controller: code,
-                  decoration: const InputDecoration(
+                  decoration: const LDecoration(
                     labelText: 'Paste the sender’s pairing code',
                   ),
                   minLines: 2,
@@ -2045,28 +2055,28 @@ class _SettingsPageState extends State<SettingsPage>
                             await preview(await LanTransfer.receive(code.text));
                           });
                         },
-                  child: const Text('Receive and preview'),
+                  child: const LText('Receive and preview'),
                 ),
-                const Text(
+                const LText(
                   'Encrypted, manual snapshot transfer over the same private Wi-Fi, with no internet or server. Keep both apps open. Allow private-network firewall access when prompted. Only share the code with your own devices. This is not automatic merging.',
                 ),
               ]),
               section('Optional online account', [
-                const Text(
+                const LText(
                   'Use Bank and rewards above for beta enrollment and securely stored account sessions. Your local planner profile works independently.',
                 ),
               ]),
               section('About this beta', [
-                const Text(
+                const LText(
                   'OneStep · 0.7.0 beta\nApplication identity: meow.tira.onestep',
                 ),
-                const Text(
+                const LText(
                   'iOS keeps its native SwiftUI app and Live Activity. Android uses Material 3. Desktop clients require their bundled libraries; keep the Windows distribution folder together.',
                 ),
                 const SelectableText(
                   'Builds: https://github.com/sillytira/onestep-ios/actions',
                 ),
-                const Text(
+                const LText(
                   'Optional family services include approved rewards, private Kids accounts, rankings, and parent codes. OS app-time blocking is not enabled. Native updates require a new package; iOS signing still applies.',
                 ),
               ]),

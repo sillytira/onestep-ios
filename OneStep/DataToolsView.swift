@@ -16,6 +16,8 @@ struct DataToolsView: View {
     @State private var transfer = LocalTransfer()
     @State private var file = BackupFile(data: Data())
     @State private var exporting = false
+    @State private var backupPassword = ""
+    @State private var backupBusy = false
     @State private var importing = false
     @State private var pending: TransferDocument?
     @State private var code = ""
@@ -40,12 +42,19 @@ struct DataToolsView: View {
                 Text("A local profile works without a login. Pairing copies the profile with your planner; it doesn't prove online account ownership.").font(.footnote)
             }
             Section("Backup and restore") {
-                Button("Export backup") {
-                    do { file = BackupFile(data: try store.exportData()); exporting = true }
-                    catch { store.errorMessage = error.localizedDescription }
+                SecureField("Passphrase",text:$backupPassword)
+                Text("Keep it somewhere safe. A lost passphrase cannot be recovered.").font(.footnote)
+                Button("Export encrypted backup") {
+                    backupBusy = true;let password = backupPassword
+                    Task { defer { backupBusy = false };do {
+                        let clear = try store.exportData()
+                        let encrypted = try await Task.detached { try BackupCrypto.seal(clear,password:password) }.value
+                        file = BackupFile(data:encrypted);exporting = true;backupPassword = ""
+                    } catch { store.errorMessage = error.localizedDescription } }
                 }
+                if backupBusy { ProgressView() }
                 Button("Import backup") { importing = true }
-                Text("JSON backups contain readable personal data. Keep them somewhere private. Import previews the data, saves a recovery copy, then replaces this device's planner. Active timers stay on their original device.").font(.footnote)
+                Text("New exports are password-encrypted. Enter the passphrase above before importing an encrypted file. Older readable JSON backups remain supported. Local planner/recovery files are not additionally password-encrypted. Timers stay on their original device.").font(.footnote)
                 ForEach(recovery, id: \.self) { url in ShareLink("Recovery: \(url.lastPathComponent)", item: url) }
             }
             Section("Send over local Wi-Fi") {
@@ -106,8 +115,12 @@ struct DataToolsView: View {
                 let url = try result.get(); let scoped = url.startAccessingSecurityScopedResource()
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                guard size <= 8 * 1024 * 1024 else { throw TransferError.invalid }
-                pending = try TransferDocument.decode(Data(contentsOf: url)); showPreview = true
+                guard size <= 12 * 1024 * 1024 else { throw TransferError.invalid }
+                let bytes = try Data(contentsOf:url),password = backupPassword;backupBusy = true
+                Task { defer { backupBusy = false };do {
+                    let clear = try await Task.detached { BackupCrypto.encrypted(bytes) ? try BackupCrypto.open(bytes,password:password):bytes }.value
+                    pending = try TransferDocument.decode(clear);showPreview = true;backupPassword = ""
+                } catch { store.errorMessage = error.localizedDescription } }
             } catch { store.errorMessage = error.localizedDescription }
         }
         .confirmationDialog("Replace this device's planner?", isPresented: $showPreview, titleVisibility: .visible) {

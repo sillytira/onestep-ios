@@ -1,3 +1,4 @@
+import 'localization.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -204,16 +205,16 @@ class _ContentPageState extends State<ContentPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Content updates')),
+    appBar: AppBar(title: const LText('Content updates')),
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text(
+        const LText(
           'Routine packs and colors can update without a new APK, IPA, EXE, or AppImage. New native features still need an app update. Your private tasks and edited routines are never replaced automatically.',
         ),
         SwitchListTile(
-          title: const Text('Automatically refresh content'),
-          subtitle: const Text(
+          title: const LText('Automatically refresh content'),
+          subtitle: const LText(
             'Checks the public content feed on app launch and when this screen opens. Sends no personal planner data.',
           ),
           value: widget.planner.state['contentAutoUpdate'] != false,
@@ -257,18 +258,18 @@ class _ContentPageState extends State<ContentPage> {
                               final confirmed = await showDialog<bool>(
                                 context: context,
                                 builder: (c) => AlertDialog(
-                                  title: const Text('Add these routine steps?'),
-                                  content: const Text(
+                                  title: const LText('Add these routine steps?'),
+                                  content: const LText(
                                     'Adds new steps. Existing routines and history stay in place. Edit the new times in Routines.',
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(c, false),
-                                      child: const Text('Cancel'),
+                                      child: const LText('Cancel'),
                                     ),
                                     FilledButton(
                                       onPressed: () => Navigator.pop(c, true),
-                                      child: const Text('Add steps'),
+                                      child: const LText('Add steps'),
                                     ),
                                   ],
                                 ),
@@ -300,7 +301,7 @@ class _ContentPageState extends State<ContentPage> {
             ),
         ],
         const SizedBox(height: 20),
-        const Text(
+        const LText(
           'Privacy: account sessions use the OS secure vault. Planner files and JSON exports contain readable personal data; protect your device and backups. Public content updates do not upload your planner.',
         ),
       ],

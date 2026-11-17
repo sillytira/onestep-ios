@@ -1,3 +1,4 @@
+import 'localization.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'family.dart';
@@ -16,7 +17,7 @@ class BetaBadge extends StatelessWidget {
       color: const Color(0xffb6a4ff).withValues(alpha: .16),
       borderRadius: BorderRadius.circular(20),
     ),
-    child: const Text(
+    child: const LText(
       'BETA',
       style: TextStyle(
         color: Color(0xffcbbcff),
@@ -104,8 +105,8 @@ class AndroidMore extends StatelessWidget {
         ),
         child: Icon(icon, color: color),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(detail),
+      title: LText(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: LText(detail),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: action,
     ),
@@ -118,7 +119,7 @@ class AndroidMore extends StatelessWidget {
       const Row(
         children: [
           Expanded(
-            child: Text(
+            child: LText(
               'Your space',
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
             ),
@@ -127,7 +128,7 @@ class AndroidMore extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 8),
-      const Text('The extras, without crowding your next step.'),
+      const LText('The extras, without crowding your next step.'),
       const SizedBox(height: 16),
       if(calendar!=null) entry('Planner','Day, week and month overview',Icons.calendar_month_rounded,const Color(0xff89b8ff),calendar!),
       if(sync!=null) entry('Private planner sync','Automatic encrypted sync with conflict review',Icons.sync_lock_rounded,const Color(0xff77e0d6),sync!),
@@ -193,17 +194,17 @@ class AndroidMore extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              const LText(
                 'Focus & app time',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              const Text(
+              const LText(
                 'Focus timers and reminders work here. Apple Screen Time and Live Activities are iPhone features. Android app blocking is not included in this beta.',
               ),
               TextButton(
                 onPressed: settings,
-                child: const Text('Check reminder setup'),
+                child: const LText('Check reminder setup'),
               ),
             ],
           ),
@@ -303,7 +304,7 @@ class _XPBetaPageState extends State<XPBetaPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('XP Beta'),
+      title: const LText('XP Beta'),
       actions: [
         IconButton(
           tooltip: 'Refresh XP',
@@ -332,7 +333,7 @@ class _XPBetaPageState extends State<XPBetaPage> {
                 children: [
                   Icon(Icons.bolt_rounded, color: Color(0xffd7c1ff)),
                   SizedBox(width: 8),
-                  Text('YOUR PROGRESS'),
+                  LText('YOUR PROGRESS'),
                   Spacer(),
                   BetaBadge(),
                 ],
@@ -345,7 +346,7 @@ class _XPBetaPageState extends State<XPBetaPage> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Text('XP celebrates progress. Points buy app time. Beta earnings stay in the beta leaderboard cohort.'),
+              const LText('XP celebrates progress. Points buy app time. Beta earnings stay in the beta leaderboard cohort.'),
               if (today != null) ...[
                 const SizedBox(height: 20),
                 Text('$today / 1,000 XP today'),
@@ -376,16 +377,16 @@ class _XPBetaPageState extends State<XPBetaPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                LText(
                   'One small step = 10 XP',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 10),
-                Text(
+                LText(
                   'Complete a task or daily routine step while signed in. Earn up to 1,000 XP per UTC day. Undoing, re-completing or importing the same completion cannot multiply awards.',
                 ),
                 SizedBox(height: 10),
-                Text(
+                LText(
                   'XP is separate from spendable points. Skipping, snoozing and opening the app do not earn XP. Children stay off public leaderboards.',
                 ),
               ],
@@ -398,7 +399,7 @@ class _XPBetaPageState extends State<XPBetaPage> {
             if (mounted) await refresh();
           },
           icon: const Icon(Icons.person_outline_rounded),
-          label: const Text('Account and XP privacy'),
+          label: const LText('Account and XP privacy'),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
@@ -406,7 +407,7 @@ class _XPBetaPageState extends State<XPBetaPage> {
               ? widget.rankings
               : null,
           icon: const Icon(Icons.leaderboard_outlined),
-          label: const Text('Separate XP leaderboard'),
+          label: const LText('Separate XP leaderboard'),
         ),
       ],
     ),

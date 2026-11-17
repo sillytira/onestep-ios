@@ -161,6 +161,8 @@ do $$ declare f record;impl text;arglist text;body text;begin
  impl:='onestep_v7_'||substr(f.proname,9);
  select coalesce(string_agg(format('%I',f.proargnames[i]),',' order by i),'') into arglist from generate_series(1,f.pronargs) i;
  execute format('alter function public.%I(%s) rename to %I',f.proname,f.identity,impl);
+ -- PL/pgSQL parameters may be qualified by the original function name.
+ execute replace(pg_get_functiondef(f.oid),f.proname||'.',impl||'.');
  execute format('revoke all on function public.%I(%s) from public,anon,authenticated',impl,f.identity);
  body:='begin perform public.onestep_assert_active(); ';
  if f.proretset then body:=body||format('return query select * from public.%I(%s);',impl,arglist);

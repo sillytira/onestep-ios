@@ -10,8 +10,8 @@ const projectDir = path.join(root, 'OneStep.xcodeproj');
 fs.mkdirSync(path.join(projectDir, 'xcshareddata', 'xcschemes'), { recursive: true });
 const id = name => crypto.createHash('sha256').update(name).digest('hex').slice(0, 24).toUpperCase();
 const q = value => JSON.stringify(value);
-const sources = ['Shared/LiveActivityCard.swift', 'Core/XP.swift', 'Core/AppRoute.swift', 'ScreenTimeView.swift', 'PersonalRewards.swift', 'Shared/ScreenTimeState.swift', 'Shared/WidgetSnapshot.swift', 'Core/Planner.swift', 'Core/RewardsRules.swift', 'Core/Content.swift', 'ContentUpdates.swift', 'Shared/DayActionIntent.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
-const tests = ['PlannerStoreTests.swift'];
+const sources = ['Core/Recurrence.swift','Core/PlannerMerge.swift','BackupCrypto.swift','CloudPlannerSync.swift','PlannerCalendarView.swift','BetaServicesView.swift','LanguageView.swift','Shared/LiveActivityCard.swift', 'Core/XP.swift', 'Core/AppRoute.swift', 'ScreenTimeView.swift', 'PersonalRewards.swift', 'Shared/ScreenTimeState.swift', 'Shared/WidgetSnapshot.swift', 'Core/Planner.swift', 'Core/RewardsRules.swift', 'Core/Content.swift', 'ContentUpdates.swift', 'Shared/DayActionIntent.swift', 'Core/Transfer.swift', 'LocalTransfer.swift', 'Account.swift', 'DataToolsView.swift', 'RewardsView.swift', 'Persistence.swift', 'Notifications.swift', 'Views.swift', 'OneStepApp.swift', 'FocusTimerSheet.swift', 'LiveActivities.swift', 'Shared/Palette.swift', 'Shared/DayActivityAttributes.swift'];
+const tests = ['PlannerStoreTests.swift','ConfirmedFeatureTests.swift'];
 const objects = [];
 const object = (name, body) => objects.push(`${id(name)} = { ${body} };`);
 for (const file of sources) {
@@ -22,6 +22,9 @@ for (const file of tests) {
   object(`test-ref-${file}`, `isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ${q(file)}; sourceTree = "<group>";`);
   object(`test-build-${file}`, `isa = PBXBuildFile; fileRef = ${id(`test-ref-${file}`)};`);
 }
+for(const language of ['en','de','uk','ru','pl','bg']) object('strings-'+language,`isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ${language}; path = ${q(language+'.lproj/Localizable.strings')}; sourceTree = "<group>";`);
+object('strings-group',`isa = PBXVariantGroup; name = Localizable.strings; sourceTree = "<group>"; children = (${['en','de','uk','ru','pl','bg'].map(l=>id('strings-'+l)).join(',')});`);
+object('strings-build',`isa = PBXBuildFile; fileRef = ${id('strings-group')};`);
 object('assets-ref', 'isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>";');
 object('assets-build', `isa = PBXBuildFile; fileRef = ${id('assets-ref')};`);
 object('info-ref', 'isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>";');
@@ -37,7 +40,7 @@ object('live-attributes-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/
 object('live-intent-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/DayActionIntent.swift')};`);
 object('live-embed-build', `isa = PBXBuildFile; fileRef = ${id('live-product-ref')}; settings = { ATTRIBUTES = (RemoveHeadersOnCopy); };`);
 object('live-group', `isa = PBXGroup; children = (${id('live-source-ref')},${id('live-info-ref')}); path = OneStepLive; sourceTree = "<group>";`);
-object('app-group', `isa = PBXGroup; children = (${sources.map(file => id(`ref-${file}`)).join(',')},${id('assets-ref')},${id('info-ref')}); path = OneStep; sourceTree = "<group>";`);
+object('app-group', `isa = PBXGroup; children = (${sources.map(file => id(`ref-${file}`)).join(',')},${id('assets-ref')},${id('strings-group')},${id('info-ref')}); path = OneStep; sourceTree = "<group>";`);
 object('tests-group', `isa = PBXGroup; children = (${tests.map(file => id(`test-ref-${file}`)).join(',')}); path = AppTests; sourceTree = "<group>";`);
 object('live-widget-build', `isa = PBXBuildFile; fileRef = ${id('ref-Shared/WidgetSnapshot.swift')};`);
 if(screenTime){
@@ -58,7 +61,7 @@ if(screenTime){
 object('products-group', `isa = PBXGroup; children = (${id('product-ref')},${id('test-product-ref')},${id('live-product-ref')}${screenTime ? ','+id('monitor-product') : ''}); name = Products; sourceTree = "<group>";`);
 object('main-group', `isa = PBXGroup; children = (${id('app-group')},${id('tests-group')},${id('live-group')}${screenTime ? ','+id('monitor-group') : ''},${id('products-group')}); sourceTree = "<group>";`);
 object('sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${sources.map(file => id(`build-${file}`)).join(',')}); runOnlyForDeploymentPostprocessing = 0;`);
-object('resources-phase', `isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (${id('assets-build')}); runOnlyForDeploymentPostprocessing = 0;`);
+object('resources-phase', `isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (${id('assets-build')},${id('strings-build')}); runOnlyForDeploymentPostprocessing = 0;`);
 object('frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
 object('test-sources-phase', `isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${tests.map(file => id(`test-build-${file}`)).join(',')}); runOnlyForDeploymentPostprocessing = 0;`);
 object('test-frameworks-phase', 'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;');
@@ -92,7 +95,7 @@ for (const configuration of ['Debug', 'Release']) {
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.8.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.10.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO; SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
@@ -104,7 +107,7 @@ for (const configuration of ['Debug', 'Release']) {
     ${screenTime ? "CODE_SIGN_ENTITLEMENTS = OneStepLive/Shared.entitlements;" : ""}
     APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES;
     CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "";
-    MARKETING_VERSION = 0.8.0; CURRENT_PROJECT_VERSION = 5;
+    MARKETING_VERSION = 0.10.0; CURRENT_PROJECT_VERSION = 5;
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
     SUPPORTS_MACCATALYST = NO;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
@@ -119,7 +122,7 @@ for (const configuration of ['Debug', 'Release']) {
   }; name = ${configuration};`);
 }
 if(screenTime){
- for(const configuration of ['Debug','Release']) object('monitor-'+configuration, `isa = XCBuildConfiguration; buildSettings = { PRODUCT_BUNDLE_IDENTIFIER = ${bundleID}.activitymonitor; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = OneStepMonitor/Info.plist; GENERATE_INFOPLIST_FILE = NO; IPHONEOS_DEPLOYMENT_TARGET = 26.0; SWIFT_VERSION = 5.0; APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES; MARKETING_VERSION = 0.8.0; CURRENT_PROJECT_VERSION = 5; CODE_SIGN_ENTITLEMENTS = OneStep/ScreenTime.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; }; name = ${configuration};`);
+ for(const configuration of ['Debug','Release']) object('monitor-'+configuration, `isa = XCBuildConfiguration; buildSettings = { PRODUCT_BUNDLE_IDENTIFIER = ${bundleID}.activitymonitor; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = OneStepMonitor/Info.plist; GENERATE_INFOPLIST_FILE = NO; IPHONEOS_DEPLOYMENT_TARGET = 26.0; SWIFT_VERSION = 5.0; APPLICATION_EXTENSION_API_ONLY = YES; SKIP_INSTALL = YES; MARKETING_VERSION = 0.10.0; CURRENT_PROJECT_VERSION = 5; CODE_SIGN_ENTITLEMENTS = OneStep/ScreenTime.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; }; name = ${configuration};`);
  object('monitor-target',`isa = PBXNativeTarget; buildConfigurationList = ${id('monitor-configs')}; buildPhases = (${id('monitor-sources')},${id('monitor-frameworks')}); buildRules = (); dependencies = (); name = OneStepMonitor; productName = OneStepMonitor; productReference = ${id('monitor-product')}; productType = "com.apple.product-type.app-extension";`);
 }
 for (const kind of ['project', 'target', 'test', 'live', ...(screenTime ? ['monitor'] : [])]) {
@@ -128,7 +131,7 @@ for (const kind of ['project', 'target', 'test', 'live', ...(screenTime ? ['moni
 object('target', `isa = PBXNativeTarget; buildConfigurationList = ${id('target-configs')}; buildPhases = (${id('sources-phase')},${id('frameworks-phase')},${id('resources-phase')},${id('live-copy-phase')}${screenTime ? ','+id('monitor-copy') : ''}); buildRules = (); dependencies = (${id('live-dependency')}${screenTime ? ','+id('monitor-dependency') : ''}); name = OneStep; productName = OneStep; productReference = ${id('product-ref')}; productType = "com.apple.product-type.application";`);
 object('test-target', `isa = PBXNativeTarget; buildConfigurationList = ${id('test-configs')}; buildPhases = (${id('test-sources-phase')},${id('test-frameworks-phase')}); buildRules = (); dependencies = (${id('dependency')}); name = OneStepTests; productName = OneStepTests; productReference = ${id('test-product-ref')}; productType = "com.apple.product-type.bundle.unit-test";`);
 object('live-target', `isa = PBXNativeTarget; buildConfigurationList = ${id('live-configs')}; buildPhases = (${id('live-sources-phase')},${id('live-frameworks-phase')}); buildRules = (); dependencies = (); name = OneStepLive; productName = OneStepLive; productReference = ${id('live-product-ref')}; productType = "com.apple.product-type.app-extension";`);
-object('project', `isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 2600; TargetAttributes = { ${id('target')} = { CreatedOnToolsVersion = 26.0; }; ${id('test-target')} = { CreatedOnToolsVersion = 26.0; TestTargetID = ${id('target')}; }; ${id('live-target')} = { CreatedOnToolsVersion = 26.0; }; }; }; buildConfigurationList = ${id('project-configs')}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en,Base); mainGroup = ${id('main-group')}; productRefGroup = ${id('products-group')}; projectDirPath = ""; projectRoot = ""; targets = (${id('target')},${id('test-target')},${id('live-target')}${screenTime ? ','+id('monitor-target') : ''});`);
+object('project', `isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 2600; TargetAttributes = { ${id('target')} = { CreatedOnToolsVersion = 26.0; }; ${id('test-target')} = { CreatedOnToolsVersion = 26.0; TestTargetID = ${id('target')}; }; ${id('live-target')} = { CreatedOnToolsVersion = 26.0; }; }; }; buildConfigurationList = ${id('project-configs')}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en,de,uk,ru,pl,bg,Base); mainGroup = ${id('main-group')}; productRefGroup = ${id('products-group')}; projectDirPath = ""; projectRoot = ""; targets = (${id('target')},${id('test-target')},${id('live-target')}${screenTime ? ','+id('monitor-target') : ''});`);
 fs.writeFileSync(path.join(projectDir, 'project.pbxproj'), `// !$*UTF8*$!\n{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n${objects.join('\n')}\n}; rootObject = ${id('project')}; }\n`);
 
 const buildable = (target, name, product) => `<BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${id(target)}" BuildableName="${product}" BlueprintName="${name}" ReferencedContainer="container:OneStep.xcodeproj"/>`;

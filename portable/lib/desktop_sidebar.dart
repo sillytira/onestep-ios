@@ -1,3 +1,4 @@
+import 'localization.dart';
 import 'package:flutter/material.dart';
 
 class DesktopSidebar extends StatelessWidget {
@@ -47,7 +48,7 @@ class DesktopSidebar extends StatelessWidget {
                 if (expanded) ...[
                   const SizedBox(width: 12),
                   const Expanded(
-                    child: Text(
+                    child: LText(
                       'OneStep',
                       style: TextStyle(
                         fontSize: 23,
@@ -67,7 +68,7 @@ class DesktopSidebar extends StatelessWidget {
                     key: const ValueKey("desktop-add-task"),
                     onPressed: onAdd,
                     icon: const Icon(Icons.add),
-                    label: const Text('Add a task'),
+                    label: const LText('Add a task'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(double.infinity, 48),
                     ),
@@ -93,7 +94,7 @@ class DesktopSidebar extends StatelessWidget {
           if (expanded)
             const Padding(
               padding: EdgeInsets.fromLTRB(24, 20, 24, 24),
-              child: Text(
+              child: LText(
                 'A little progress is still progress.',
                 style: TextStyle(color: Color(0xff9194a6), fontSize: 12),
               ),

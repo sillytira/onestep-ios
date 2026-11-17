@@ -16,6 +16,8 @@ private enum EditorRoute: Identifiable {
 struct RootView: View {
     @Environment(PlannerStore.self) private var store
     @State private var editor: EditorRoute?
+    @AppStorage("uiLanguage") private var uiLanguage = ""
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var bindings = store
@@ -52,14 +54,16 @@ struct RootView: View {
                     NavigationStack { RewardsView() }
                 }
                 Tab("More", systemImage: "square.grid.2x2", value: 4) {
-                    NavigationStack { MoreDestinations(openSettings: { editor = .settings }) }
+                    NavigationStack { MoreDestinations(openSettings: { editor = .settings },openTask:{ editor = .task($0) }) }
                 }
             }
+            .task(id:Int(timeline.date.timeIntervalSince1970/30)) { if scenePhase == .active { await CloudPlannerSync.shared.tick(store) } }
             .task(id: PlannerRules.dayKey(timeline.date)) { await store.refresh() }
             .task(id: Int(timeline.date.timeIntervalSince1970 / 60)) { await PersonalRewards.shared.sync(store.state) }
         }
         .tint(tabPalette.color)
         .preferredColorScheme(.dark)
+        .environment(\.locale,uiLanguage.isEmpty ? Locale.current:Locale(identifier:uiLanguage))
         .sheet(item: $editor) { route in
             switch route {
             case .task(let task): TaskEditor(task: task)
@@ -110,15 +114,31 @@ struct RootView: View {
 
 private struct MoreDestinations: View {
     let openSettings: () -> Void
+    let openTask: (TaskEntry) -> Void
     var body: some View {
-        List {
-            NavigationLink { NotesView() } label: { Label("Notes", systemImage:"note.text") }
-            NavigationLink { HistoryView() } label: { Label("History", systemImage:"clock") }
-            NavigationLink { ScreenTimeView() } label: { Label("Screen Time", systemImage:"hourglass") }
-            NavigationLink { DataToolsView() } label: { Label("Backups and Wi-Fi", systemImage:"arrow.triangle.2.circlepath") }
-            NavigationLink { ContentUpdatesView() } label: { Label("Routine library", systemImage:"books.vertical") }
-            Button(action:openSettings) { Label("Reminders and settings",systemImage:"gearshape") }
-        }.navigationTitle("Your space")
+        ScrollView {
+            VStack(alignment:.leading,spacing:12) {
+                HStack { Text("Your space").font(.largeTitle.bold());Spacer();Text("BETA").font(.caption.bold()).padding(8).background(ItemPalette.violet.color.opacity(0.2),in:Capsule()) }
+                NavigationLink { PlannerCalendarView(edit:openTask) } label: { tile("Planner","Day, week and month overview","calendar",.blue) }
+                NavigationLink { XPBetaView() } label: { tile("XP Beta","Your progress, pending awards and separate rankings","bolt.fill",.violet) }
+                NavigationLink { NotesView() } label: { tile("Notes","Capture a thought for later","note.text",.amber) }
+                NavigationLink { HistoryView() } label: { tile("History","Tasks and routines you have finished","clock",.mint) }
+                NavigationLink { ContentUpdatesView() } label: { tile("Routine library & updates","Preview and add fresh routine packs","books.vertical",.blue) }
+                NavigationLink { DataToolsView() } label: { tile("Backups and Wi-Fi","Encrypted exports and local transfers","arrow.triangle.2.circlepath",.mint) }
+                NavigationLink { PlannerSyncView() } label: { tile("Private planner sync","Automatic encrypted sync with conflict review","lock.icloud",.mint) }
+                NavigationLink { RewardsView() } label: { tile("Family and accounts","Bank, parent approvals and private kids accounts","person.2",.rose) }
+                NavigationLink { ScreenTimeView() } label: { tile("Screen Time","Point-funded app time with Apple authorization","hourglass",.amber) }
+                Button(action:openSettings) { tile("Reminders and settings","Permissions, quiet hours and snooze","bell",.amber) }
+                NavigationLink { LanguageView() } label: { tile("Language","Deutsch · Українська · Русский · Polski · Български","globe",.blue) }
+                Text("OneStep 0.10 Beta").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity)
+            }.padding()
+        }.navigationTitle("More").buttonStyle(.plain)
+    }
+    private func tile(_ title: String,_ detail: String,_ icon: String,_ palette: ItemPalette) -> some View {
+        HStack(spacing:16) {
+            Image(systemName:icon).font(.title2).foregroundStyle(palette.color).frame(width:48,height:48).background(palette.color.opacity(0.15),in:RoundedRectangle(cornerRadius:14))
+            VStack(alignment:.leading,spacing:4) { Text(LocalizedStringKey(title)).font(.headline);Text(LocalizedStringKey(detail)).font(.subheadline).foregroundStyle(.secondary) };Spacer();Image(systemName:"chevron.right").foregroundStyle(.secondary)
+        }.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(Color(.secondarySystemBackground),in:RoundedRectangle(cornerRadius:24))
     }
 }
 
@@ -383,6 +403,9 @@ private struct TaskEditor: View {
     @State private var reminder: Bool
     @State private var colorName: String
     @State private var repeatRule: String
+    @State private var repeatEvery: Int
+    @State private var repeatWeekdays: Set<Int>
+    @State private var repeatMonthDay: Int
     @State private var steps: String
     @State private var listName: String
     @State private var rewardEnabled: Bool
@@ -398,6 +421,9 @@ private struct TaskEditor: View {
         _reminder = State(initialValue: task?.reminderEnabled ?? true)
         _colorName = State(initialValue: task?.colorName ?? "blue")
         _repeatRule = State(initialValue: task?.repeatRule ?? "none")
+        _repeatEvery = State(initialValue:task?.repeatEvery ?? 1)
+        _repeatWeekdays = State(initialValue:Set(task?.repeatWeekdays ?? [1,2,3,4,5]))
+        _repeatMonthDay = State(initialValue:task?.repeatMonthDay ?? Calendar.current.component(.day,from:task?.dueAt ?? Date()))
         _steps = State(initialValue: (task?.microsteps ?? []).map(\.title).joined(separator: "\n"))
         _listName = State(initialValue: task?.listName ?? "")
         _rewardEnabled = State(initialValue: task?.rewardPoints != nil)
@@ -428,8 +454,11 @@ private struct TaskEditor: View {
                     if hasDate {
                         DatePicker("When", selection: $dueAt)
                         Toggle("Remind me", isOn: $reminder)
+                        if repeatRule != "none" { Stepper("Repeat every: \(repeatEvery)",value:$repeatEvery,in:1...365) }
+                        if repeatRule == "monthly" { Stepper("Day of month: \(repeatMonthDay)",value:$repeatMonthDay,in:1...31) }
+                        if repeatRule == "weekdays" { ForEach(1...7,id:\.self) { day in Toggle(Calendar.current.weekdaySymbols[day%7],isOn:Binding(get:{repeatWeekdays.contains(day)},set:{if $0 {repeatWeekdays.insert(day)} else if repeatWeekdays.count>1 {repeatWeekdays.remove(day)}})) } }
                         Picker("Repeat after completion", selection: $repeatRule) {
-                            Text("Never").tag("none"); Text("Daily").tag("daily"); Text("Weekly").tag("weekly")
+                            Text("Never").tag("none"); Text("Daily").tag("daily"); Text("Weekly").tag("weekly");Text("Monthly").tag("monthly");Text("Selected weekdays").tag("weekdays")
                         }
                         if reminder {
                             Text("One reminder when due, then one follow-up after 10 minutes. Snoozing replaces both with one reminder.").font(.footnote).foregroundStyle(.secondary)
@@ -440,7 +469,7 @@ private struct TaskEditor: View {
                 if let task {
                     Section {
                         Button("Mark done") {
-                            if store.saveTask(id: task.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName, rewardPoints: rewardEnabled ? rewardPoints : nil, rewardAccountID: rewardEnabled ? (task.rewardAccountID ?? rewardAccount.userID) : nil), let updated = store.state.tasks.first(where: { $0.id == task.id }) { store.complete(PlannerRules.taskAction(updated)); dismiss() }
+                            if store.saveTask(id: task.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName, rewardPoints: rewardEnabled ? rewardPoints : nil, rewardAccountID: rewardEnabled ? (task.rewardAccountID ?? rewardAccount.userID) : nil,repeatEvery:repeatEvery,repeatWeekdays:Array(repeatWeekdays).sorted(),repeatMonthDay:repeatMonthDay), let updated = store.state.tasks.first(where: { $0.id == task.id }) { store.complete(PlannerRules.taskAction(updated)); dismiss() }
                         }
                     }
                 }
@@ -451,7 +480,7 @@ private struct TaskEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName, rewardPoints: rewardEnabled ? rewardPoints : nil, rewardAccountID: rewardEnabled ? (task?.rewardAccountID ?? rewardAccount.userID) : nil) { dismiss() }
+                        if store.saveTask(id: task?.id, title: title, notes: notes, dueAt: hasDate ? dueAt : nil, reminder: reminder, colorName: colorName, repeatRule: repeatRule == "none" ? nil : repeatRule, steps: steps.components(separatedBy: .newlines), listName: listName, rewardPoints: rewardEnabled ? rewardPoints : nil, rewardAccountID: rewardEnabled ? (task?.rewardAccountID ?? rewardAccount.userID) : nil,repeatEvery:repeatEvery,repeatWeekdays:Array(repeatWeekdays).sorted(),repeatMonthDay:repeatMonthDay) { dismiss() }
                     }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }

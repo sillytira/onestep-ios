@@ -11,7 +11,7 @@ struct TransferDocument: Codable {
         guard data.count <= 8 * 1024 * 1024 else { throw TransferError.invalid }
         let value = try JSONDecoder().decode(Self.self, from: data)
         guard value.format == "OneStep", value.formatVersion == 1, value.state.schemaVersion == 1,
-              value.state.tasks.count <= 10000, value.state.routines.count <= 1000,
+              value.state.tasks.count <= 10000, value.state.tasks.allSatisfy(RecurrenceRules.valid), value.state.routines.count <= 1000,
               (value.state.xpCompletions ?? []).count <= 10000, (value.state.xpCompletions ?? []).allSatisfy(\.valid),
               Set(value.state.tasks.map(\.id)).count == value.state.tasks.count,
               value.state.tasks.allSatisfy({ ($0.rewardPoints == nil || (0...100).contains($0.rewardPoints!)) && ($0.rewardAccountID == nil || UUID(uuidString: $0.rewardAccountID!) != nil) }),

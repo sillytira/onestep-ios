@@ -1,3 +1,4 @@
+import 'localization.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -328,19 +329,19 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Application admin')),
+    appBar: AppBar(title: const LText('Application admin')),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Text(
+            const LText(
               'Server-authorized administration',
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            const Text(
+            const LText(
               'Only an enrolled owner/admin can use these actions. Database passwords and service-role keys are never available in the app. Points are virtual and cannot be sold.',
             ),
             const SizedBox(height: 24),
@@ -352,11 +353,11 @@ class _AdminPageState extends State<AdminPage> {
               ),
             DropdownButtonFormField<String>(
               initialValue: kind,
-              decoration: const InputDecoration(labelText: 'Beta account type'),
+              decoration: const LDecoration(labelText: 'Beta account type'),
               items: const [
-                DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                DropdownMenuItem(value: 'parent', child: Text('Parent')),
-                DropdownMenuItem(value: 'kids', child: Text('Kids')),
+                DropdownMenuItem(value: 'normal', child: LText('Normal')),
+                DropdownMenuItem(value: 'parent', child: LText('Parent')),
+                DropdownMenuItem(value: 'kids', child: LText('Kids')),
               ],
               onChanged: busy
                   ? null
@@ -367,7 +368,7 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 12),
             TextField(
               controller: boundEmail,
-              decoration: const InputDecoration(
+              decoration: const LDecoration(
                 labelText: 'Bind invitation to email (optional)',
               ),
               autocorrect: false,
@@ -388,7 +389,7 @@ class _AdminPageState extends State<AdminPage> {
                         });
                       });
                     },
-              child: const Text('Generate single-use beta key'),
+              child: const LText('Generate single-use beta key'),
             ),
             if (issuedCode.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -397,14 +398,14 @@ class _AdminPageState extends State<AdminPage> {
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: issuedCode));
                 },
-                child: const Text('Copy private enrollment key'),
+                child: const LText('Copy private enrollment key'),
               ),
-              const Text(
+              const LText(
                 'Shown once here. Share privately with the intended user; expires after 7 days. No key is saved in source or analytics.',
               ),
             ],
             const SizedBox(height: 28),
-            const Text(
+            const LText(
               'Accounts and audited adjustments',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
@@ -414,7 +415,7 @@ class _AdminPageState extends State<AdminPage> {
                   : () {
                       run(load);
                     },
-              child: const Text('Refresh accounts'),
+              child: const LText('Refresh accounts'),
             ),
             for (final user in users)
               RadioListTile<String>(
@@ -432,7 +433,7 @@ class _AdminPageState extends State<AdminPage> {
               ),
             TextField(
               controller: delta,
-              decoration: const InputDecoration(
+              decoration: const LDecoration(
                 labelText: 'Point adjustment, −10000 to 10000',
               ),
               keyboardType: const TextInputType.numberWithOptions(signed: true),
@@ -440,7 +441,7 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 12),
             TextField(
               controller: reason,
-              decoration: const InputDecoration(
+              decoration: const LDecoration(
                 labelText: 'Audit reason (required)',
               ),
               minLines: 2,
@@ -476,7 +477,7 @@ class _AdminPageState extends State<AdminPage> {
                         });
                       });
                     },
-              child: const Text('Record audited adjustment'),
+              child: const LText('Record audited adjustment'),
             ),
           ],
         ),
@@ -776,21 +777,21 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
     final value = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Parent authorization'),
+        title: const LText('Parent authorization'),
         content: TextField(
           controller: input,
           obscureText: true,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: '10-digit parent code'),
+          decoration: const LDecoration(labelText: '10-digit parent code'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c),
-            child: const Text('Cancel'),
+            child: const LText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(c, input.text),
-            child: const Text('Authorize device sign-out'),
+            child: const LText('Authorize device sign-out'),
           ),
         ],
       ),
@@ -965,7 +966,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   size: 42,
                   color: Color(0xffc5baff),
                 ),
-                const Text(
+                const LText(
                   'Earn points with OneStep. Keep your rewards and activity together across your devices.',
                 ),
               ], color: const Color(0xff6548a6)),
@@ -977,20 +978,20 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 ),
                 TextField(
                   controller: email,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: const LDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                 ),
                 TextField(
                   controller: password,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: const LDecoration(labelText: 'Password'),
                   obscureText: true,
                   autocorrect: false,
                 ),
                 if (creatingAccount)
                   TextField(
                     controller: betaKey,
-                    decoration: const InputDecoration(
+                    decoration: const LDecoration(
                       labelText: 'Single-use beta key (new accounts)',
                     ),
                     obscureText: true,
@@ -999,7 +1000,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 if (creatingAccount && effectiveRole != 'kids')
                   TextField(
                     controller: username,
-                    decoration: const InputDecoration(
+                    decoration: const LDecoration(
                       labelText: 'Handle for a new account',
                     ),
                     autocorrect: false,
@@ -1038,7 +1039,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         : 'Join with a beta key',
                   ),
                 ),
-                const Text(
+                const LText(
                   'Your private planner works without an account. Points are virtual and cannot be bought with real money.',
                 ),
               ]),
@@ -1070,7 +1071,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     );
                   },
                   icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text('Application admin console'),
+                  label: const LText('Application admin console'),
                 ),
               if (bankTab == 0)
                 panel('Your XP · Beta', [
@@ -1078,11 +1079,11 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     '$xpTotal XP',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const Text(
+                  const LText(
                     '10 XP per completed task or routine step. XP is non-spendable, with a separate 1,000 XP daily cap and optional leaderboard.',
                   ),
                   if (!xpReady)
-                    const Text(
+                    const LText(
                       'Saved total. The XP service needs migration 006 or a connection.',
                     ),
                 ]),
@@ -1104,7 +1105,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                   panel('Start your family', [
                     TextField(
                       controller: familyName,
-                      decoration: const InputDecoration(
+                      decoration: const LDecoration(
                         labelText: 'Family name',
                       ),
                     ),
@@ -1119,9 +1120,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 await refresh();
                               });
                             },
-                      child: const Text('Create parent family'),
+                      child: const LText('Create parent family'),
                     ),
-                    const Text(
+                    const LText(
                       'This is a trusted-family beta. An invitation links accounts; it does not verify age or legal guardianship and does not authorize Apple Screen Time.',
                     ),
                   ])
@@ -1141,7 +1142,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 });
                               });
                             },
-                      child: const Text('Create 10-minute child invitation'),
+                      child: const LText('Create 10-minute child invitation'),
                     ),
                     if (generatedInvite.isNotEmpty) ...[
                       SelectableText(generatedInvite),
@@ -1151,9 +1152,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                             ClipboardData(text: generatedInvite),
                           );
                         },
-                        child: const Text('Copy invitation'),
+                        child: const LText('Copy invitation'),
                       ),
-                      const Text(
+                      const LText(
                         'Share privately with your child. Single use; creating another code revokes the previous one.',
                       ),
                     ],
@@ -1163,7 +1164,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     DropdownButtonFormField<String>(
                       key: ValueKey('assign-$selectedChild'),
                       initialValue: selectedChild,
-                      decoration: const InputDecoration(labelText: 'Child'),
+                      decoration: const LDecoration(labelText: 'Child'),
                       items: children
                           .map(
                             (c) => DropdownMenuItem(
@@ -1180,13 +1181,13 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     ),
                     TextField(
                       controller: taskTitle,
-                      decoration: const InputDecoration(
+                      decoration: const LDecoration(
                         labelText: 'One clear task',
                       ),
                     ),
                     TextField(
                       controller: reward,
-                      decoration: const InputDecoration(
+                      decoration: const LDecoration(
                         labelText: 'Points, 1–1000',
                       ),
                       keyboardType: TextInputType.number,
@@ -1213,7 +1214,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 await refresh();
                               });
                             },
-                      child: const Text('Assign task'),
+                      child: const LText('Assign task'),
                     ),
                   ]),
                 if (children.isNotEmpty)
@@ -1222,7 +1223,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       'Policy for ${children.where((c) => c["child_id"] == selectedChild).map((c) => c["nickname"]).join()}. This permits purchases on the entitled native iPhone app; Apple authorization is separate.',
                     ),
                     SwitchListTile(
-                      title: const Text('Allow points-funded unlocks'),
+                      title: const LText('Allow points-funded unlocks'),
                       value: screenUnlockAllowed,
                       onChanged: busy
                           ? null
@@ -1231,13 +1232,13 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                               policyDirty = true;
                             }),
                     ),
-                    const Text(
+                    const LText(
                       '1 point = 1 minute. Parents can set a lower daily unlock allowance.',
                     ),
                     DropdownButtonFormField<int>(
                       key: ValueKey('minutes-$policyRevision'),
                       initialValue: screenDailyMinutes,
-                      decoration: const InputDecoration(
+                      decoration: const LDecoration(
                         labelText: 'Daily minutes limit',
                       ),
                       items: [
@@ -1279,7 +1280,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 );
                               });
                             },
-                      child: const Text('Save child policy'),
+                      child: const LText('Save child policy'),
                     ),
                   ]),
                 if (children.isNotEmpty)
@@ -1287,7 +1288,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                     DropdownButtonFormField<String>(
                       key: ValueKey('parent-$selectedChild'),
                       initialValue: selectedChild,
-                      decoration: const InputDecoration(
+                      decoration: const LDecoration(
                         labelText: 'Child account',
                       ),
                       items: children
@@ -1326,7 +1327,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 });
                               });
                             },
-                      child: const Text('Generate or rotate parent code'),
+                      child: const LText('Generate or rotate parent code'),
                     ),
                     OutlinedButton(
                       onPressed: busy
@@ -1344,7 +1345,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 });
                               });
                             },
-                      child: const Text('Show saved code offline'),
+                      child: const LText('Show saved code offline'),
                     ),
                     OutlinedButton(
                       onPressed: busy
@@ -1354,21 +1355,21 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 final confirmed = await showDialog<bool>(
                                   context: context,
                                   builder: (c) => AlertDialog(
-                                    title: const Text(
+                                    title: const LText(
                                       'Unlink this child account?',
                                     ),
-                                    content: const Text(
+                                    content: const LText(
                                       'Only the parent can do this. Existing points and task history remain stored.',
                                     ),
                                     actions: [
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(c, false),
-                                        child: const Text('Cancel'),
+                                        child: const LText('Cancel'),
                                       ),
                                       FilledButton(
                                         onPressed: () => Navigator.pop(c, true),
-                                        child: const Text('Unlink'),
+                                        child: const LText('Unlink'),
                                       ),
                                     ],
                                   ),
@@ -1381,9 +1382,9 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                 await refresh();
                               });
                             },
-                      child: const Text('Parent: unlink child'),
+                      child: const LText('Parent: unlink child'),
                     ),
-                    const Text(
+                    const LText(
                       'Offline codes authorize actions inside OneStep, not OS Screen Time. Signing out does not unlink the family on the server. App deletion, device reset, or a compromised device cannot be prevented by this beta. Rotated codes reach Kids on its next successful refresh.',
                     ),
                   ]),
@@ -1392,7 +1393,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 panel('Join your family', [
                   TextField(
                     controller: invite,
-                    decoration: const InputDecoration(
+                    decoration: const LDecoration(
                       labelText: 'Parent’s invitation code',
                     ),
                     autocorrect: false,
@@ -1410,7 +1411,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                               await refresh();
                             });
                           },
-                    child: const Text('Join family'),
+                    child: const LText('Join family'),
                   ),
                 ]),
               if (effectiveRole != 'bank')
@@ -1419,7 +1420,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       ? 'Tasks and approvals'
                       : 'Your family tasks',
                   [
-                    if (tasks.isEmpty) const Text('No assigned tasks yet.'),
+                    if (tasks.isEmpty) const LText('No assigned tasks yet.'),
                     for (final task in tasks)
                       ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -1486,7 +1487,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                                           await refresh();
                                         });
                                       },
-                                child: const Text('Ask for approval'),
+                                child: const LText('Ask for approval'),
                               )
                             : null,
                       ),
@@ -1495,11 +1496,11 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
               if (client.signedIn)
                 panel('Transactions', [
                   if (ledger.isEmpty)
-                    const Text(
+                    const LText(
                       'No activity yet. Earn points by completing eligible tasks.',
                     ),
                   for (final entry in ledger) BankTransaction(entry: entry),
-                  const Text(
+                  const LText(
                     'Balances are calculated by the service. Updates refresh automatically while this screen is open, or when you tap Refresh.',
                   ),
                 ]),
@@ -1507,8 +1508,8 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 panel('Where to use your account', [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Use the separate Bank app'),
-                    subtitle: const Text(
+                    title: const LText('Use the separate Bank app'),
+                    subtitle: const LText(
                       'Preference for this device. Both views use the same account and ledger; this does not move or duplicate points.',
                     ),
                     value: externalBank,
@@ -1527,14 +1528,14 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                           },
                   ),
                   if (externalBank)
-                    const Text(
+                    const LText(
                       'Open OneStep Bank and sign in to this same account. The built-in section remains available so you are never locked out.',
                     ),
                 ]),
               if (client.accountKind != 'kids')
                 panel('Public profile', [
                   SwitchListTile(
-                    title: const Text('Join the separate XP leaderboard'),
+                    title: const LText('Join the separate XP leaderboard'),
                     value: xpOptIn,
                     onChanged: busy || !xpReady
                         ? null
@@ -1549,21 +1550,21 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                             });
                             await refresh();
                           }),
-                    child: const Text('Save XP visibility'),
+                    child: const LText('Save XP visibility'),
                   ),
                   TextField(
                     controller: publicName,
-                    decoration: const InputDecoration(
+                    decoration: const LDecoration(
                       labelText: 'Display name',
                     ),
                   ),
                   TextField(
                     controller: handle,
-                    decoration: const InputDecoration(labelText: 'Handle'),
+                    decoration: const LDecoration(labelText: 'Handle'),
                     autocorrect: false,
                   ),
                   SwitchListTile(
-                    title: const Text('Opt in to leaderboard'),
+                    title: const LText('Opt in to leaderboard'),
                     value: optIn,
                     onChanged: busy
                         ? null
@@ -1586,16 +1587,16 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                               });
                             });
                           },
-                    child: const Text('Save public profile'),
+                    child: const LText('Save public profile'),
                   ),
                 ]),
               if (client.accountKind != 'kids')
                 panel('This week: opt-in rankings', [
                   SegmentedButton<String>(
                     segments: const [
-                      ButtonSegment(value: 'tasks', label: Text('Tasks')),
-                      ButtonSegment(value: 'points', label: Text('Points')),
-                      ButtonSegment(value: 'xp', label: Text('XP')),
+                      ButtonSegment(value: 'tasks', label: LText('Tasks')),
+                      ButtonSegment(value: 'points', label: LText('Points')),
+                      ButtonSegment(value: 'xp', label: LText('XP')),
                     ],
                     selected: {rankingMetric},
                     onSelectionChanged: (v) {
@@ -1606,7 +1607,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                       run(refresh);
                     },
                   ),
-                  const Text(
+                  const LText(
                     'Eligible self-reported tasks. Max20 tasks /1,000 earned points per UTC day; 0–100 per task. Duplicate-title, age and rate filters apply. Admin credits do not count.',
                   ),
                   Text(
@@ -1615,7 +1616,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         : 'Task and points leaderboard',
                   ),
                   if (rankings.isEmpty)
-                    const Text(
+                    const LText(
                       'No public scores yet. Joining the leaderboard is optional.',
                     ),
                   for (var index = 0; index < rankings.length; index++)
@@ -1635,21 +1636,21 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                             : 'points'}',
                       ),
                     ),
-                  const Text(
+                  const LText(
                     'Kids accounts are excluded by the service, regardless of client settings.',
                   ),
                 ]),
-              if (bankTab == 4) OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const ModerationPage())),icon:const Icon(Icons.manage_accounts_outlined),label:const Text('My service permissions and administration')),
+              if (bankTab == 4) OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const ModerationPage())),icon:const Icon(Icons.manage_accounts_outlined),label:const LText('My service permissions and administration')),
             if (bankTab == 4)
                 panel('Reconnect this account', [
-                  const Text(
+                  const LText(
                     'If your session expired, enter this account’s password. Your family link and planner stay in place.',
                   ),
                   TextField(
                     controller: password,
                     obscureText: true,
                     autocorrect: false,
-                    decoration: const InputDecoration(
+                    decoration: const LDecoration(
                       labelText: 'Account password',
                     ),
                   ),
@@ -1669,7 +1670,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                               await refresh();
                             });
                           },
-                    child: const Text('Reconnect this account'),
+                    child: const LText('Reconnect this account'),
                   ),
                 ]),
               if (bankTab == 4)
@@ -1680,7 +1681,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         : () {
                             run(childSignOut);
                           },
-                    child: const Text('Parent-authorized device sign-out'),
+                    child: const LText('Parent-authorized device sign-out'),
                   )
                 else
                   OutlinedButton(
@@ -1709,7 +1710,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                               });
                             });
                           },
-                    child: const Text('Sign out of this device'),
+                    child: const LText('Sign out of this device'),
                   ),
             ],
           ],

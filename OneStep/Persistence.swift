@@ -101,9 +101,10 @@ final class PlannerStore {
     }
 
     @discardableResult
-    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue", repeatRule: String? = nil, steps: [String]? = nil, listName: String? = nil, rewardPoints: Int? = nil, rewardAccountID: String? = nil) -> Bool {
+    func saveTask(id: UUID?, title: String, notes: String, dueAt: Date?, reminder: Bool, colorName: String = "blue", repeatRule: String? = nil, steps: [String]? = nil, listName: String? = nil, rewardPoints: Int? = nil, rewardAccountID: String? = nil, repeatEvery: Int = 1, repeatWeekdays: [Int] = [1,2,3,4,5], repeatMonthDay: Int? = nil) -> Bool {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return false }
+        let prior = id.flatMap { taskID in state.tasks.first { $0.id == taskID } }
         var next = state
         if let id, let index = next.tasks.firstIndex(where: { $0.id == id }) {
             next.tasks[index].title = cleanTitle
@@ -117,7 +118,11 @@ final class PlannerStore {
                                         reminderEnabled: dueAt != nil && reminder, colorName: colorName))
         }
         if let index = next.tasks.firstIndex(where: { id == nil ? $0.id == next.tasks.last?.id : $0.id == id }) {
+            if prior?.dueAt != dueAt || prior?.repeatRule != repeatRule || (prior?.repeatEvery ?? 1) != repeatEvery || next.tasks[index].repeatAnchor == nil { next.tasks[index].repeatAnchor = dueAt }
             next.tasks[index].repeatRule = dueAt == nil ? nil : repeatRule
+            next.tasks[index].repeatEvery = repeatEvery
+            next.tasks[index].repeatWeekdays = repeatWeekdays
+            next.tasks[index].repeatMonthDay = repeatMonthDay ?? dueAt.map { Calendar.current.component(.day,from:$0) }
             next.tasks[index].listName = listName
             if next.tasks[index].completedAt == nil { next.tasks[index].rewardPoints = rewardPoints; next.tasks[index].rewardAccountID = rewardAccountID }
             if let steps {
@@ -127,7 +132,7 @@ final class PlannerStore {
                 }
             }
         }
-        return commit(next)
+        guard next.tasks.allSatisfy(RecurrenceRules.valid) else { errorMessage = "Invalid recurrence rule.";return false };return commit(next)
     }
 
     @discardableResult
@@ -187,14 +192,12 @@ final class PlannerStore {
             guard let index = next.tasks.firstIndex(where: { $0.id == item.sourceID && $0.completedAt == nil }) else { return }
             next.tasks[index].completedAt = Date()
             next.tasks[index].snoozedUntil = nil
-            if let rule = next.tasks[index].repeatRule, let due = next.tasks[index].dueAt,
-               rule == "daily" || rule == "weekly" {
+            if let date = RecurrenceRules.next(next.tasks[index],now:Date()) {
                 var copy = next.tasks[index]
-                copy.id = UUID(); copy.repeatParentID = item.sourceID
-                copy.completedAt = nil; copy.createdAt = Date()
-                copy.microsteps = copy.microsteps?.map { SmallStep(title: $0.title) }
-                var date = due
-                repeat { date = Calendar.current.date(byAdding: .day, value: rule == "daily" ? 1 : 7, to: date)! } while date <= Date()
+                copy.id = UUID();copy.repeatParentID = item.sourceID;copy.completedAt = nil;copy.createdAt = Date()
+                copy.microsteps = copy.microsteps?.map { SmallStep(title:$0.title) }
+                copy.repeatAnchor = copy.repeatAnchor ?? copy.dueAt
+                copy.repeatMonthDay = copy.repeatMonthDay ?? copy.dueAt.map { Calendar.current.component(.day,from:$0) }
                 copy.dueAt = date
                 next.tasks.append(copy)
             }

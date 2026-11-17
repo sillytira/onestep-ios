@@ -1,3 +1,4 @@
+import 'localization.dart';
 import 'package:flutter/material.dart';
 import 'model.dart';
 
@@ -55,7 +56,7 @@ class BankOverview extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 18),
-        Text(
+        LText(
           'POINTS ACCOUNT',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -73,7 +74,7 @@ class BankOverview extends StatelessWidget {
             letterSpacing: -3,
           ),
         ),
-        const Text(
+        const LText(
           'Available points',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white60),
@@ -125,7 +126,7 @@ class BankOverview extends StatelessWidget {
                   Icon(Icons.blur_on_rounded, color: Color(0xffd5c7ff)),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text(
+                    child: LText(
                       'OneStep',
                       style: TextStyle(
                         fontSize: 22,
@@ -145,12 +146,12 @@ class BankOverview extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              const LText(
                 'Earned, one step at a time.',
                 style: TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 20),
-              const Text(
+              const LText(
                 'VIRTUAL POINTS · NO CASH VALUE',
                 style: TextStyle(
                   fontSize: 10,
@@ -181,19 +182,19 @@ class BankOverview extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
+              child: LText(
                 'Recent activity',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
             const SizedBox(width: 8),
-            TextButton(onPressed: onActivity, child: const Text('See all')),
+            TextButton(onPressed: onActivity, child: const LText('See all')),
           ],
         ),
         if (ledger.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Text(
+            child: LText(
               'Your earned points and rewards will appear here.',
               style: TextStyle(color: Colors.white60),
             ),

@@ -6,6 +6,7 @@ String canonical(dynamic value) {
   return jsonEncode(sort(value));
 }
 const sharedLists=['tasks','routines','days','notes','xpCompletions'];
+Json emptySyncPlanner()=>{'schemaVersion':1,'tasks':[],'routines':[],'days':[]};
 Json sharedPlanner(Json state) {
   final s=clone(state)..remove('focusSession')..remove('contentAutoUpdate');
   for(final key in sharedLists){s[key]=rows(s,key);}

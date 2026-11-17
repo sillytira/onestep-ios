@@ -915,8 +915,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     '${dayKey(d)} · ${clock(d)}',
                   if ((t['listName'] as String? ?? '').isNotEmpty)
                     t['listName'] as String,
-                  if (t['rewardPoints'] != null)
-                    '${t['rewardPoints']} points',
+                  if (t['rewardPoints'] != null) '${t['rewardPoints']} points',
                 ].join('\n'),
               ),
               onTap: () {

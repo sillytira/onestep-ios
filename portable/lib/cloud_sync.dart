@@ -319,109 +319,109 @@ class _SyncPageState extends State<SyncPage> {
             choices.clear();
           }
           return ListView(
-          padding: const EdgeInsets.all(22),
-          children: [
-            const LText(
-              'Automatic sync, with your permission',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const LText(
-              'Uses your signed-in account and an encrypted cloud copy. Use the same passphrase on each device. Your local planner is device-wide: check that it is the data you want in this account before enabling. Back up first.',
-            ),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const LDecoration(
-                labelText: 'Sync passphrase (12+ characters)',
-              ),
-            ),
-            FilledButton(
-              onPressed: sync.busy
-                  ? null
-                  : () async {
-                      try {
-                        await sync.enable(password.text);
-                        password.clear();
-                      } catch (e) {
-                        if (context.mounted)
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text('$e')));
-                      }
-                    },
-              child: const LText('Enable encrypted sync'),
-            ),
-            Text(sync.status),
-            if (sync.busy) const LinearProgressIndicator(),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: sync.busy ? null : sync.tick,
-                  child: const LText('Sync now'),
-                ),
-                TextButton(
-                  onPressed: sync.busy ? null : sync.disable,
-                  child: const LText('Pause sync'),
-                ),
-              ],
-            ),
-            if (sync.pending != null) ...[
+            padding: const EdgeInsets.all(22),
+            children: [
               const LText(
-                'Resolve conflicting edits',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                'Automatic sync, with your permission',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              for (var i = 0; i < sync.pending!.conflicts.length; i++)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(sync.pending!.conflicts[i].label),
-                        Text(
-                          'This device: ${sync.pending!.conflicts[i].local == null ? 'Deleted' : jsonEncode(sync.pending!.conflicts[i].local)}',
-                        ),
-                        Text(
-                          'Cloud: ${sync.pending!.conflicts[i].remote == null ? 'Deleted' : jsonEncode(sync.pending!.conflicts[i].remote)}',
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            ChoiceChip(
-                              label: const LText('Use this device'),
-                              selected: choices[i] == false,
-                              onSelected: (_) =>
-                                  setState(() => choices[i] = false),
-                            ),
-                            ChoiceChip(
-                              label: const LText('Use cloud'),
-                              selected: choices[i] == true,
-                              onSelected: (_) =>
-                                  setState(() => choices[i] = true),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+              const SizedBox(height: 12),
+              const LText(
+                'Uses your signed-in account and an encrypted cloud copy. Use the same passphrase on each device. Your local planner is device-wide: check that it is the data you want in this account before enabling. Back up first.',
+              ),
+              TextField(
+                controller: password,
+                obscureText: true,
+                decoration: const LDecoration(
+                  labelText: 'Sync passphrase (12+ characters)',
                 ),
+              ),
               FilledButton(
-                onPressed:
-                    sync.busy ||
-                        choices.length != sync.pending!.conflicts.length
+                onPressed: sync.busy
                     ? null
                     : () async {
-                        await sync.resolve(choices);
-                        if (mounted) setState(choices.clear);
+                        try {
+                          await sync.enable(password.text);
+                          password.clear();
+                        } catch (e) {
+                          if (context.mounted)
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text('$e')));
+                        }
                       },
-                child: const LText('Apply choices'),
+                child: const LText('Enable encrypted sync'),
+              ),
+              Text(sync.status),
+              if (sync.busy) const LinearProgressIndicator(),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: sync.busy ? null : sync.tick,
+                    child: const LText('Sync now'),
+                  ),
+                  TextButton(
+                    onPressed: sync.busy ? null : sync.disable,
+                    child: const LText('Pause sync'),
+                  ),
+                ],
+              ),
+              if (sync.pending != null) ...[
+                const LText(
+                  'Resolve conflicting edits',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                for (var i = 0; i < sync.pending!.conflicts.length; i++)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(sync.pending!.conflicts[i].label),
+                          Text(
+                            'This device: ${sync.pending!.conflicts[i].local == null ? 'Deleted' : jsonEncode(sync.pending!.conflicts[i].local)}',
+                          ),
+                          Text(
+                            'Cloud: ${sync.pending!.conflicts[i].remote == null ? 'Deleted' : jsonEncode(sync.pending!.conflicts[i].remote)}',
+                          ),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              ChoiceChip(
+                                label: const LText('Use this device'),
+                                selected: choices[i] == false,
+                                onSelected: (_) =>
+                                    setState(() => choices[i] = false),
+                              ),
+                              ChoiceChip(
+                                label: const LText('Use cloud'),
+                                selected: choices[i] == true,
+                                onSelected: (_) =>
+                                    setState(() => choices[i] = true),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                FilledButton(
+                  onPressed:
+                      sync.busy ||
+                          choices.length != sync.pending!.conflicts.length
+                      ? null
+                      : () async {
+                          await sync.resolve(choices);
+                          if (mounted) setState(choices.clear);
+                        },
+                  child: const LText('Apply choices'),
+                ),
+              ],
+              const LText(
+                'Automatic while open and on resume; mobile operating systems do not guarantee background sync. Offline changes stay local until reconnected. Service migration 007 is required. Your passphrase is stored only in device secure storage, not sent to the service.',
               ),
             ],
-            const LText(
-              'Automatic while open and on resume; mobile operating systems do not guarantee background sync. Offline changes stay local until reconnected. Service migration 007 is required. Your passphrase is stored only in device secure storage, not sent to the service.',
-            ),
-          ],
           );
         },
       ),

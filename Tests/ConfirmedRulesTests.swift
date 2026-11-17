@@ -9,6 +9,8 @@ final class ConfirmedRulesTests: XCTestCase {
  XCTAssertEqual(RecurrenceRules.next(t,now:date(2027,1,31),calendar:c),date(2027,2,28))
  t.dueAt = date(2027,2,28)
  XCTAssertEqual(RecurrenceRules.next(t,now:date(2027,2,28),calendar:c),date(2027,3,31))
+ t.dueAt = date(2028,5,31)
+ XCTAssertEqual(RecurrenceRules.next(t,now:date(2027,2,28),calendar:c),date(2028,6,30))
  }
  func testWeekdayIntervalAndInvalidRules() {
  var c = Calendar(identifier:.gregorian);c.timeZone = TimeZone(secondsFromGMT:0)!
@@ -29,6 +31,7 @@ final class ConfirmedRulesTests: XCTestCase {
  local["tasks"] = [];remote["tasks"] = [["id":a["id"]!,"title":"Remote edit"]]
  let conflict = PlannerMerge.merge(base:base,local:local,remote:remote)
  XCTAssertEqual(conflict.conflicts.count,1);XCTAssertEqual((try conflict.resolved([0:false])["tasks"] as? [Any])?.count,0)
+ XCTAssertThrowsError(try conflict.resolved([4:true]))
  XCTAssertEqual((try conflict.resolved([0:true])["tasks"] as? [[String:Any]])?.first?["title"] as? String,"Remote edit")
  }
 }

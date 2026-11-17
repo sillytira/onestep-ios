@@ -38,7 +38,8 @@ DateTime? nextRepeat(Json task, DateTime now) {
       DateTime(day.year, day.month, day.day, due.hour, due.minute, due.second);
   if (rule == 'monthly') {
     final wanted = task['repeatMonthDay'] as int? ?? anchor.day;
-    final delta = (now.year - anchor.year) * 12 + now.month - anchor.month;
+    final reference = now.isAfter(due) ? now : due;
+    final delta = (reference.year - anchor.year) * 12 + reference.month - anchor.month;
     var index = delta < 0 ? 0 : delta ~/ every;
     for (var i = 0; i < 3; i++, index++) {
       final month = DateTime(anchor.year, anchor.month + index * every, 1);

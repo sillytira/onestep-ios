@@ -126,6 +126,8 @@ void main() {
         DateTime(2027, 3, 31, 9),
       );
       expect(nextRepeat(t, DateTime(2030, 5, 15)), DateTime(2030, 5, 31, 9));
+      t['dueAt'] = stamp(DateTime(2028, 5, 31, 9));
+      expect(nextRepeat(t, DateTime(2027, 2, 28)), DateTime(2028, 6, 30, 9));
     },
   );
   test('Selected weekdays and multi-week intervals retain local wall time', () {

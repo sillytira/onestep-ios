@@ -1,3 +1,7 @@
+# OneStep 0.10 Beta
+
+Calendar, advanced recurrence, encrypted backup/sync, Apple More/XP Beta, owner-controlled moderation and five core UI languages are added to the main Android/iPhone clients. See [CONFIRMED-BETA.md](CONFIRMED-BETA.md) for features, recovery, service setup and limits. Live migrations006/007 are pending; online features require that upgrade. The prior Windows/Linux and companion binaries are unchanged.
+
 # OneStep 0.8 economy and XP beta
 
 Adds fixed 1-point/minute redemption, 1,000-point daily earnings and spending limits, and separate non-spendable XP with independent opt-in rankings. The backend upgrade is staged/tested but needs live Supabase deployment. See [ECONOMY.md](ECONOMY.md). Existing private planner data and app identifiers are preserved.

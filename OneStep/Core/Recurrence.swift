@@ -12,7 +12,7 @@ enum RecurrenceRules {
         let clock = calendar.dateComponents([.hour,.minute,.second], from: due)
         func on(_ day: Date) -> Date { calendar.date(bySettingHour:clock.hour!, minute:clock.minute!,second:clock.second!,of:day,matchingPolicy:.nextTime,repeatedTimePolicy:.first,direction:.forward)! }
         if rule == "monthly" {
-            let a = calendar.dateComponents([.year,.month,.day], from:anchor), n = calendar.dateComponents([.year,.month], from:now)
+            let a = calendar.dateComponents([.year,.month,.day], from:anchor), n = calendar.dateComponents([.year,.month], from:max(due,now))
             let delta = (n.year!-a.year!)*12+n.month!-a.month!
             let start = max(0,delta/every)
             for i in start...(start+2) {

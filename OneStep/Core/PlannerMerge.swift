@@ -9,7 +9,7 @@ struct PlannerMergeResult {
     var state: [String:Any]
     var conflicts: [PlannerConflict]
     func resolved(_ choices: [Int:Bool]) throws -> [String:Any] {
-        guard choices.count == conflicts.count else { throw TransferError.invalid }
+        guard choices.count == conflicts.count, conflicts.indices.allSatisfy({ choices[$0] != nil }) else { throw TransferError.invalid }
         var output = state
         for (i,c) in conflicts.enumerated() {
             let value = choices[i] == true ? c.remote:c.local

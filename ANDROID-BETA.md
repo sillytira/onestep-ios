@@ -1,3 +1,7 @@
+# Android 0.10 Beta update
+
+This release adds the calendar, advanced task repeats, visible per-task point drafts, encrypted file exports, optional encrypted/conflict-aware cloud sync, moderator console and five core UI languages. Notification resource/permission fixes from0.9 remain. Main version0.10.0-beta+15. See [CONFIRMED-BETA.md](CONFIRMED-BETA.md). Online economy/XP/sync/moderation service activation remains pending. Earlier0.9 notes below are historical.
+
 # Android 0.9.0 Beta — build 14
 
 This release updates only the Android planner APK. The native iPhone source and delivered IPA stay unchanged. The existing app identifier and permanent Android signing certificate are retained so the APK can update delivered 0.8 without uninstalling. Export a backup first.

@@ -131,11 +131,11 @@ declare balance bigint;previous public.onestep_points_ledger%rowtype;begin
  if not public.onestep_is_owner() and exists(select 1 from public.onestep_admins where user_id=target) then raise exception 'Moderators cannot change owner balances' using errcode='42501';end if;
  perform pg_advisory_xact_lock(hashtextextended(target::text,0));
  select * into previous from public.onestep_points_ledger where event_id=event;
- if found then if previous.user_id<>target or previous.delta<>amount or previous.actor_id<>auth.uid() then raise exception 'Adjustment identifier already used';end if;
+ if found then if previous.user_id<>target or previous.delta<>amount or previous.actor_id<>auth.uid() or previous.reason<>left('Moderator adjustment: '||trim(explanation),160) then raise exception 'Adjustment identifier already used';end if;
  else
  select coalesce(sum(delta),0) into balance from public.onestep_points_ledger where user_id=target;
  if balance+amount<0 then raise exception 'Insufficient points';end if;
- insert into public.onestep_points_ledger(event_id,user_id,delta,reason,actor_id) values(event,target,amount,'Moderator adjustment: '||trim(explanation),auth.uid());
+ insert into public.onestep_points_ledger(event_id,user_id,delta,reason,actor_id) values(event,target,amount,left('Moderator adjustment: '||trim(explanation),160),auth.uid());
  insert into public.onestep_moderation_audit(actor,target,action,details) values(auth.uid(),target,'points',jsonb_build_object('amount',amount,'event',event));
  end if;
  return (select coalesce(sum(delta),0) from public.onestep_points_ledger where user_id=target);

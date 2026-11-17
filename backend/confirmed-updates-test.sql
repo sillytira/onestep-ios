@@ -57,7 +57,7 @@ select set_config('request.jwt.claim.sub','66666666-6666-4666-8666-666666666666'
 do $$ declare score bigint;begin
  select earned_xp into score from public.onestep_xp_rankings() where handle='member';
  if score<>0 then raise exception 'Beta XP leaked into production ranking';end if;
- perform public.onestep_claim_xp('task.production-fixture','task');
+ perform public.onestep_claim_xp('task.99999999-9999-4999-8999-999999999999','task');
  select earned_xp into score from public.onestep_xp_rankings() where handle='member';
  if score<>10 then raise exception 'New production XP did not use current cohort';end if;
 end $$;

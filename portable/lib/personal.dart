@@ -13,7 +13,8 @@ Future<void> syncPersonalTasks(Json state) async {
     final client = FamilyClient.shared;
     await client.load();
     if (client.needsReconnect) {
-      personalRewardMessage.value = 'Planner saved. Reconnect your account in Bank → Account; pending XP and points are kept.';
+      personalRewardMessage.value =
+          'Planner saved. Reconnect your account in Bank → Account; pending XP and points are kept.';
       return;
     }
     await syncXP(state, client);

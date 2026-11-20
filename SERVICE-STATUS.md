@@ -1,3 +1,11 @@
+# Session recovery update — November 20, 2026
+
+The main Android/Windows/iPhone clients are being updated to 0.10.2 for the reported “no refresh token” failure. Missing credentials cannot be repaired by weakening server authentication. The update validates session responses, preserves the saved account/family/offline data, pauses terminal refresh failures and provides Bank → Account → Reconnect this account for password authentication. Temporary network failures stay retryable. No production schema changes were needed or made for this patch.
+
+November 20 reachability checks: Auth settings HTTP200; private RPC/table access denied anonymously with HTTP401/code42501 as expected. These checks do not reproduce or prove recovery of a real user's session. Synthetic recovery and race tests run in CI; installed-account acceptance remains required. Never share a password or refresh token in chat. Do not reapply migrations006/007.
+
+--- Previous deployment record ---
+
 # OneStep online service — live November 17, 2026
 
 Migrations001–007 are now deployed to the existing main Supabase project. After explicit approval, the tested006/007 scripts were applied together as one transaction through the authenticated Edge SQL Editor. Existing owner/account records were retained; no moderator permissions were assigned automatically. Do not apply006/007 again to this project.

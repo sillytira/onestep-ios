@@ -73,7 +73,8 @@ class CloudPlannerSync extends ChangeNotifier {
     try {
       await client.load();
       if (client.needsReconnect) {
-        status = 'Reconnect in Bank → Account to resume encrypted sync. Your local planner and encrypted cloud copy are kept.';
+        status =
+            'Reconnect in Bank → Account to resume encrypted sync. Your local planner and encrypted cloud copy are kept.';
         return;
       }
       final user = client.userID;

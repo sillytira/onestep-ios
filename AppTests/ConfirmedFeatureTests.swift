@@ -11,8 +11,10 @@ private actor SessionTransportFixture {
         calls += 1
         let refresh = request.url!.absoluteString.contains("grant_type=refresh_token")
         let status = refresh && calls <= failures.count ? failures[calls-1] : 200
-        let value: Any = status != 200 ? ["msg":"no refresh token","error":"invalid_grant"] :
-            (refresh ? ["access_token":"synthetic-new-access","refresh_token":"synthetic-rotated-refresh","expires_in":3600,"user":["id":"synthetic-child","email":"child@example.invalid"]] as [String:Any] : ["ok":true])
+        let value: [String:Any]
+        if status != 200 { value = ["msg":"no refresh token","error":"invalid_grant"] }
+        else if refresh { value = ["access_token":"synthetic-new-access","refresh_token":"synthetic-rotated-refresh","expires_in":3600,"user":["id":"synthetic-child","email":"child@example.invalid"]] }
+        else { value = ["ok":true] }
         return (try JSONSerialization.data(withJSONObject:value),HTTPURLResponse(url:request.url!,statusCode:status,httpVersion:nil,headerFields:nil)!)
     }
 }

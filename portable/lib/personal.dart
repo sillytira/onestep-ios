@@ -12,6 +12,10 @@ Future<void> syncPersonalTasks(Json state) async {
   try {
     final client = FamilyClient.shared;
     await client.load();
+    if (client.needsReconnect) {
+      personalRewardMessage.value = 'Planner saved. Reconnect your account in Bank → Account; pending XP and points are kept.';
+      return;
+    }
     await syncXP(state, client);
     if (!client.signedIn ||
         client.userID == null ||
@@ -96,7 +100,7 @@ Future<void> syncPersonalTasks(Json state) async {
 
 Future<void> syncXP(Json state, FamilyClient client) async {
   final user = client.userID;
-  if (!client.signedIn || user == null) return;
+  if (!client.signedIn || client.needsReconnect || user == null) return;
   final key = 'xp.receipts.$user';
   final raw = await FamilyClient.vault.read(key: key);
   final saved = raw == null ? <String, dynamic>{} : jsonDecode(raw) as Json;

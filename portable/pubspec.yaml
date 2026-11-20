@@ -1,7 +1,7 @@
 name: onestep
 description: An offline task and routine planner with private local transfers.
 publish_to: none
-version: 0.10.1-beta+16
+version: 0.10.2-beta+17
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:

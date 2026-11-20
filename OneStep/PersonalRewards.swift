@@ -25,6 +25,7 @@ import Observation
         guard !busy else { return }; busy = true; defer { busy = false }
         let account = RewardsStore.shared
         await account.load()
+        guard !account.needsReconnect else { message = "Planner saved. Reconnect in Bank → Account; pending XP and points are kept.";return }
         await syncXP(state, account: account)
         guard account.signedIn, let user = account.userID, account.kind != "kids" else { return }
         let storage = "personal.receipts.\(user)"

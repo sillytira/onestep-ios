@@ -35,6 +35,7 @@ import Observation
         guard !busy else { return };busy = true;defer { busy = false }
         do {
             await account.load();let user = account.userID
+            guard !account.needsReconnect else { status = AccountSessionRules.reconnectMessage;return }
             if accountID != user { accountID = user;base = nil;pending = nil;snapshot = nil }
             guard account.signedIn,let user,RewardsVault.read("sync.enabled.\(user)") == Data("1".utf8) else { enabled = false;return }
             enabled = true;guard pending == nil else { return }

@@ -3,6 +3,63 @@ import SwiftUI
 import UIKit
 @testable import OneStep
 
+private actor SessionTransportFixture {
+    var calls = 0
+    let failures: [Int]
+    init(_ failures: [Int]) { self.failures = failures }
+    func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        calls += 1
+        let refresh = request.url!.absoluteString.contains("grant_type=refresh_token")
+        let status = refresh && calls <= failures.count ? failures[calls-1] : 200
+        let value: Any = status != 200 ? ["msg":"no refresh token","error":"invalid_grant"] :
+            (refresh ? ["access_token":"synthetic-new-access","refresh_token":"synthetic-rotated-refresh","expires_in":3600,"user":["id":"synthetic-child","email":"child@example.invalid"]] as [String:Any] : ["ok":true])
+        return (try JSONSerialization.data(withJSONObject:value),HTTPURLResponse(url:request.url!,statusCode:status,httpVersion:nil,headerFields:nil)!)
+    }
+}
+
+@MainActor final class SessionRecoveryTests: XCTestCase {
+    func saved(_ refresh: String = "synthetic-old-refresh") -> [String:Any] {
+        ["access_token":"synthetic-access","refresh_token":refresh,"expires_at":1,"user":["id":"synthetic-child","email":"child@example.invalid"]]
+    }
+    func testEmptyRefreshPausesRequestsAndRetainsChildIdentity() async {
+        let network = SessionTransportFixture([])
+        let account = RewardsStore(inMemory:true,initialSession:saved(" "),transport:{ try await network.send($0) })
+        account.kind = "kids"
+        XCTAssertTrue(account.needsReconnect)
+        do { _ = try await account.request("/rest/v1/test");XCTFail("Expired credentials accepted") } catch { XCTAssertTrue(error.localizedDescription.contains("Reconnect")) }
+        let calls = await network.calls;XCTAssertEqual(calls,0)
+        XCTAssertEqual(account.kind,"kids");XCTAssertEqual(account.userID,"synthetic-child")
+    }
+    func testTerminalRefreshStopsRepeatingAndSameAccountRecoveryWorks() async throws {
+        let network = SessionTransportFixture([400])
+        let account = RewardsStore(inMemory:true,initialSession:saved(),transport:{ try await network.send($0) })
+        account.kind = "kids"
+        for _ in 0..<2 { do { _ = try await account.request("/rest/v1/test");XCTFail("Expected recovery") } catch {} }
+        let calls = await network.calls;XCTAssertEqual(calls,1);XCTAssertTrue(account.needsReconnect)
+        var replacement = saved("synthetic-password-session");replacement["expires_at"] = 4102444800
+        try account.accept(replacement,expectedUserID:"synthetic-child")
+        XCTAssertFalse(account.needsReconnect);XCTAssertEqual(account.kind,"kids")
+        _ = try await account.request("/rest/v1/test")
+    }
+    func testTransientFailureRetainsRefreshAndRetries() async throws {
+        let network = SessionTransportFixture([503])
+        let account = RewardsStore(inMemory:true,initialSession:saved(),transport:{ try await network.send($0) })
+        do { _ = try await account.request("/rest/v1/test");XCTFail("Expected outage") } catch {}
+        XCTAssertFalse(account.needsReconnect)
+        _ = try await account.request("/rest/v1/test")
+        let calls = await network.calls;XCTAssertEqual(calls,3)
+    }
+    func testIncompleteOrDifferentAccountCannotReplaceSavedIdentity() throws {
+        let account = RewardsStore(inMemory:true,initialSession:saved())
+        account.kind = "kids"
+        var incomplete = saved();incomplete["refresh_token"] = ""
+        XCTAssertThrowsError(try account.accept(incomplete))
+        var other = saved();other["user"] = ["id":"another-user"]
+        XCTAssertThrowsError(try account.accept(other,expectedUserID:"synthetic-child"))
+        XCTAssertEqual(account.userID,"synthetic-child");XCTAssertEqual(account.kind,"kids")
+    }
+}
+
 @MainActor final class ConfirmedFeatureTests: XCTestCase {
  func testCrossPlatformEncryptedBackupVectorAndTamper() throws {
  let password = "Synthetic passphrase 2026!"

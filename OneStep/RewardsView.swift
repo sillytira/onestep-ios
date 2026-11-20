@@ -27,6 +27,14 @@ enum RewardsVault {
 @MainActor @Observable final class RewardsStore {
     static let shared = RewardsStore()
     private var sessionRefresh: Task<Void, Error>?
+    @ObservationIgnored private let memoryOnly: Bool
+    @ObservationIgnored private let transport: @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    private var sessionEpoch = 0
+    private var reconnectRequired = false
+    init(inMemory: Bool = false, initialSession: [String:Any]? = nil, transport: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = { try await URLSession.shared.data(for:$0) }) {
+        memoryOnly = inMemory;self.transport = transport
+        if inMemory { session = initialSession }
+    }
     private var accountLoad: Task<Void, Never>?
     var accountLoading = true
     var project = PublicService.url
@@ -58,14 +66,18 @@ enum RewardsVault {
     var delta = ""
     var reason = ""
     private var session: [String: Any]?
-    var signedIn: Bool { session?["access_token"] is String }
-    var accountEmail: String { (session?["user"] as? [String: Any])?["email"] as? String ?? "" }
-    var userID: String? { (session?["user"] as? [String: Any])?["id"] as? String }
+    var signedIn: Bool { AccountSessionRules.token(session?["access_token"]) != nil }
+    var accountEmail: String { AccountSessionRules.email(session) ?? "" }
+    var userID: String? { AccountSessionRules.userID(session) }
+    var needsReconnect: Bool { signedIn && (reconnectRequired || userID == nil || (AccountSessionRules.expiry(session) <= Date().timeIntervalSince1970+60 && AccountSessionRules.token(session?["refresh_token"]) == nil)) }
     func load() async {
+        if memoryOnly { accountLoading = false;return }
         guard accountLoading else { return }
         if let accountLoad { await accountLoad.value; return }
         let task = Task { @MainActor in
+            let epoch = sessionEpoch
             let (savedSession, savedKind) = await Task.detached { (RewardsVault.read("session"), RewardsVault.read("kind")) }.value
+            guard sessionEpoch == epoch else { accountLoading = false;return }
             if let data = savedSession { session = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] }
             if let data = savedKind { kind = String(data: data, encoding: .utf8) }
             if let id = userID {
@@ -101,14 +113,23 @@ enum RewardsVault {
         let principal = userID
         if auth {
             guard signedIn else { throw failure("Sign in first.") }
-            if (session?["expires_at"] as? Double ?? 0) <= Date().timeIntervalSince1970 + 60 {
+            if needsReconnect { throw AccountSessionRules.error() }
+            if AccountSessionRules.expiry(session) <= Date().timeIntervalSince1970 + 60 {
                 if let sessionRefresh { try await sessionRefresh.value }
                 else {
-                    guard let refresh = session?["refresh_token"] as? String else { throw failure("Sign in again.") }
+                    guard let refresh = AccountSessionRules.token(session?["refresh_token"]) else { throw AccountSessionRules.error() }
+                    let epoch = sessionEpoch
+                    let principal = userID
                     let task = Task { @MainActor in
+                        do {
                         let updated = try await self.request("/auth/v1/token?grant_type=refresh_token", body: ["refresh_token": refresh], auth: false)
-                        guard self.session?["refresh_token"] as? String == refresh else { throw self.failure("Account changed. Please retry.") }
-                        try self.accept(updated)
+                        guard self.sessionEpoch == epoch,self.session?["refresh_token"] as? String == refresh else { throw self.failure("Account changed. Please retry.") }
+                        try self.accept(updated,expectedUserID:principal)
+                        } catch let error as AccountHTTPFailure {
+                            if error.invalidRefresh && self.sessionEpoch == epoch { self.reconnectRequired = true;throw AccountSessionRules.error() };throw error
+                        } catch {
+                            if (error as NSError).domain == "OneStepSession" && self.sessionEpoch == epoch { self.reconnectRequired = true };throw error
+                        }
                     }
                     sessionRefresh = task
                     defer { sessionRefresh = nil }
@@ -122,7 +143,7 @@ enum RewardsVault {
         request.setValue(key, forHTTPHeaderField: "apikey")
         if auth, let token = session?["access_token"] as? String { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let body { request.httpMethod = "POST"; request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try JSONSerialization.data(withJSONObject: body) }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await transport(request)
         guard !auth || userID == principal else { throw failure("The account changed. Please retry.") }
         guard data.count <= (path.contains("onestep_sync_") ? 16 : 1) * 1024 * 1024 else { throw failure("Service response too large.") }
         let value: Any
@@ -130,28 +151,32 @@ enum RewardsVault {
         guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode) else {
             let error = value as? [String: Any]
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            throw failure(error?["msg"] as? String ?? error?["message"] as? String ?? error?["error_description"] as? String ?? "The account service could not respond (\(status)). Try again; your offline planner is still available.")
+            throw AccountHTTPFailure(status:status,code:String(describing:error?["code"] ?? error?["error"] ?? ""),message:error?["msg"] as? String ?? error?["message"] as? String ?? error?["error_description"] as? String ?? "The account service could not respond (\(status)). Try again; your offline planner is still available.")
         }
         return value
     }
-    private func accept(_ value: Any) throws {
-        guard var result = value as? [String: Any], result["access_token"] is String else { throw failure("Account creation did not return a session. Check beta enrollment and service settings.") }
-        if result["expires_at"] == nil { result["expires_at"] = Date().timeIntervalSince1970 + (result["expires_in"] as? Double ?? 3600) }
-        try RewardsVault.write("session", JSONSerialization.data(withJSONObject: result))
+    func accept(_ value: Any, expectedUserID: String? = nil) throws {
+        let result = try AccountSessionRules.validated(value)
+        if let expectedUserID,AccountSessionRules.userID(result) != expectedUserID { throw failure("Account changed. Please retry.") }
+        if !memoryOnly { try RewardsVault.write("session", JSONSerialization.data(withJSONObject: result)) }
         let nextID = (result["user"] as? [String: Any])?["id"] as? String
         if nextID != userID {
             kind = nil; admin = false; xpTotal = 0; xpReady = false; xpOptIn = false; balance = 0; ledger = []; rankings = []; users = []
             snapshotLoaded = false; lastSync = ""; publicName = ""; username = ""
-            try RewardsVault.write("kind", nil)
+            if !memoryOnly { try RewardsVault.write("kind", nil) }
         }
         session = result
+        sessionEpoch += 1;reconnectRequired = false
     }
     func authenticate(create: Bool) async throws {
         await load()
+        let principal = userID
+        if create && session != nil { throw failure("Use Reconnect for the saved account. Another account requires authorized device sign-out first.") }
+        if session != nil && principal == nil { throw failure("The saved account needs identity recovery. Parent-controlled device sign-out remains required for a Kids account.") }
         try configure()
         var body: [String: Any] = ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password]
         if create { body["data"] = ["beta_key": betaKey.trimmingCharacters(in: .whitespacesAndNewlines), "username": username.trimmingCharacters(in: .whitespacesAndNewlines)] }
-        try accept(try await request(create ? "/auth/v1/signup" : "/auth/v1/token?grant_type=password", body: body, auth: false))
+        try accept(try await request(create ? "/auth/v1/signup" : "/auth/v1/token?grant_type=password", body: body, auth: false),expectedUserID:principal)
         password = ""; betaKey = ""; try await reload()
     }
     func rpc(_ name: String, _ args: [String: Any] = [:]) async throws -> Any { try await request("/rest/v1/rpc/" + name, body: args) }
@@ -212,7 +237,8 @@ enum RewardsVault {
     func signOut(parentCode: String? = nil) async throws {
         if kind == "kids" || kind == nil { try authorizeParentCode(parentCode ?? "") }
         _ = try? await request("/auth/v1/logout", body: [:])
-        try RewardsVault.write("session", nil); try RewardsVault.write("kind", nil)
+        if !memoryOnly { try RewardsVault.write("session", nil); try RewardsVault.write("kind", nil) }
+        sessionEpoch += 1;reconnectRequired = false
         session = nil; kind = nil; admin = false; xpTotal = 0; xpReady = false; xpOptIn = false; ledger = []; users = []; balance = 0; username = ""; publicName = ""; rankings = []; snapshotLoaded = false; lastSync = ""
     }
     static func checkPin(_ pin: String, verifier: [String: Any]) -> Bool {
@@ -259,6 +285,9 @@ struct RewardsView: View {
                     }.pickerStyle(.segmented).padding()
                     if !model.message.isEmpty { Text(model.message).font(.callout).foregroundStyle(.orange).padding(.horizontal).textSelection(.enabled) }
                     if model.busy { ProgressView().padding(8) }
+                    if model.needsReconnect {
+                        VStack { Text(AccountSessionRules.reconnectMessage).font(.callout);if section != 3 { Button("Reconnect this account") { section = 3 }.buttonStyle(.borderedProminent) } }.padding()
+                    }
                     if section == 0 { overview }
                     else if section == 1 { activity }
                     else if section == 2 { rankings }

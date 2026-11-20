@@ -10,6 +10,7 @@ import 'parent_pin.dart';
 import 'connection.dart';
 import 'bank_ui.dart';
 import 'moderation.dart';
+import 'session_rules.dart';
 
 /// Public connection defaults ship with the app; user sessions remain in secure storage.
 class FamilyClient {
@@ -26,15 +27,32 @@ class FamilyClient {
   Json? session;
   String? accountKind;
   Future<void>? _refreshing;
-  bool get signedIn => session?['access_token'] is String;
-  String? get userID => session?['user']?['id'] as String?;
+  Future<void> _sessionWrites = Future<void>.value();
+  int _sessionEpoch = 0;
+  bool _reauthRequired = false;
+  bool get signedIn => SessionRules.token(session?['access_token']);
+  String? get userID => SessionRules.userID(session);
+  String? get accountEmail => SessionRules.email(session);
+  bool get needsReconnect => signedIn && (_reauthRequired || userID == null ||
+      (SessionRules.expiry(session) <= DateTime.now().millisecondsSinceEpoch / 1000 + 60 && !SessionRules.token(session?['refresh_token'])));
+  Future<void> _sessionChange(Future<void> Function() change) {
+    final result = Completer<void>();
+    _sessionWrites = _sessionWrites.then((_) async {
+      try { await change(); result.complete(); } catch (e,s) { result.completeError(e,s); }
+    });
+    return result.future;
+  }
   Future<void> _load() async {
+    final epoch = _sessionEpoch;
     // Legacy manual connection values must not override the shipped main instance.
     project = serviceURL;
     publicKey = servicePublishableKey;
     final saved = await vault.read(key: 'family.session');
-    if (saved != null) session = jsonDecode(saved) as Json;
-    accountKind = await vault.read(key: 'family.kind');
+    final kind = await vault.read(key: 'family.kind');
+    if (epoch == _sessionEpoch) {
+      if (saved != null) session = jsonDecode(saved) as Json;
+      accountKind = kind;
+    }
   }
 
   Future<void> configure(String url, String key) async {
@@ -120,7 +138,9 @@ class FamilyClient {
                       message)
                   .toString();
         } catch (_) {}
-        throw FormatException(message);
+        String? code;
+        try { code = (jsonDecode(text) as Map)['code']?.toString() ?? (jsonDecode(text) as Map)['error']?.toString(); } catch (_) {}
+        throw AccountServiceFailure(response.statusCode, code, message);
       }
       return text.isEmpty ? null : jsonDecode(text);
     } finally {
@@ -128,32 +148,35 @@ class FamilyClient {
     }
   }
 
-  Future<void> acceptSession(dynamic response) async {
-    if (response is! Map || response['access_token'] is! String)
-      throw const FormatException(
-        'Check your email to confirm your account, then sign in.',
-      );
-    final next = Map<String, dynamic>.from(response);
-    if (next['user']?['id'] != userID) {
-      accountKind = null;
-      await vault.delete(key: 'family.kind');
-    }
-    session = next;
-    session!['expires_at'] ??=
-        DateTime.now().millisecondsSinceEpoch ~/ 1000 +
-        (session!['expires_in'] as int? ?? 3600);
-    await vault.write(key: 'family.session', value: jsonEncode(session));
+  Future<void> acceptSession(dynamic response, {int? expectedEpoch, String? expectedUserID}) async {
+    final next = SessionRules.validated(response);
+    await _sessionChange(() async {
+      if ((expectedEpoch != null && expectedEpoch != _sessionEpoch) ||
+          (expectedUserID != null && SessionRules.userID(next) != expectedUserID))
+        throw const FormatException('Account changed. Please retry.');
+      final changed = SessionRules.userID(next) != userID;
+      if (changed) { await vault.delete(key: 'family.kind'); accountKind = null; }
+      await vault.write(key: 'family.session', value: jsonEncode(next));
+      session = next;
+      _sessionEpoch++;
+      _reauthRequired = false;
+    });
   }
 
   Future<void> refreshSession() async {
-    if ((session?['expires_at'] as num? ?? 0) >
+    if (needsReconnect) throw const ReconnectRequired();
+    if (SessionRules.expiry(session) >
         DateTime.now().millisecondsSinceEpoch / 1000 + 60)
       return;
     final refresh = session?['refresh_token'];
-    if (refresh is! String)
-      throw const FormatException('Please sign in again.');
+    if (!SessionRules.token(refresh)) {
+      _reauthRequired = true;
+      throw const ReconnectRequired();
+    }
     if (_refreshing != null) return _refreshing!;
+    final epoch = _sessionEpoch, principal = userID;
     final pending = () async {
+      try {
       final updated = await request(
         '/auth/v1/token?grant_type=refresh_token',
         body: {'refresh_token': refresh},
@@ -161,7 +184,17 @@ class FamilyClient {
       );
       if (session?['refresh_token'] != refresh)
         throw const FormatException('Account changed. Please retry.');
-      await acceptSession(updated);
+      await acceptSession(updated,expectedEpoch:epoch,expectedUserID:principal);
+      } on AccountServiceFailure catch (e) {
+        if (e.invalidRefresh && epoch == _sessionEpoch) {
+          _reauthRequired = true;
+          throw const ReconnectRequired();
+        }
+        rethrow;
+      } on ReconnectRequired {
+        if (epoch == _sessionEpoch) _reauthRequired = true;
+        rethrow;
+      }
     }();
     _refreshing = pending;
     try {
@@ -171,20 +204,25 @@ class FamilyClient {
     }
   }
 
-  Future<void> signIn(String email, String password) async => acceptSession(
-    await request(
+  Future<void> signIn(String email, String password) async {
+    await load();
+    final principal = userID;
+    if (session != null && principal == null) throw const ReconnectRequired('This saved account needs identity recovery. Parent-controlled device sign-out remains required for a Kids account.');
+    await acceptSession(await request(
       '/auth/v1/token?grant_type=password',
       body: {'email': email.trim(), 'password': password},
       authenticated: false,
-    ),
-  );
+    ), expectedUserID:principal);
+  }
   Future<void> signUp(
     String email,
     String password,
     String betaKey,
     String username,
-  ) async => acceptSession(
-    await request(
+  ) async {
+    await load();
+    if (session != null) throw const FormatException('Use Reconnect for the saved account. Creating another account requires authorized device sign-out first.');
+    await acceptSession(await request(
       '/auth/v1/signup',
       body: {
         'email': email.trim(),
@@ -192,8 +230,8 @@ class FamilyClient {
         'data': {'beta_key': betaKey.trim(), 'username': username.trim()},
       },
       authenticated: false,
-    ),
-  );
+    ));
+  }
   Future<void> signOut({bool parentAuthorized = false}) async {
     if (signedIn &&
         (accountKind == 'kids' || accountKind == null) &&
@@ -206,12 +244,16 @@ class FamilyClient {
       if (token != null) await request('/auth/v1/logout', body: {});
     } catch (_) {}
     final id = userID;
-    session = null;
-    accountKind = null;
-    await vault.delete(key: 'family.session');
-    await vault.delete(key: 'family.kind');
-    await vault.delete(key: 'family.childVerifier.$id');
-    await vault.delete(key: 'family.childCache.$id');
+    await _sessionChange(() async {
+      if (userID != id) throw const FormatException('Account changed. Please retry.');
+      if ((accountKind == 'kids' || accountKind == null) && signedIn && !parentAuthorized)
+        throw const FormatException('Parent authorization is required to sign out of a Kids account.');
+      await vault.delete(key: 'family.session');
+      session = null; accountKind = null; _sessionEpoch++; _reauthRequired = false;
+      await vault.delete(key: 'family.kind');
+      await vault.delete(key: 'family.childVerifier.$id');
+      await vault.delete(key: 'family.childCache.$id');
+    });
   }
 
   Future<dynamic> rpc(String name, Json args) =>
@@ -599,7 +641,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
         });
     }
     poll = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (mounted && client.signedIn && !busy) run(refresh, quiet: true);
+      if (mounted && client.signedIn && !client.needsReconnect && !busy) run(refresh, quiet: true);
     });
   }
 
@@ -629,7 +671,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && ready && client.signedIn && !busy)
+    if (state == AppLifecycleState.resumed && ready && client.signedIn && !client.needsReconnect && !busy)
       run(refresh, quiet: true);
   }
 
@@ -955,6 +997,12 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                 ),
               ),
             if (busy) const LinearProgressIndicator(),
+            if (client.needsReconnect)
+              panel('Reconnect your account', [
+                const LText(reconnectMessage),
+                if (bankTab != 4)
+                  FilledButton(onPressed: busy ? null : () => setState(() => bankTab = 4), child: const LText('Reconnect this account')),
+              ]),
             if (message.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1665,8 +1713,7 @@ class _RewardsPageState extends State<RewardsPage> with WidgetsBindingObserver {
                         ? null
                         : () {
                             run(() async {
-                              final address =
-                                  client.session?['user']?['email'] as String?;
+                              final address = client.accountEmail;
                               if (address == null || password.text.isEmpty)
                                 throw const FormatException(
                                   'Enter the password for this account.',

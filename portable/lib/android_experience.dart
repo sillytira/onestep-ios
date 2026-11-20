@@ -6,7 +6,7 @@ import 'model.dart';
 import 'services.dart';
 import 'personal.dart';
 
-const betaVersion = '0.10.1 Beta';
+const betaVersion = '0.10.2 Beta';
 
 class BetaBadge extends StatelessWidget {
   const BetaBadge({super.key});

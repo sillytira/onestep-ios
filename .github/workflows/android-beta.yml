@@ -79,11 +79,11 @@ jobs:
           script: python3 portable/tool/android_beta_smoke.py
       - name: Package
         run: |
-          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.10.1-beta-16.apk
+          cp portable/build/app/outputs/flutter-apk/app-release.apk release/OneStep-0.10.2-beta-17.apk
           sha256sum release/*.apk > release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-Android-0.10.1-beta-16
+          name: OneStep-Android-0.10.2-beta-17
           path: release/
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -121,9 +121,9 @@ jobs:
           Start-Sleep -Seconds 8
           if ($process.HasExited) { throw 'OneStep exited during launch smoke test' }
           Stop-Process -Id $process.Id
-          Compress-Archive -Path "$bundle/*" -DestinationPath release/OneStep-0.10.1-Windows.zip
-          (Get-FileHash release/OneStep-0.10.1-Windows.zip -Algorithm SHA256).Hash.ToLower() + '  OneStep-0.10.1-Windows.zip' | Set-Content release/OneStep-0.10.1-Windows.zip.sha256
+          Compress-Archive -Path "$bundle/*" -DestinationPath release/OneStep-0.10.2-Windows.zip
+          (Get-FileHash release/OneStep-0.10.2-Windows.zip -Algorithm SHA256).Hash.ToLower() + '  OneStep-0.10.2-Windows.zip' | Set-Content release/OneStep-0.10.2-Windows.zip.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: OneStep-0.10.1-Windows
+          name: OneStep-0.10.2-Windows
           path: release/

@@ -27,6 +27,7 @@ class SyncClient extends FamilyClient {
   Future<void> load() async {
     session = {
       'access_token': 'synthetic',
+      'expires_at': 4102444800,
       'user': {'id': '66666666-6666-4666-8666-666666666666'},
     };
     accountKind = 'normal';
